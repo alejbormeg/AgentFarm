@@ -1,7 +1,7 @@
 # Plan técnico — AgentFarm
 
 Autor del proyecto: Alejandro Borrego Megías. Fecha: 31 de octubre de 2026.
-Estado: propuesta de arquitectura y prototipo de coordinación simulado, pendiente de publicación en GitHub.
+Estado: base publicada en GitHub; simulador de coordinación y primer incremento de M1 (control de alcance entre commits). Trabajador real y aislamiento pendientes.
 
 ## 1. Problema y aportación
 
@@ -123,9 +123,15 @@ API opcional: reservar presupuesto antes de admitir una tarea, contabilizar cons
 
 ## 12. Hitos y criterios de salida
 
-M0 — documentación y simulador: cola persistente, deduplicación, límite de pendientes, informes honestos y pruebas. Entregado localmente en esta versión; pendiente de GitHub.
+M0 — documentación y simulador: cola persistente, deduplicación, límite de pendientes, informes honestos y pruebas. Base publicada en el repositorio privado `alejbormeg/AgentFarm`.
 
 M1 — un trabajador real: aislamiento comprobado, login oficial, tarea pequeña en repositorio de prueba, timeout/cancelación y diff verificable. Ningún merge automático.
+
+Primer incremento: [M1-001](tasks/M1-001.md) implementa un control de alcance de
+solo lectura entre SHA completos, con evidencia ligada a la especificación.
+Incluye pruebas Git y CI; no completa M1 ni habilita un trabajador real. Docker
+está instalado en el equipo de desarrollo, pero su motor no estaba disponible
+durante esta implementación; no se ha verificado aislamiento en contenedores.
 
 M2 — GitHub: especificación aprobada, PR, CI, revisión independiente y aceptación humana para SHA exacto. Demostrar bloqueo por cambio fuera de alcance y aprobación obsoleta.
 
@@ -152,4 +158,7 @@ ADR-006: simulación explícita hasta validar aislamiento y credenciales reales.
 
 ## 15. Próximos pasos concretos
 
-Crear repositorio privado `alejbormeg/AgentFarm` y subir esta base; verificar Forja y su documentación sin modificarlo; confirmar SO y memoria del portátil; completar M1 con una tarea inocua. La creación del repositorio está bloqueada actualmente por la autorización de autenticación del navegador, no por falta de acceso de lectura al conector GitHub.
+Revisar M1-001; poner en marcha el motor de contenedores y verificar aislamiento,
+límites y cancelación antes de añadir proveedores. Completar M1 con una tarea
+inocua en un repositorio de prueba. Forja y su documentación siguen sin haberse
+inspeccionado ni modificado.
