@@ -106,3 +106,7 @@ docker compose up --build --wait -d
 
 Pruebas Java de invariantes, importación SQLite, concurrencia, autenticación y gobierno.
 [Plan técnico](docs/PLAN.md).
+
+## Operación en vivo y tareas GitHub
+
+[Guía del panel y ejecutor WSL](docs/OPERATIONS.md): idea → issue → propuesta → aprobación → rama → tests → revisión → PR → integración explícita por SHA.

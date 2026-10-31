@@ -118,6 +118,18 @@ class WebTest {
     assertTrue(get("/api/nodes", true).body().contains("unknown"));
   }
 
+  @Test void workflowRequiresCsrfAndPreservesRequestIdentity()throws Exception{
+    String body=Json.encode(Json.obj("request_id","web-work-123","repository","owner/repo","title","Test","request","Investigate"));
+    var builder=HttpRequest.newBuilder(URI.create("http://localhost:"+port+"/api/work")).header("Authorization",auth()).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(body));
+    assertEquals(403,client.send(builder.build(),HttpResponse.BodyHandlers.ofString()).statusCode());
+    var token=Json.parse(get("/api/csrf",true).body());builder.header(token.path("header").asText(),token.path("token").asText());
+    var first=client.send(builder.build(),HttpResponse.BodyHandlers.ofString());
+    assertEquals(200,first.statusCode());
+    var second=client.send(builder.build(),HttpResponse.BodyHandlers.ofString());assertEquals(first.body(),second.body());
+    assertTrue(get("/api/work",true).body().contains("web-work-123"));
+    assertTrue(Set.of(401,302).contains(get("/api/work",false).statusCode()));
+  }
+
   @AfterAll
   static void cleanup() throws Exception {
     try (var files = Files.walk(dir)) {

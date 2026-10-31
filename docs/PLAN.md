@@ -92,3 +92,13 @@ ADR-006 simulación hasta verificar aislamiento; ADR-007 Animal Farm;
 ADR-008 Java/Spring Boot/Mateu y Compose por petición del promotor.
 
 [Especificación M1-003](tasks/M1-003.md).
+
+
+## Incremento operativo — issue #5
+Implementa la primera ejecución local gobernada: peticiones persistentes con
+issue, propuesta versionada, aprobación, rama aislada, pruebas, revisión y PR.
+La integración requiere confirmación humana de SHA y comprobaciones GitHub.
+El servicio systemd de WSL informa heartbeats y consulta cuota sin inferencia.
+Detalles y límites actuales en [OPERATIONS.md](OPERATIONS.md).
+Los hitos anteriores de este documento describen la línea base de migración;
+no acreditan consenso multinodo ni servicios Forja desplegados.

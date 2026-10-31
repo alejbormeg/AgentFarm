@@ -42,7 +42,7 @@ public class ControlService {
                 if (num(w, "node_enabled") == 0
                     || w.get("node_heartbeat") == null
                     || (clock.instant().getEpochSecond() - num(w, "node_heartbeat") < 0
-                        || clock.instant().getEpochSecond() - num(w, "node_heartbeat") > 45))
+                        || clock.instant().getEpochSecond() - num(w, "node_heartbeat") > 12))
                   w.put("status", "node_unavailable");
               });
           return all;
@@ -61,7 +61,7 @@ public class ControlService {
                         ? "unknown"
                         : now - num(row, "heartbeat") < 0
                             ? "unknown"
-                            : now - num(row, "heartbeat") > 45
+                            : now - num(row, "heartbeat") > 12
                                 ? "stale"
                                 : row.get("reported_state")));
     return all;
@@ -198,8 +198,8 @@ public class ControlService {
               || w.get("nh") == null
               || now - num(w, "heartbeat") < 0
               || now - num(w, "nh") < 0
-              || now - num(w, "heartbeat") > 45
-              || now - num(w, "nh") > 45
+              || now - num(w, "heartbeat") > 12
+              || now - num(w, "nh") > 12
               || !w.get("reported_state").equals("idle"))
             throw new IllegalArgumentException("Worker and node must be enabled, fresh and idle");
           if (num(one(c, "SELECT count(*) n FROM tasks WHERE state IN ('assigned','running')"), "n")
@@ -276,4 +276,20 @@ public class ControlService {
           return null;
         });
   }
+  public void finish(String project, String id, String worker, String sha, String actor) {
+    if (!sha.matches("[a-f0-9]{40}")) throw new IllegalArgumentException("Full candidate SHA required");
+    store.tx(c -> {
+      var task = one(c, "SELECT state FROM tasks WHERE project=? AND id=?",project,id);
+      var runtime = one(c,"SELECT worker FROM task_runtime WHERE project=? AND id=?",project,id);
+      if(task==null || runtime==null || !Objects.equals(runtime.get("worker"),worker)
+          || !Set.of("assigned","running").contains(task.get("state")))
+        throw new IllegalArgumentException("Worker must own an active task");
+      exec(c,"UPDATE tasks SET state='review' WHERE project=? AND id=?",project,id);
+      exec(c,"UPDATE task_runtime SET candidate_sha=?,progress=NULL WHERE project=? AND id=?",sha,project,id);
+      exec(c,"UPDATE farm_workers SET reported_state='idle' WHERE id=?",worker);
+      Store.audit(c,actor,"task.candidate-reported",project+"/"+id+" @ "+sha);
+      return null;
+    });
+  }
+
 }

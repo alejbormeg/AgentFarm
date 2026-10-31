@@ -22,6 +22,12 @@ public final class UiSupport {
     return MateuBeanProvider.getBean(BudgetService.class);
   }
 
+  public static int weeklyPercent(String account) {
+    return budgets().accounts().stream().filter(a->account.equals(a.get("account")))
+      .findFirst().map(a->(int)(Json.parse(a.get("shares").toString()).path("weekly").asLong(5000)/100))
+      .orElse(50);
+  }
+
   public static String actor() {
     return SecurityContextHolder.getContext().getAuthentication().getName();
   }
@@ -47,6 +53,7 @@ public final class UiSupport {
       return key.equals("progress")
           ? "Desconocido"
           : key.equals("heartbeat") ? "Sin heartbeat" : "—";
+    if (key.equals("progress") && value instanceof Number n && n.intValue()==0) return "Sin estimación";
     if (key.equals("enabled") || key.equals("cancel_requested"))
       return ((Number) value).intValue() == 1 ? "Sí" : "No";
     if (key.equals("at") || key.equals("heartbeat")) {
@@ -106,6 +113,10 @@ public final class UiSupport {
                 row -> {
                   Map<String, Object> copy = new LinkedHashMap<>();
                   row.forEach((key, value) -> copy.put(key, display(key, value)));
+                  if(row.get("spec")!=null) {
+                    try { copy.put("title",Json.parse(row.get("spec").toString()).path("title").asText()); }
+                    catch(Exception ignored) {}
+                  }
                   return copy;
                 })
             .toList();
