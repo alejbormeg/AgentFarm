@@ -16,11 +16,12 @@ public class ControlApi {
   private final BudgetService budgets;
   private final TelemetryService telemetry;
 
-  public ControlApi(CoordinatorService t, ControlService c, BudgetService b, TelemetryService telemetry) {
+  public ControlApi(
+      CoordinatorService t, ControlService c, BudgetService b, TelemetryService telemetry) {
     tasks = t;
     control = c;
     budgets = b;
-    this.telemetry=telemetry;
+    this.telemetry = telemetry;
   }
 
   @GetMapping("/csrf")
@@ -46,12 +47,17 @@ public class ControlApi {
   }
 
   @GetMapping("/runtime")
-  public Object runtime() { return telemetry.snapshot(); }
+  public Object runtime() {
+    return telemetry.snapshot();
+  }
 
   @PostMapping("/runtime/observations")
-  public Object observeRuntime(@RequestBody JsonNode n) {
+  public Object observeRuntime(@RequestBody JsonNode n, Principal p) {
+    if (p.getName().startsWith("node:")
+        && !n.path("snapshot").path("node").asText().equals(p.getName().substring(5)))
+      throw new org.springframework.security.access.AccessDeniedException("Node mismatch");
     telemetry.ingest(n);
-    return Map.of("state","recorded");
+    return Map.of("state", "recorded");
   }
 
   @GetMapping("/nodes")
@@ -104,6 +110,18 @@ public class ControlApi {
   @PostMapping("/heartbeat/{kind}/{id}")
   public Object heartbeat(
       @PathVariable String kind, @PathVariable String id, @RequestBody JsonNode n, Principal p) {
+    if (p.getName().startsWith("node:")) {
+      String node = p.getName().substring(5);
+      boolean own =
+          kind.equals("node")
+              ? id.equals(node)
+              : kind.equals("worker")
+                  && control.workers().stream()
+                      .anyMatch(w -> id.equals(w.get("id")) && node.equals(w.get("node")));
+      if (!own)
+        throw new org.springframework.security.access.AccessDeniedException(
+            "Heartbeat identity mismatch");
+    }
     control.heartbeat(kind, id, Json.text(n, "state"), p.getName());
     return Map.of("state", "recorded");
   }
@@ -148,14 +166,16 @@ public class ControlApi {
   }
 
   @PostMapping("/tasks/{project}/{id}/candidate")
-  public Object candidate(@PathVariable String project, @PathVariable String id,
-      @RequestBody JsonNode n, Principal p) {
-    control.finish(project,id,Json.text(n,"worker"),Json.text(n,"sha"),p.getName());
-    return Map.of("state","review","implementation_verified",false);
+  public Object candidate(
+      @PathVariable String project, @PathVariable String id, @RequestBody JsonNode n, Principal p) {
+    control.finish(project, id, Json.text(n, "worker"), Json.text(n, "sha"), p.getName());
+    return Map.of("state", "review", "implementation_verified", false);
   }
 
   @GetMapping("/budget/{account}/reservations")
-  public Object reservations(@PathVariable String account){return budgets.reservations(account);}
+  public Object reservations(@PathVariable String account) {
+    return budgets.reservations(account);
+  }
 
   @GetMapping("/budget/{account}")
   public Object budget(@PathVariable String account) {
@@ -163,7 +183,14 @@ public class ControlApi {
   }
 
   @PostMapping("/budget/{operation}")
-  public Object budget(@PathVariable String operation, @RequestBody JsonNode n, Principal p) {
+  public Object budget(
+      @PathVariable String operation,
+      @RequestBody JsonNode n,
+      Principal p,
+      jakarta.servlet.http.HttpServletRequest request) {
+    if (p.getName().startsWith("node:")
+        && !n.path("account").asText().equals(request.getAttribute("agentfarm.account")))
+      throw new org.springframework.security.access.AccessDeniedException("Account mismatch");
     return budgets.execute(operation, n, p.getName());
   }
 

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root="$(cd "$(dirname "$0")" && pwd)"
+: "${AGENTFARM_NODE:?Set AGENTFARM_NODE to the registered node id}"
+: "${AGENTFARM_ACCOUNT:?Set AGENTFARM_ACCOUNT to the budget account id}"
+exec java "-Dagentfarm.url=${AGENTFARM_URL:-http://localhost:8080}" \
+  "-Dagentfarm.state=${AGENTFARM_STATE:-$HOME/.local/state/agentfarm}" \
+  "-Dagentfarm.node=$AGENTFARM_NODE" "-Dagentfarm.account=$AGENTFARM_ACCOUNT" \
+  "-Dagentfarm.implementer=${AGENTFARM_IMPLEMENTER:-$AGENTFARM_NODE-boxer}" \
+  "-Dagentfarm.reviewer=${AGENTFARM_REVIEWER:-$AGENTFARM_NODE-reviewer}" \
+  "-Dagentfarm.codex=${AGENTFARM_CODEX:-codex}" "-Dagentfarm.gh=${AGENTFARM_GH:-gh}" \
+  -cp "$root/executor.jar:$root/lib/*" FarmDaemon

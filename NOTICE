@@ -1,0 +1,7 @@
+AgentFarm
+Copyright 2026 AgentFarm contributors
+
+Core source is licensed under Apache License 2.0.
+Third-party dependencies retain their own licenses and notices.
+Maven artifacts and bundled frontend assets must be audited before a release.
+This notice does not relicense third-party components.

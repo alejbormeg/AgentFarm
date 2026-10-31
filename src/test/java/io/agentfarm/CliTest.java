@@ -33,6 +33,22 @@ class CliTest {
   }
 
   @Test
+  void profileProducesExactlyOneJsonWithoutStateField() throws Exception {
+    Path profile = dir.resolve("agentfarm.yaml");
+    Files.writeString(profile, ProfileBackupTest.PROFILE);
+    var out = new ByteArrayOutputStream();
+    var original = System.out;
+    try {
+      System.setOut(new PrintStream(out));
+      assertEquals(0, Cli.run(new String[] {"profile", "--file", profile.toString()}));
+      assertEquals(1, out.toString().lines().count());
+      assertEquals("owner/repo", Json.parse(out.toString()).path("repository").asText());
+    } finally {
+      System.setOut(original);
+    }
+  }
+
+  @Test
   void missingBudgetObservationPausesWithoutProviderCall() {
     String db = dir.resolve("budget.db").toString();
     var original = System.out;

@@ -1,0 +1,34 @@
+name: Distribution candidate
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - run: ./mvnw -B -ntp verify
+      - run: bash runtime/verify.sh
+      - run: bash runtime/package.sh
+      - run: ./mvnw -B -ntp dependency:list -DoutputFile=target/dependencies.txt
+      - run: |
+          cd target
+          sha256sum agentfarm.jar agentfarm-executor-linux.tar.gz > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agentfarm-distribution-candidate
+          path: |
+            target/agentfarm.jar
+            target/agentfarm-executor-linux.tar.gz
+            target/SHA256SUMS
+            target/dependencies.txt
+            LICENSE
+            NOTICE

@@ -56,9 +56,27 @@ public class SecurityConfig {
   }
 
   @Bean
-  SecurityFilterChain security(HttpSecurity http) throws Exception {
+  SecurityFilterChain security(HttpSecurity http, io.agentfarm.core.NodeCredentials nodes)
+      throws Exception {
     http.authorizeHttpRequests(
-            a -> a.requestMatchers("/login", "/error").permitAll().anyRequest().hasRole("OWNER"))
+            a ->
+                a.requestMatchers("/login", "/error")
+                    .permitAll()
+                    .requestMatchers(
+                        "/api/csrf",
+                        "/api/overview",
+                        "/api/runtime",
+                        "/api/runtime/observations",
+                        "/api/budget/**",
+                        "/api/heartbeat/**",
+                        "/api/work/agent/**")
+                    .hasAnyRole("OWNER", "EXECUTOR")
+                    .anyRequest()
+                    .hasRole("OWNER"))
+        .addFilterBefore(
+            new NodeTokenFilter(nodes),
+            org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+                .class)
         .formLogin(Customizer.withDefaults())
         .httpBasic(Customizer.withDefaults())
         .csrf(c -> c.ignoringRequestMatchers("/mateu/**"))

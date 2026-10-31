@@ -4,6 +4,14 @@ Plano de control local para equipos de agentes, con **Java 21, Spring Boot 4 y M
 Boxer ejecutará trabajo; Napoleon dirigirá un nodo; Napoleon y Snowball contrastarán
 propuestas cuando se implemente la coordinación entre nodos. El humano gobierna la granja.
 
+## Incremento en desarrollo — fase 1
+
+[Guía de conexión, diagnóstico y recuperación](docs/INSTALLATION.md).
+Incluye perfiles agentfarm.yaml ligados a la propuesta, doctor, backup/restore,
+paquete Linux del ejecutor y credenciales de nodo revocables.
+La separación de identidad del trabajador, las versiones públicas y el piloto
+de instalación siguen pendientes; no se declara la fase 1 completada.
+
 ## Instalar y abrir
 
 Necesitas Docker con Compose v2. En Windows, usa Docker Desktop con integración

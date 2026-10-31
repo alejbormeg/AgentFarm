@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+command="${1:-up}"
+case "$command" in
+  doctor|profile|backup|restore)
+    jar="${AGENTFARM_JAR:-$root/target/agentfarm.jar}"
+    [[ -f "$jar" ]] || { echo "No se encuentra el JAR. Configura AGENTFARM_JAR o ejecuta ./mvnw package." >&2; exit 2; }
+    exec java -jar "$jar" "$@"
+    ;;
+esac
+cd "$root"
 if ! command -v docker >/dev/null || ! docker compose version >/dev/null 2>&1; then
   echo "Instala Docker con Compose v2; en WSL activa la integración de Docker Desktop." >&2
   exit 2
 fi
-case "${1:-up}" in
+case "$command" in
   up)
     docker compose up --build --wait -d
     printf '\nAgentFarm: http://localhost:8080\nUsuario: admin\nConsulta tu contraseña con: ./agentfarm password\n'
@@ -14,5 +23,5 @@ case "${1:-up}" in
   stop) docker compose stop ;;
   logs) docker compose logs --tail 100 agentfarm ;;
   status) docker compose ps ;;
-  *) echo "Uso: ./agentfarm {up|password|stop|logs|status}" >&2; exit 2 ;;
+  *) echo "Uso: ./agentfarm {up|password|stop|logs|status|doctor|profile|backup|restore}" >&2; exit 2 ;;
 esac

@@ -634,6 +634,7 @@ class FarmConsole extends HTMLElement {
     } else {
       this.live.append(
         E("h2", "Control de ejecución"),
+        link("Conectar ejecutor", "/setup.html"),
         button(o.paused ? "Reanudar cola" : "Pausar agentes", () =>
           this.action("/governance/paused/" + !o.paused, {}),
         ),

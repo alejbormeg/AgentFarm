@@ -22,7 +22,22 @@ public final class Cli {
         } else positional.add(args[i]);
       }
       Object result;
-      if (mode.equals("scope")) {
+      if (mode.equals("doctor")) {
+        result =
+            Diagnostics.run(
+                Path.of(options.getOrDefault("repo", ".")),
+                options.getOrDefault("panel", "http://localhost:8080"),
+                Boolean.parseBoolean(options.getOrDefault("run-tests", "false")));
+      } else if (mode.equals("profile")) {
+        result = ProjectProfile.load(Path.of(required(options, "file"))).summary();
+      } else if (mode.equals("backup")) {
+        result =
+            Backups.backup(Path.of(required(options, "db")), Path.of(required(options, "output")));
+      } else if (mode.equals("restore")) {
+        result =
+            Backups.restore(
+                Path.of(required(options, "snapshot")), Path.of(required(options, "db")));
+      } else if (mode.equals("scope")) {
         result =
             new ScopeService()
                 .check(
@@ -80,8 +95,9 @@ public final class Cli {
       System.out.println(encode(result));
       if (result instanceof Map<?, ?> map) {
         Object state = map.get("state");
-        if (Set.of("paused", "unknown", "overrun", "crossed_reset", "duplicate", "blocked")
-            .contains(state)) return 1;
+        if (state != null
+            && Set.of("paused", "unknown", "overrun", "crossed_reset", "duplicate", "blocked")
+                .contains(state)) return 1;
       }
       return 0;
     } catch (Exception e) {

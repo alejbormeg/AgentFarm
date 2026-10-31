@@ -9,8 +9,8 @@ import java.util.concurrent.*;
 
 public class CodexRunner {
   static final ObjectMapper JSON=new ObjectMapper();
-  static final Path STATE=Path.of(System.getProperty("user.home"),".local/state/agentfarm");
-  static final String ROOT="/home/alex/proyectos/forja", ACCOUNT="codex-subscription";
+  static final Path STATE=Path.of(System.getProperty("agentfarm.state",System.getProperty("user.home")+"/.local/state/agentfarm"));
+  static final String ROOT=System.getProperty("agentfarm.legacy-repo",""), ACCOUNT=System.getProperty("agentfarm.account","codex-subscription");
   static final HttpClient HTTP=HttpClient.newBuilder().cookieHandler(new CookieManager(null,CookiePolicy.ACCEPT_ALL)).connectTimeout(Duration.ofSeconds(5)).build();
   static String auth,csrfHeader,csrf,worker,base;
   static volatile String thread,turn;
@@ -33,7 +33,7 @@ public class CodexRunner {
   }
   static JsonNode api(String method,String path,Object body)throws Exception{return api(method,path,body,true);}
   static JsonNode api(String method,String path,Object body,boolean retry)throws Exception{
-    var b=HttpRequest.newBuilder(URI.create("http://localhost:8080/api"+path)).timeout(Duration.ofSeconds(10)).header("Authorization",auth);
+    var b=HttpRequest.newBuilder(URI.create(System.getProperty("agentfarm.url","http://localhost:8080")+"/api"+path)).timeout(Duration.ofSeconds(10)).header("Authorization",auth);
     if(method.equals("POST"))b.header(csrfHeader,csrf).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(body)));
     else b.GET();
     var r=HTTP.send(b.build(),HttpResponse.BodyHandlers.ofString());
@@ -84,8 +84,8 @@ public class CodexRunner {
     return s.trim();
   }
   static void startServer()throws Exception{
-    var builder=new ProcessBuilder("/home/alex/.local/bin/codex","app-server").redirectError(STATE.resolve("codex-stderr.log").toFile());
-    builder.environment().put("PATH","/home/alex/.local/bin:"+System.getenv("PATH"));
+    var builder=new ProcessBuilder(System.getProperty("agentfarm.codex","codex"),"app-server").redirectError(STATE.resolve("codex-stderr.log").toFile());
+    builder.environment().put("PATH",System.getProperty("user.home")+"/.local/bin:"+System.getenv("PATH"));
     server=builder.start();
     input=new BufferedWriter(new OutputStreamWriter(server.getOutputStream()));
     Thread.ofPlatform().daemon().start(()->{
@@ -135,6 +135,7 @@ public class CodexRunner {
       validateQuota(JSON.readTree("{\"rateLimits\":{\"primary\":{\"usedPercent\":97,\"windowDurationMins\":10080,\"resetsAt\":9999999999}}}"));
       System.out.println("Guard tests passed: missing quota, 98% weekly, secondary window exhaustion, 97% admission");return;
     }
+    if(!Boolean.getBoolean("agentfarm.legacy-pilot")||ROOT.isBlank())throw new IOException("Historical pilot disabled; use the enrolled FarmDaemon executor");
     Files.createDirectories(STATE);
     try(var channel=java.nio.channels.FileChannel.open(STATE.resolve("runner.lock"),StandardOpenOption.CREATE,StandardOpenOption.WRITE);var lock=channel.tryLock()){
       if(lock==null)throw new IOException("Another runner is active");
