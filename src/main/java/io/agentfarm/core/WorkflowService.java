@@ -167,6 +167,8 @@ public class WorkflowService {
         || !branch.matches("agentfarm/[a-zA-Z0-9/_-]+"))
       throw new IllegalArgumentException("Invalid candidate");
     var proposal = n.path("proposal");
+    if (proposal.has("project_memory"))
+      ProjectMemory.validate(proposal.get("project_memory"), repo);
     for (String key :
         List.of(
             "summary", "acceptance", "as_is", "to_be", "unit_test", "integration_test", "base_sha"))

@@ -129,6 +129,29 @@ class ProjectMemoryTest {
   }
 
   @Test
+  void importedCandidateCannotBypassMemorySnapshotValidation() {
+    var db = new Store(dir.resolve("db").toString());
+    var work = new WorkflowService(db, Clock.systemUTC());
+    var invalid = (com.fasterxml.jackson.databind.node.ObjectNode) snapshot();
+    invalid.put("hash", "invalid");
+    var request =
+        MAPPER.valueToTree(
+            obj(
+                "request_id",
+                "memory-import-1",
+                "repository",
+                REPO,
+                "sha",
+                SHA,
+                "branch",
+                "agentfarm/1-memory",
+                "proposal",
+                obj("project_memory", invalid)));
+    assertThrows(IllegalArgumentException.class, () -> work.importCandidate(request, "owner"));
+    assertTrue(work.items().isEmpty());
+  }
+
+  @Test
   void proposalApprovalPersistsExactMemoryAndRejectsInvalidReportAtomically() {
     var db = new Store(dir.resolve("db").toString());
     var work = new WorkflowService(db, Clock.systemUTC());
