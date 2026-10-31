@@ -63,6 +63,7 @@ public class SecurityConfig {
                 a.requestMatchers("/login", "/error")
                     .permitAll()
                     .requestMatchers(
+                        "/api/providers/admission",
                         "/api/csrf",
                         "/api/overview",
                         "/api/runtime",

@@ -29,7 +29,7 @@ public class RuntimeChecks {
     check(
         !FarmDaemon.quotaObservation(
                 CodexRunner.JSON.readTree(
-                    sample(20, ",\"primary\":{\"usedPercent\":99,\"windowDurationMins\":300}")),
+                    sample(20, ",\"primary\":{\"usedPercent\":99,\"resetsAt\":2000000,\"windowDurationMins\":300}")),
                 now)
             .path("allowed")
             .asBoolean());

@@ -36,6 +36,7 @@ public class NodeTokenFilter extends OncePerRequestFilter {
       allowed |=
           method.equals("POST")
               && (Set.of(
+                          "/api/providers/admission",
                           "/api/work/agent/claim",
                           "/api/runtime/observations",
                           "/api/budget/observe",
