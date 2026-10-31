@@ -39,5 +39,6 @@ jobs:
           persist-credentials: false
       - run: docker compose up --build --wait -d
       - run: curl --fail http://localhost:8080/login
+      - run: python3 tests/container_http.py
       - if: always()
         run: docker compose down

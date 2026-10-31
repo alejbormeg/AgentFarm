@@ -188,7 +188,8 @@ class WebTest {
             "/api/work",
             "/api/evidence",
             "/api/providers",
-            "/api/initiatives"))
+            "/api/initiatives",
+            "/api/recipes"))
       assertEquals(
           403,
           executor.send(request.apply(denied), HttpResponse.BodyHandlers.ofString()).statusCode(),
@@ -319,6 +320,42 @@ class WebTest {
     assertEquals(200, client.send(pause, HttpResponse.BodyHandlers.ofString()).statusCode());
     assertEquals(409, client.send(pause, HttpResponse.BodyHandlers.ofString()).statusCode());
     assertTrue(get("/api/audit", true).body().contains("initiative.pause"));
+  }
+
+  @Test
+  void recipesAreAuthenticatedAndCreateAResearchTaskWithCsrf() throws Exception {
+    assertTrue(Set.of(401, 302).contains(get("/api/recipes", false).statusCode()));
+    var recipes = Json.parse(get("/api/recipes", true).body());
+    assertEquals(4, recipes.size());
+    var selected = recipes.get(0);
+    var body =
+        Json.obj(
+            "request_id",
+            "web-recipe-001",
+            "repository",
+            "owner/repo",
+            "title",
+            "Bug",
+            "request",
+            "Reproduce the reported bug",
+            "recipe",
+            Json.obj(
+                "id", selected.path("id").asText(), "version", selected.path("version").asInt()));
+    var builder =
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/work"))
+            .header("Authorization", auth())
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(Json.encode(body)));
+    assertEquals(
+        403, client.send(builder.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+    var csrf = Json.parse(get("/api/csrf", true).body());
+    builder.header(csrf.path("header").asText(), csrf.path("token").asText());
+    var first = client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, first.statusCode());
+    assertEquals(selected, Json.parse(first.body()).path("recipe"));
+    assertEquals("queued", Json.parse(first.body()).path("state").asText());
+    assertEquals(
+        first.body(), client.send(builder.build(), HttpResponse.BodyHandlers.ofString()).body());
   }
 
   @AfterAll

@@ -133,3 +133,6 @@ Pruebas Java de invariantes, importación SQLite, concurrencia, autenticación y
 [Iniciativas, hitos y dependencias](docs/INITIATIVES.md): agrupa tareas entre
 repositorios, limita cambios pendientes de revisión y consulta por qué una tarea
 está esperando. La agrupación conserva las aprobaciones individuales.
+
+[Recetas versionadas](docs/RECIPES.md): guía la investigación de bugs,
+dependencias, pruebas o migraciones y conserva la versión usada por cada tarea.

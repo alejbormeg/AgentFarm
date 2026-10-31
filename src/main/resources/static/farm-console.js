@@ -287,6 +287,49 @@ class FarmConsole extends HTMLElement {
       l.append(input);
       section.append(l);
     }
+    const recipe = E("select"),
+      guidance = E("details"),
+      catalogState = E("small");
+    const recipeLabel = E("label", "Receta opcional");
+    recipeLabel.append(recipe);
+    const manual = E("option", "Petición libre");
+    manual.value = "";
+    recipe.append(manual);
+    recipe.setAttribute("aria-label", "Receta opcional");
+    guidance.append(E("summary", "Qué propone la receta"));
+    guidance.hidden = true;
+    let recipes = [];
+    recipe.onchange = () => {
+      const chosen = recipes.find(
+        (r) => r.id + "@" + r.version === recipe.value,
+      );
+      guidance.hidden = !chosen;
+      guidance.replaceChildren(E("summary", "Qué propone la receta"));
+      if (chosen) {
+        guidance.append(E("p", chosen.purpose));
+        for (const step of chosen.research_steps) guidance.append(E("p", step));
+        guidance.append(
+          E(
+            "small",
+            "La receta guía la investigación. El alcance y la integración requieren aprobación.",
+          ),
+        );
+      }
+    };
+    api("/recipes")
+      .then((rows) => {
+        recipes = rows;
+        for (const r of rows) {
+          const option = E("option", r.title + " · v" + r.version);
+          option.value = r.id + "@" + r.version;
+          recipe.append(option);
+        }
+      })
+      .catch(() => {
+        catalogState.textContent =
+          "Recetas no disponibles. Puedes enviar una petición libre.";
+      });
+    section.append(recipeLabel, catalogState, guidance);
     const id = crypto.randomUUID();
     section.append(
       button(
@@ -302,6 +345,15 @@ class FarmConsole extends HTMLElement {
               repository: repo.value.trim(),
               title: title.value.trim(),
               request: request.value.trim(),
+              ...(recipe.value
+                ? {
+                    recipe: ((r) => ({ id: r.id, version: r.version }))(
+                      recipes.find(
+                        (r) => r.id + "@" + r.version === recipe.value,
+                      ),
+                    ),
+                  }
+                : {}),
             });
             this.selectedRepo = repo.value.trim();
             this.form.replaceWith((this.form = this.requestForm()));
@@ -1115,6 +1167,24 @@ class FarmConsole extends HTMLElement {
         ),
       );
       task.append(row);
+      if (w.recipe) {
+        const recipe = E("details");
+        recipe.dataset.key = "recipe-" + w.id;
+        recipe.append(E("summary", w.recipe.title + " · v" + w.recipe.version));
+        recipe.append(E("p", w.recipe.purpose));
+        for (const step of w.recipe.research_steps || [])
+          recipe.append(E("p", step));
+        recipe.append(E("strong", "Evidencia prevista"));
+        for (const evidence of w.recipe.required_evidence || [])
+          recipe.append(E("p", evidence));
+        recipe.append(
+          E(
+            "small",
+            "Versión conservada para esta tarea · SHA-256 " + w.recipe.hash,
+          ),
+        );
+        task.append(recipe);
+      }
       const links = E("div", "", "links");
       const base = "https://github.com/" + w.repo;
       links.append(link(w.repo, base));

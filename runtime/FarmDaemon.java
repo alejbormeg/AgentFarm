@@ -313,10 +313,20 @@ public class FarmDaemon extends CodexRunner {
                 "body",
                 marker()
                     + "\n## Petición\n"
-                    + item.path("request").asText()
+                    + (item.path("request").asText() + recipeContext(item))
                     + "\n\nEstado: investigación pendiente."))
         .path("number")
         .asInt();
+  }
+
+  static String recipeContext(JsonNode item) {
+    var recipe = item.path("recipe");
+    if (!recipe.isObject()) return "";
+    return "\n\n## Receta versionada (guía; no concede aprobación ni amplía el alcance)\n"
+        + recipe.toPrettyString()
+        + "\n"
+        + "La petición original y el alcance aprobado prevalecen. Registra evidencias reales o"
+        + " excepciones explícitas.\n";
   }
 
   static String diagrams(JsonNode p) {
@@ -365,7 +375,7 @@ public class FarmDaemon extends CodexRunner {
   static String issueBody(JsonNode item, JsonNode p, int issue) {
     return marker()
         + "\n## Petición\n"
-        + item.path("request").asText()
+        + (item.path("request").asText() + recipeContext(item))
         + "\n\n## Propuesta\n"
         + p.path("summary").asText()
         + "\n\n## Aceptación\n"
@@ -397,7 +407,7 @@ public class FarmDaemon extends CodexRunner {
             + " setup (comando para instalar dependencias en CI Ubuntu 24.04; usa vacío para"
             + " python3 estándar, ya instalado), sources (URLs y motivo), risks. Incluye"
             + " dependencias de CI y alcance en summary. Petición: "
-            + item.path("request").asText()
+            + (item.path("request").asText() + recipeContext(item))
             + "\nFeedback: "
             + payload.path("feedback").asText();
     io.agentfarm.core.ProjectProfile profile = null;
@@ -477,7 +487,7 @@ public class FarmDaemon extends CodexRunner {
                 + " cambies el alcance ni inventes resultados. Propuesta: "
                 + p
                 + "\nPetición: "
-                + item.path("request").asText()
+                + (item.path("request").asText() + recipeContext(item))
                 + "\n"
                 + "Termina con JSON de strings summary, as_is, to_be (Mermaid del resultado REAL),"
                 + " limitations.",
@@ -647,7 +657,7 @@ public class FarmDaemon extends CodexRunner {
         "Closes #"
             + issue
             + "\n\n## Qué resuelve\n"
-            + item.path("request").asText()
+            + (item.path("request").asText() + recipeContext(item))
             + "\n\n"
             + change.path("summary").asText()
             + diagrams(change)

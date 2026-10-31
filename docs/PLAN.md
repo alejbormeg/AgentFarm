@@ -135,3 +135,10 @@ sin declarar superados sus criterios de salida. El primer incremento de #10
 añade [iniciativas, hitos y dependencias](INITIATIVES.md), con límite de cambios
 en desarrollo o revisión y sin ampliar las aprobaciones de alcance o integración.
 Recetas, memoria versionada, roles y pilotos permanecen pendientes.
+
+### Segundo incremento de fase 4
+Tras fusionar PR #14, el promotor pide continuar. El plan aprobado termina
+en fase 4; se entrega su siguiente incremento: [recetas versionadas](RECIPES.md)
+para bugs, dependencias, pruebas y migraciones. Seleccionar una receta inicia
+investigación; no aprueba desarrollo ni verifica criterios. Se conservan abiertos
+los pendientes de #7–#10 y los criterios externos de salida.
