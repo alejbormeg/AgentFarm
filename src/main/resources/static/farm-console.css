@@ -188,6 +188,24 @@ header {
   width: 44px;
   vertical-align: middle;
 }
+td .hat {
+  height: 20px;
+  width: 26px;
+  margin-right: 6px;
+}
+.with-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.with-icon .hat {
+  height: 26px;
+  width: 32px;
+}
+.lead {
+  font-size: 18px;
+  color: var(--muted);
+}
 .arrow {
   color: #718399;
   font-size: 24px;

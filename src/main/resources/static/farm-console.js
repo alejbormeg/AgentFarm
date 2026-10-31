@@ -29,6 +29,66 @@ const hat = () => {
     '<svg class="hat" viewBox="0 0 64 44" role="img" aria-label="Bicornio de Napoleon"><path d="M3 34Q13 20 22 24Q25 5 32 5Q39 5 42 24Q51 20 61 34L54 39H10Z" fill="#203650" stroke="#101e30" stroke-width="2"/><path d="M10 34Q32 28 54 34" fill="none" stroke="#d6ad59" stroke-width="3"/><circle cx="32" cy="23" r="5" fill="#e9d9b7"/><circle cx="32" cy="23" r="3" fill="#3568a5"/></svg>';
   return e;
 };
+const svgIcon = (label, body, viewBox = "0 0 64 44") => {
+  const e = E("span");
+  e.innerHTML = `<svg class="hat" viewBox="${viewBox}" role="img" aria-label="${label}">${body}</svg>`;
+  return e;
+};
+const horse = (label = "Caballo Boxer") =>
+  svgIcon(
+    label,
+    '<path d="M18 40V27Q14 22 17 14L24 6L27 9L30 4L33 9Q46 11 48 24L56 30L52 36L44 31V40H38V31H26V40Z" fill="#7a5233" stroke="#3d2817" stroke-width="2" stroke-linejoin="round"/><path d="M27 9Q22 16 24 24" fill="none" stroke="#3d2817" stroke-width="3"/><circle cx="36" cy="16" r="2" fill="#f6f7f9"/>',
+  );
+const clover = () =>
+  svgIcon(
+    "Trébol Clover",
+    '<g fill="#3f8f4f" stroke="#1f5a2c" stroke-width="2"><circle cx="32" cy="13" r="8"/><circle cx="22" cy="23" r="8"/><circle cx="42" cy="23" r="8"/></g><path d="M32 24Q33 34 40 41" fill="none" stroke="#1f5a2c" stroke-width="3" stroke-linecap="round"/>',
+  );
+const snowflake = () =>
+  svgIcon(
+    "Copo Snowball",
+    '<g stroke="#3568a5" stroke-width="3" stroke-linecap="round"><path d="M32 4V40M16 13L48 31M16 31L48 13"/><path d="M27 8L32 12L37 8M27 36L32 32L37 36"/></g>',
+  );
+// Items that need the owner first, then work in progress, then the rest.
+const attention = {
+  proposed: 0,
+  review: 0,
+  blocked: 1,
+  integrating: 2,
+  approved: 2,
+  queued: 3,
+  integrated: 4,
+  cancelled: 5,
+};
+const lastRepoKey = "agentfarm.lastRepository";
+const lastRepo = () => {
+  try {
+    return localStorage.getItem(lastRepoKey) || "";
+  } catch {
+    return "";
+  }
+};
+const rememberRepo = (value) => {
+  try {
+    localStorage.setItem(lastRepoKey, value);
+  } catch {}
+};
+// The Mateu tab bar lives in nested shadow roots; on narrow screens it scrolls
+// horizontally with no visual hint, so fade its edge to show more tabs exist.
+const navHint = () => {
+  const app = document
+    .querySelector("mateu-ui")
+    ?.shadowRoot?.querySelector("mateu-ux")
+    ?.shadowRoot?.querySelector("mateu-app")?.shadowRoot;
+  if (!app || app.getElementById("farm-nav-hint")) return;
+  const css = document.createElement("style");
+  css.id = "farm-nav-hint";
+  css.textContent =
+    "@media (max-width: 800px) { nav.mateu-tabs { scrollbar-width: none;" +
+    " mask-image: linear-gradient(to right, #000 80%, transparent);" +
+    " -webkit-mask-image: linear-gradient(to right, #000 80%, transparent); } }";
+  app.append(css);
+};
 async function api(path, body) {
   const options = {
     credentials: "same-origin",
@@ -71,6 +131,7 @@ function button(label, fn, primary = false) {
 }
 class FarmConsole extends HTMLElement {
   connectedCallback() {
+    navHint();
     this.parentElement
       ?.querySelectorAll(
         ":scope > farm-console, :scope > agentfarm-monitor, :scope > agentfarm-registry",
@@ -159,7 +220,7 @@ class FarmConsole extends HTMLElement {
     };
     const header = E("header");
     header.append(
-      E("h1", titles[this.view] || titles.overview),
+      E("p", titles[this.view] || titles.overview, "lead"),
       button("Actualizar", () => this.poll()),
     );
     this.error = E("p", "", "error");
@@ -271,7 +332,8 @@ class FarmConsole extends HTMLElement {
     d.append(E("summary", "Nueva idea o tarea"));
     const section = E("section");
     const repo = E("input");
-    repo.value = "alejbormeg/forja";
+    repo.value = lastRepo();
+    repo.placeholder = "owner/repositorio";
     repo.required = true;
     const title = E("input");
     title.placeholder = "Qué quieres mejorar";
@@ -335,6 +397,10 @@ class FarmConsole extends HTMLElement {
       button(
         "Crear issue e investigar",
         async () => {
+          if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo.value.trim())) {
+            this.error.textContent = "Indica el repositorio como owner/nombre.";
+            return;
+          }
           if (!title.value.trim() || !request.value.trim()) {
             this.error.textContent = "Escribe un título y una petición.";
             return;
@@ -356,6 +422,7 @@ class FarmConsole extends HTMLElement {
                 : {}),
             });
             this.selectedRepo = repo.value.trim();
+            rememberRepo(this.selectedRepo);
             this.form.replaceWith((this.form = this.requestForm()));
             this.signature = "";
             await this.poll();
@@ -379,9 +446,7 @@ class FarmConsole extends HTMLElement {
     if (this.repositorySelect && ["overview", "tasks"].includes(this.view)) {
       const repos = [...new Set(allWork.map((w) => w.repo))];
       if (this.selectedRepo === undefined)
-        this.selectedRepo = repos.includes("alejbormeg/forja")
-          ? "alejbormeg/forja"
-          : "";
+        this.selectedRepo = "";
       if (this.repoOptions !== repos.join("|")) {
         this.repoOptions = repos.join("|");
         this.repositorySelect.replaceChildren();
@@ -468,37 +533,34 @@ class FarmConsole extends HTMLElement {
     this.live.replaceChildren();
     if (this.view === "overview") {
       const map = E("div", "", "map");
-      for (const [name, emoji, state] of [
+      const phase = s.run_state || s.phase || "idle";
+      for (const [name, icon, state] of [
         [
           "Napoleon",
-          null,
-          fresh
-            ? s.active_worker === "napoleon-wsl"
-              ? "Investigando"
-              : "Coordina la cola"
-            : "Sin señal",
+          hat,
+          phase === "researching" ? "Investigando" : "Coordina la cola",
         ],
         [
           "Boxer",
-          "🐴",
-          busy && s.active_worker === "boxer-forja"
+          () => horse(),
+          phase === "implementing"
             ? "Implementando"
-            : "Disponible",
+            : phase === "testing"
+              ? "Ejecutando tests"
+              : "Disponible",
         ],
         [
           "Revisor",
-          "🐴",
-          busy && s.active_worker === "boxer-review"
-            ? "Revisando"
-            : "Disponible",
+          () => horse("Caballo revisor"),
+          phase === "reviewing" ? "Revisando" : "Disponible",
         ],
       ]) {
         if (map.children.length) map.append(E("span", "→", "arrow"));
         const a = E("div", "", "agent");
-        const icon = E("span", "", "avatar");
-        icon.append(emoji ? document.createTextNode(emoji) : hat());
+        const avatar = E("span", "", "avatar");
+        avatar.append(icon());
         a.append(
-          icon,
+          avatar,
           E("strong", name),
           E("p", fresh ? state : "Sin señal", "muted"),
         );
@@ -540,7 +602,11 @@ class FarmConsole extends HTMLElement {
       });
       side.append(E("p", ""), suggest);
       side.append(
-        E("h2", "🍀 Clover"),
+        (() => {
+          const h = E("h2", "", "with-icon");
+          h.append(clover(), document.createTextNode("Clover"));
+          return h;
+        })(),
         E(
           "p",
           r.quota_fresh
@@ -568,11 +634,10 @@ class FarmConsole extends HTMLElement {
       this.console(r.events || []);
       const detail = E("details");
       detail.dataset.key = "technical";
-      detail.append(
-        E("summary", "Conexión y diagnóstico"),
-        E(
-          "pre",
-          JSON.stringify(
+      const diagnostics = E("pre");
+      diagnostics.textContent = !s.observed_at
+        ? "El ejecutor todavía no ha enviado ninguna señal. Conéctalo desde Gobierno → Conectar ejecutor."
+        : JSON.stringify(
             {
               entorno: s.host,
               estado: s.run_state,
@@ -584,9 +649,8 @@ class FarmConsole extends HTMLElement {
             },
             null,
             2,
-          ),
-        ),
-      );
+          );
+      detail.append(E("summary", "Conexión y diagnóstico"), diagnostics);
       this.live.append(detail);
     } else if (this.view === "tasks") {
       this.initiativeList(this.live);
@@ -618,11 +682,7 @@ class FarmConsole extends HTMLElement {
         const tr = E("tr"),
           name = E("td");
         name.append(
-          workers
-            ? document.createTextNode("🐴 ")
-            : a.role === "snowball"
-              ? document.createTextNode("❄️ ")
-              : hat(),
+          workers ? horse() : a.role === "snowball" ? snowflake() : hat(),
           document.createTextNode(a.id),
         );
         const age = Date.now() / 1000 - Number(a.heartbeat || 0);
@@ -1146,7 +1206,12 @@ class FarmConsole extends HTMLElement {
       );
       return;
     }
-    for (const w of work) {
+    const ordered = [...work].sort(
+      (a, b) =>
+        (attention[a.state] ?? 3) - (attention[b.state] ?? 3) ||
+        Number(b.created || 0) - Number(a.created || 0),
+    );
+    for (const w of ordered) {
       const task = E("article", "", "task"),
         row = E("div", "", "row");
       row.append(
@@ -1314,17 +1379,40 @@ class FarmConsole extends HTMLElement {
           );
         detail.append(E("h4", "Criterios de la propuesta"), criteria);
       }
-      if (p.sources) detail.append(E("p", "Fuentes: " + p.sources));
+      const sources = (Array.isArray(p.sources) ? p.sources : [p.sources])
+        .filter(Boolean)
+        .map((x) =>
+          typeof x === "string" ? { url: x } : { url: x.url, reason: x.reason || x.motivo },
+        )
+        .filter((x) => x.url);
+      if (sources.length) {
+        const list = E("ul");
+        for (const x of sources) {
+          const li = E("li");
+          li.append(
+            /^https?:\/\//.test(x.url)
+              ? link(x.url, x.url)
+              : document.createTextNode(x.url),
+          );
+          if (x.reason) li.append(document.createTextNode(" · " + x.reason));
+          list.append(li);
+        }
+        detail.append(E("h4", "Fuentes"), list);
+      }
       const comparison = E("div", "", "compare");
+      const delivered = ev.sha && ev.sha === w.sha && ev.to_be;
       for (const [name, key] of [
         ["As-is · base investigada", "as_is"],
-        ["To-be · resultado declarado", "to_be"],
+        [
+          delivered ? "To-be · resultado declarado" : "To-be · propuesto",
+          "to_be",
+        ],
       ]) {
         const col = E("section");
         col.append(E("h3", name));
         const diagram = E("div", "", "diagram");
         const source =
-          key === "as_is" ? p.as_is : ev.sha === w.sha ? ev.to_be : null;
+          key === "as_is" ? p.as_is : delivered ? ev.to_be : p.to_be;
         diagram.append(E("pre", source || "Pendiente de investigación"));
         col.append(diagram);
         comparison.append(col);
@@ -1342,7 +1430,12 @@ class FarmConsole extends HTMLElement {
         const proposed = E("details");
         proposed.dataset.key = "design-" + w.id;
         proposed.append(
-          E("summary", "Diseño To-be aprobado · propuesta v" + w.version),
+          E(
+            "summary",
+            (w.state === "proposed" ? "Diseño To-be propuesto" : "Diseño To-be aprobado") +
+              " · propuesta v" +
+              w.version,
+          ),
           E("pre", p.to_be),
         );
         detail.append(proposed);

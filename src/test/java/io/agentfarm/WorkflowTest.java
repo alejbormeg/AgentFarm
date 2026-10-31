@@ -94,6 +94,14 @@ class WorkflowTest {
   }
 
   @Test
+  void claimReturnsTheClaimedCommand() {
+    create();
+    var command = (Map<?, ?>) claim().get("command");
+    assertEquals("claimed", command.get("state"));
+    assertEquals("agent", command.get("claimed_by"));
+  }
+
+  @Test
   void onlyOneClaimAndApprovalVersion() {
     create();
     String c = command(claim());

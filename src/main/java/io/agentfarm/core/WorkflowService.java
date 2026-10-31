@@ -347,6 +347,7 @@ public class WorkflowService {
               agent,
               now,
               cmd.get("id"));
+          cmd = one(c, "SELECT * FROM work_commands WHERE id=?", cmd.get("id"));
           var item = one(c, "SELECT * FROM work_items WHERE id=?", cmd.get("item"));
           return obj("command", cmd, "item", withRecipe(c, item));
         });
