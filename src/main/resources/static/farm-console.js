@@ -121,7 +121,10 @@ class FarmConsole extends HTMLElement {
           ),
         );
       if (route === "governance") extra = await api("/audit");
-      this.data = { runtime, overview, work, extra };
+      const dossiers = ["overview", "tasks", "governance"].includes(route)
+        ? await api("/evidence")
+        : [];
+      this.data = { runtime, overview, work, extra, dossiers };
       this.render();
       this.error.textContent = "";
     } catch (e) {
@@ -370,6 +373,7 @@ class FarmConsole extends HTMLElement {
         : o.workers.map((w) => [w.id, w.enabled, w.reported_state]),
       o.paused,
       this.data.extra,
+      this.data.dossiers,
       (r.events || []).at(-1)?.id,
     ]);
     if (signature === this.signature) return;
@@ -379,9 +383,9 @@ class FarmConsole extends HTMLElement {
     const focusState = focusOwner
       ? {
           key: focusOwner.dataset.key,
-          index: [...focusOwner.querySelectorAll("textarea,input")].indexOf(
-            focused,
-          ),
+          index: [
+            ...focusOwner.querySelectorAll("textarea,input,select"),
+          ].indexOf(focused),
           start: focused.selectionStart,
           end: focused.selectionEnd,
         }
@@ -389,7 +393,7 @@ class FarmConsole extends HTMLElement {
     const drafts = [...this.live.querySelectorAll("details[data-key]")].map(
       (d) => [
         d.dataset.key,
-        [...d.querySelectorAll("textarea,input")].map((i) => i.value),
+        [...d.querySelectorAll("textarea,input,select")].map((i) => i.value),
       ],
     );
     const opened = [...this.live.querySelectorAll("details[open]")]
@@ -662,17 +666,150 @@ class FarmConsole extends HTMLElement {
       if (opened.includes(d.dataset.key)) d.open = true;
       const saved = drafts.find((x) => x[0] === d.dataset.key);
       if (saved)
-        [...d.querySelectorAll("textarea,input")].forEach(
+        [...d.querySelectorAll("textarea,input,select")].forEach(
           (input, i) => (input.value = saved[1][i] || ""),
         );
-      if (focusState && focusState.key === d.dataset.key && focusState.index >= 0) {
-        const input = [...d.querySelectorAll("textarea,input")][
+      if (
+        focusState &&
+        focusState.key === d.dataset.key &&
+        focusState.index >= 0
+      ) {
+        const input = [...d.querySelectorAll("textarea,input,select")][
           focusState.index
         ];
         input?.focus({ preventScroll: true });
-        input?.setSelectionRange(focusState.start, focusState.end);
+        input?.setSelectionRange?.(focusState.start, focusState.end);
       }
     }
+  }
+  acceptance(parent, w, d) {
+    const box = E("section", "", "acceptance");
+    const covered = d.criteria.filter((c) =>
+      ["manual", "exception", "test"].includes(c.status),
+    ).length;
+    box.append(
+      E(
+        "h4",
+        d.ready
+          ? "Aceptación completa"
+          : "Decisiones pendientes · " + covered + "/" + d.criteria.length,
+      ),
+    );
+    if (d.scope_missing) {
+      box.append(
+        E(
+          "p",
+          "Candidato histórico sin criterios registrados. Revisa e importa su alcance antes de aceptarlo.",
+        ),
+        button("Importar alcance de esta propuesta", () =>
+          this.action("/evidence/" + w.id + "/import-scope", {
+            version: w.version,
+            sha: w.sha,
+          }),
+        ),
+      );
+    }
+    for (const c of d.criteria) {
+      const detail = E("details");
+      detail.dataset.key = "criterion-" + w.id + "-" + c.id;
+      detail.append(
+        E(
+          "summary",
+          c.id +
+            " · " +
+            (c.description.length > 110
+              ? c.description.slice(0, 110) + "…"
+              : c.description) +
+            " · " +
+            ({
+              missing: "Sin evidencia",
+              manual: "Validado manualmente",
+              exception: "Excepción justificada",
+              reject: "Rechazado",
+              test: "Pruebas independientes",
+            }[c.status] || c.status),
+        ),
+      );
+      detail.append(E("p", c.description));
+      detail.append(
+        E(
+          "p",
+          c.method === "test"
+            ? "Comprobaciones previstas: " + (c.checks || []).join(", ")
+            : "Validación manual prevista.",
+        ),
+      );
+      if (c.decision)
+        detail.append(
+          E(
+            "p",
+            c.decision.actor +
+              " · " +
+              new Date(c.decision.at * 1000).toLocaleString("es-ES") +
+              " · " +
+              c.decision.reason +
+              " · Entorno: " +
+              c.decision.environment,
+          ),
+        );
+      const kind = E("select");
+      kind.setAttribute("aria-label", "Decisión " + c.id);
+      for (const [value, label] of [
+        ["", "Selecciona una decisión"],
+        ...(c.method === "manual"
+          ? [["manual", "Registrar validación manual"]]
+          : []),
+        ["exception", "Justificar una excepción"],
+        ["reject", "Rechazar criterio"],
+      ]) {
+        const option = E("option", label);
+        option.value = value;
+        kind.append(option);
+      }
+      const reason = E("textarea");
+      reason.setAttribute("aria-label", "Evidencia o justificación " + c.id);
+      reason.placeholder =
+        "Qué has comprobado, resultado y referencia de evidencia; o motivo concreto de la excepción.";
+      const environment = E("input");
+      environment.setAttribute("aria-label", "Entorno de comprobación " + c.id);
+      environment.placeholder = "Entorno y versión de herramientas utilizados";
+      detail.append(
+        kind,
+        reason,
+        environment,
+        button("Registrar decisión para " + c.id, () => {
+          if (
+            !kind.value ||
+            reason.value.trim().length < 20 ||
+            !environment.value.trim()
+          ) {
+            this.error.textContent =
+              "Selecciona la decisión e indica evidencia o justificación y entorno.";
+            return;
+          }
+          return this.action("/evidence/" + w.id + "/decisions", {
+            request_id: crypto.randomUUID(),
+            version: d.version,
+            sha: d.sha,
+            basis: d.basis,
+            criterion: c.id,
+            kind: kind.value,
+            reason: reason.value,
+            environment: environment.value,
+          });
+        }),
+      );
+      box.append(detail);
+    }
+    box.append(
+      E(
+        "small",
+        "Los informes de Boxer son declaraciones. Este incremento permite validaciones humanas y excepciones; el verificador automático separado sigue pendiente.",
+      ),
+    );
+    if (d.exceptions)
+      box.append(E("p", "Excepciones aceptadas: " + d.exceptions, "warning"));
+    parent.append(box);
   }
   workList(parent, work) {
     if (!work.length) {
@@ -728,6 +865,12 @@ class FarmConsole extends HTMLElement {
           E("small", "Creación de issue pendiente de confirmación de GitHub."),
         );
       if (w.error) task.append(E("p", w.error, "error"));
+      const dossier = this.data.dossiers?.find((d) => d.item === w.id);
+      if (dossier) this.acceptance(task, w, dossier);
+      if (w.sha)
+        links.append(
+          link("Expediente JSON", "/api/evidence/" + encodeURIComponent(w.id)),
+        );
       const p = json(w.proposal),
         ev = json(w.evidence);
       task.append(E("p", ev.summary || p.summary || w.request));
@@ -735,22 +878,56 @@ class FarmConsole extends HTMLElement {
       detail.dataset.key = w.id;
       detail.append(E("summary", "Alcance, antes/después y evidencias"));
       if (p.acceptance) detail.append(E("p", p.acceptance));
+      if (Array.isArray(p.criteria)) {
+        const criteria = E("ul");
+        for (const criterion of p.criteria)
+          criteria.append(
+            E(
+              "li",
+              criterion.id +
+                ": " +
+                criterion.description +
+                " · " +
+                (criterion.method === "test"
+                  ? "Pruebas: " + (criterion.checks || []).join(", ")
+                  : "Validación manual"),
+            ),
+          );
+        detail.append(E("h4", "Criterios de la propuesta"), criteria);
+      }
       if (p.sources) detail.append(E("p", "Fuentes: " + p.sources));
       const comparison = E("div", "", "compare");
       for (const [name, key] of [
-        ["As-is", "as_is"],
-        ["To-be", "to_be"],
+        ["As-is · base investigada", "as_is"],
+        ["To-be · resultado declarado", "to_be"],
       ]) {
         const col = E("section");
         col.append(E("h3", name));
         const diagram = E("div", "", "diagram");
-        const source = ev[key] || p[key];
+        const source =
+          key === "as_is" ? p.as_is : ev.sha === w.sha ? ev.to_be : null;
         diagram.append(E("pre", source || "Pendiente de investigación"));
         col.append(diagram);
         comparison.append(col);
         if (source) this.draw(diagram, source);
       }
       detail.append(comparison);
+      if (p.base_sha)
+        detail.append(
+          link(
+            "Commit base: " + p.base_sha.slice(0, 12),
+            base + "/commit/" + p.base_sha,
+          ),
+        );
+      if (p.to_be) {
+        const proposed = E("details");
+        proposed.dataset.key = "design-" + w.id;
+        proposed.append(
+          E("summary", "Diseño To-be aprobado · propuesta v" + w.version),
+          E("pre", p.to_be),
+        );
+        detail.append(proposed);
+      }
       if (ev.unit || p.unit_test) {
         const t = E("details");
         t.dataset.key = "unit-" + w.id;
@@ -828,7 +1005,15 @@ class FarmConsole extends HTMLElement {
             true,
           ),
         );
-        actions.append(approve);
+        if (dossier?.ready) actions.append(approve);
+        else
+          actions.append(
+            E(
+              "p",
+              "Integración bloqueada: completa la aceptación del candidato.",
+              "error",
+            ),
+          );
       }
       if (["proposed", "review", "blocked"].includes(w.state)) {
         const correct = E("details");

@@ -55,6 +55,8 @@ class WorkflowTest {
             "proposed",
             "proposal",
             obj(
+                "base_sha",
+                "b".repeat(40),
                 "summary",
                 "Change",
                 "acceptance",
@@ -151,6 +153,7 @@ class WorkflowTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> service.action("request-123", "merge", n("sha", "b".repeat(40)), "owner"));
+    EvidenceFixtures.accept(store, Clock.systemUTC(), "request-123");
     service.action("request-123", "merge", n("sha", sha), "owner");
     String m = command(claim());
     assertThrows(
@@ -167,6 +170,7 @@ class WorkflowTest {
     service.action("request-123", "implement", n("version", 1), "owner");
     String c = command(claim()), sha = "a".repeat(40);
     service.report(c, n("state", "review", "pr", 12, "sha", sha), "agent");
+    EvidenceFixtures.accept(store, Clock.systemUTC(), "request-123");
     service.action("request-123", "merge", n("sha", sha), "owner");
     assertEquals(Map.of(), service.claim("executor", false));
     var broker = (Map<String, Object>) service.claimIntegration("control-plane");

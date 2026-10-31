@@ -387,6 +387,9 @@ public class FarmDaemon extends CodexRunner {
             + " summary, acceptance, as_is, to_be (diagramas Mermaid válidos), unit_test,"
             + " integration_test (SOLO el comando shell, sin prefijos ni explicaciones; ejemplo:"
             + " python3 -m unittest discover -s tests -p test_unit.py -v; o 'N/A: justificación'),"
+            + " criteria (array de objetos con id AC-1, AC-2..., description, method manual o test;"
+            + " para test, checks con unit y/o integration). Cada criterio debe tener una forma"
+            + " de comprobación concreta. No declares que están verificados. Además,"
             + " setup (comando para instalar dependencias en CI Ubuntu 24.04; usa vacío para"
             + " python3 estándar, ya instalado), sources (URLs y motivo), risks. Incluye"
             + " dependencias de CI y alcance en summary. Petición: "
@@ -403,6 +406,8 @@ public class FarmDaemon extends CodexRunner {
               + JSON.writeValueAsString(profile.summary());
     }
     JsonNode p = resultJson(turn(prompt, false));
+    if (!p.path("criteria").isArray() || p.path("criteria").isEmpty())
+      throw new IOException("Research must supply identifiable acceptance criteria");
     if (profile != null) {
       var object = (com.fasterxml.jackson.databind.node.ObjectNode) p;
       object.put("profile_hash", profile.hash());

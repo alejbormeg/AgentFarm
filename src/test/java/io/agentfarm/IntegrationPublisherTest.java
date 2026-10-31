@@ -16,6 +16,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 class IntegrationPublisherTest {
   @TempDir Path dir;
+  Store store;
   WorkflowService work;
   IntegrationPublisher publisher;
   AtomicInteger puts = new AtomicInteger();
@@ -33,7 +34,8 @@ class IntegrationPublisherTest {
 
   @BeforeEach
   void setup() throws Exception {
-    work = new WorkflowService(new Store(dir.resolve("db").toString()), Clock.systemUTC());
+    store = new Store(dir.resolve("db").toString());
+    work = new WorkflowService(store, Clock.systemUTC());
     work.create(
         n(
             "request_id",
@@ -52,6 +54,8 @@ class IntegrationPublisherTest {
             "proposed",
             "proposal",
             obj(
+                "base_sha",
+                "b".repeat(40),
                 "summary",
                 "Fix",
                 "acceptance",
@@ -78,6 +82,7 @@ class IntegrationPublisherTest {
             "evidence",
             obj("sha", sha, "passed", true, "ci_checks", List.of("unit"))),
         "worker");
+    EvidenceFixtures.accept(store, Clock.systemUTC(), "broker-test");
     work.action("broker-test", "merge", n("sha", sha), "owner");
     Path token = dir.resolve("token");
     Files.writeString(token, "test-secret");
@@ -139,6 +144,7 @@ class IntegrationPublisherTest {
     assertEquals(0, puts.get());
     candidate = sha;
     ci = "failure";
+    EvidenceFixtures.accept(store, Clock.systemUTC(), "broker-test");
     work.action("broker-test", "merge", n("sha", sha), "owner");
     publisher.tick();
     assertEquals("review", work.get("broker-test").get("state"));
@@ -153,6 +159,7 @@ class IntegrationPublisherTest {
     assertEquals(0, puts.get());
     githubStatus = 200;
     confirmed = false;
+    EvidenceFixtures.accept(store, Clock.systemUTC(), "broker-test");
     work.action("broker-test", "merge", n("sha", sha), "owner");
     publisher.tick();
     assertEquals("review", work.get("broker-test").get("state"));
@@ -167,6 +174,7 @@ class IntegrationPublisherTest {
     publisher.tick();
     assertEquals(1, puts.get());
     remoteMerged = true;
+    EvidenceFixtures.accept(store, Clock.systemUTC(), "broker-test");
     work.action("broker-test", "merge", n("sha", sha), "owner");
     publisher.tick();
     assertEquals("integrated", work.get("broker-test").get("state"));

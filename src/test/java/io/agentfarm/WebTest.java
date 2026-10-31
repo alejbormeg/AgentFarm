@@ -181,7 +181,12 @@ class WebTest {
             .send(request.apply("/api/runtime"), HttpResponse.BodyHandlers.ofString())
             .statusCode());
     for (String denied :
-        List.of("/api/audit", "/api/executors", "/api/budget/another-account", "/api/work"))
+        List.of(
+            "/api/audit",
+            "/api/executors",
+            "/api/budget/another-account",
+            "/api/work",
+            "/api/evidence"))
       assertEquals(
           403,
           executor.send(request.apply(denied), HttpResponse.BodyHandlers.ofString()).statusCode(),
@@ -228,6 +233,20 @@ class WebTest {
         executor
             .send(request.apply("/api/runtime"), HttpResponse.BodyHandlers.ofString())
             .statusCode());
+  }
+
+  @Test
+  void evidenceApiIsOwnerOnlyAndMutationsRequireCsrf() throws Exception {
+    assertEquals(200, get("/api/evidence", true).statusCode());
+    assertEquals(409, get("/api/evidence/unknown-task", true).statusCode());
+    var request =
+        HttpRequest.newBuilder(
+                URI.create("http://localhost:" + port + "/api/evidence/unknown-task/decisions"))
+            .header("Authorization", auth())
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString("{}"))
+            .build();
+    assertEquals(403, client.send(request, HttpResponse.BodyHandlers.ofString()).statusCode());
   }
 
   @AfterAll
