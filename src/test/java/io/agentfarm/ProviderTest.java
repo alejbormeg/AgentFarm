@@ -52,7 +52,15 @@ class ProviderTest {
   }
 
   com.fasterxml.jackson.databind.JsonNode budget() {
-    return n("state", "available", "mode", "subscription", "account", "account-a");
+    return n(
+        "state",
+        "available",
+        "mode",
+        "subscription",
+        "account",
+        "account-a",
+        "windows",
+        List.of(obj("period", "weekly", "end", 2000000)));
   }
 
   String state(
@@ -130,6 +138,64 @@ class ProviderTest {
     var economic = request().deepCopy();
     ((com.fasterxml.jackson.databind.node.ObjectNode) economic).put("profile", "economic");
     assertEquals("admissible", state(economic, budget(), runtime()));
+  }
+
+  @Test
+  void aReservationConsumesFreeAdmissionWithoutConsumingObservedQuota(
+      @org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) {
+    var service =
+        new BudgetService(
+            new Store(dir.resolve("db").toString()), Clock.fixed(now, ZoneOffset.UTC));
+    service.execute(
+        "configure",
+        n("account", "account-a", "mode", "subscription", "shares", obj("weekly", 9800)),
+        "owner");
+    service.execute(
+        "open-window",
+        n(
+            "account",
+            "account-a",
+            "period",
+            "weekly",
+            "start",
+            900000,
+            "end",
+            2000000,
+            "total",
+            10000,
+            "used",
+            7000,
+            "observed_at",
+            now.getEpochSecond(),
+            "source",
+            "provider",
+            "max_age",
+            60),
+        "owner");
+    assertEquals(
+        "admissible", state(request(), MAPPER.valueToTree(service.status("account-a")), runtime()));
+    service.execute(
+        "reserve",
+        n("account", "account-a", "run_id", "active-run", "amounts", obj("weekly", 2800)),
+        "worker");
+    var after = MAPPER.valueToTree(service.status("account-a"));
+    assertEquals("blocked", state(request(), after, runtime()));
+    assertEquals(7000, after.path("windows").get(0).path("used").asInt());
+    assertEquals(2800, after.path("windows").get(0).path("reserved").asInt());
+    assertEquals(
+        "blocked",
+        state(
+            request(),
+            n(
+                "state",
+                "available",
+                "mode",
+                "subscription",
+                "account",
+                "account-a",
+                "windows",
+                List.of(obj("period", "weekly", "end", 1999999))),
+            runtime()));
   }
 
   @Test

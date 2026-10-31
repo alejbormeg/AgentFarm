@@ -29,7 +29,8 @@ de claves API del proceso hijo; no consume resets, compra créditos ni activa AP
 ## Admisión y perfiles
 POST /api/providers/admission usa proveedor, perfil y cuenta explícitos.
 Comprueba el presupuesto real de Clover, identidad de cuenta/proveedor en la
-telemetría, cuota reciente, umbral y capacidades. GET /api/providers muestra el
+telemetría, ventana de presupuesto coincidente con el reset observado, cuota
+reciente, umbral y capacidades. GET /api/providers muestra el
 contrato. Ambos exigen autenticación; las mutaciones conservan CSRF. Un nodo
 solo puede consultar admisión de la cuenta concedida en su credencial.
 

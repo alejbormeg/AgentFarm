@@ -37,6 +37,12 @@ public final class ProviderAdmission {
     if (!quota.path("unit").asText().equals("subscription_percent")
         || !quota.path("source").asText().equals("provider"))
       reasons.add("provider_quota_unit_or_source_unknown");
+    boolean matchingWindow = false;
+    for (var window : budget.path("windows"))
+      if (window.path("period").asText().equals("weekly")
+          && window.path("end").isIntegralNumber()
+          && window.path("end").asLong() == quota.path("resets_at").asLong()) matchingWindow = true;
+    if (!matchingWindow) reasons.add("quota_budget_window_mismatch");
     boolean fresh = false;
     try {
       long age =
