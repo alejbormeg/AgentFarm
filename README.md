@@ -18,6 +18,11 @@ informes declarados, validaciones humanas y excepciones visibles. Integrar exige
 cubrir todos los criterios y volver a comprobar el commit. El verificador
 automático separado sigue pendiente.
 
+## Proveedores y recursos — fase 3 en desarrollo
+[Contrato y admisión](docs/PROVIDERS.md): cuota Codex normalizada, comprobación
+explícita de proveedor/cuenta y capacidades, sin fallback ni pago adicional.
+Claude Code y optimización de perfiles siguen pendientes.
+
 ## Instalar y abrir
 
 Necesitas Docker con Compose v2. En Windows, usa Docker Desktop con integración

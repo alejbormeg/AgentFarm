@@ -37,7 +37,7 @@ public class TelemetryService {
     var snapshot=n.path("snapshot");
     if(!snapshot.isObject())throw new IllegalArgumentException("Snapshot required");
     var accepted=MAPPER.createObjectNode();
-    for(String k:List.of("node","host","distro","repository","branch","run_state","phase","cli_version","model","session","observed_at","last_event_at","supervisor_pid","codex_pid","code_host_pid","implementation_done","review_done","quota","changed_files","files_count","source","active_worker","executor_available","task_id","task_title","github_error")) {
+    for(String k:List.of("provider","account","node","host","distro","repository","branch","run_state","phase","cli_version","model","session","observed_at","last_event_at","supervisor_pid","codex_pid","code_host_pid","implementation_done","review_done","quota","changed_files","files_count","source","active_worker","executor_available","task_id","task_title","github_error")) {
       var v=snapshot.get(k);if(v==null)continue;
       if(encode(v).length()>50000)throw new IllegalArgumentException("Snapshot field too large");
       if(v.isTextual())accepted.put(k,clean(v.asText()));else accepted.set(k,v);

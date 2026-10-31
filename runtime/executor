@@ -4,6 +4,7 @@ root="$(cd "$(dirname "$0")" && pwd)"
 : "${AGENTFARM_NODE:?Set AGENTFARM_NODE to the registered node id}"
 : "${AGENTFARM_ACCOUNT:?Set AGENTFARM_ACCOUNT to the budget account id}"
 exec java "-Dagentfarm.url=${AGENTFARM_URL:-http://localhost:8080}" \
+  "-Dagentfarm.resource-profile=${AGENTFARM_RESOURCE_PROFILE:-balanced}" \
   "-Dagentfarm.state=${AGENTFARM_STATE:-$HOME/.local/state/agentfarm}" \
   "-Dagentfarm.node=$AGENTFARM_NODE" "-Dagentfarm.account=$AGENTFARM_ACCOUNT" \
   "-Dagentfarm.implementer=${AGENTFARM_IMPLEMENTER:-$AGENTFARM_NODE-boxer}" \

@@ -120,3 +120,10 @@ Tras fusionar PR #11, el promotor pide comenzar fase 2 expresamente.
 Se conservan abiertos los pendientes de #7. El primer incremento de #8
 incorpora [expedientes y decisiones por criterio](EVIDENCE.md); no acredita
 verificación automática separada ni los criterios de salida de la fase 2.
+
+
+### Inicio autorizado de fase 3
+El promotor aprueba fusionar PR #12 y pide continuar con la siguiente fase.
+#7 y #8 permanecen abiertas. El primer incremento de #9 introduce
+[contrato de adaptadores y admisión](PROVIDERS.md), sin declarar disponibles
+Claude Code, optimización de costes o un planificador multinodo.

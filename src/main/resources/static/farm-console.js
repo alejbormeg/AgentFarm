@@ -124,7 +124,8 @@ class FarmConsole extends HTMLElement {
       const dossiers = ["overview", "tasks", "governance"].includes(route)
         ? await api("/evidence")
         : [];
-      this.data = { runtime, overview, work, extra, dossiers };
+      const providers = route === "budgets" ? await api("/providers") : null;
+      this.data = { runtime, overview, work, extra, dossiers, providers };
       this.render();
       this.error.textContent = "";
     } catch (e) {
@@ -374,6 +375,7 @@ class FarmConsole extends HTMLElement {
       o.paused,
       this.data.extra,
       this.data.dossiers,
+      this.data.providers,
       (r.events || []).at(-1)?.id,
     ]);
     if (signature === this.signature) return;
@@ -613,6 +615,30 @@ class FarmConsole extends HTMLElement {
             : "Sin observación",
         ),
       );
+      const adapters = E("section");
+      adapters.append(E("h2", "Motores y capacidades"));
+      for (const provider of this.data.providers?.providers || [])
+        adapters.append(
+          E(
+            "p",
+            provider.id +
+              " · " +
+              (provider.state === "implemented"
+                ? "Ejecutor integrado"
+                : "Bloqueado: integración pendiente") +
+              " · Cuota: " +
+              (provider.quota === "unknown"
+                ? "desconocida"
+                : "suscripción observada"),
+          ),
+        );
+      adapters.append(
+        E(
+          "small",
+          "Sin cambio automático de proveedor ni pagos adicionales. Económico y equilibrado usan la misma política actual; revisión reforzada espera al verificador separado.",
+        ),
+      );
+      this.live.append(adapters);
       const ledger = E("section");
       ledger.append(E("h2", "Reservas y margen autorizado"));
       this.live.append(ledger);
@@ -624,12 +650,17 @@ class FarmConsole extends HTMLElement {
               "p",
               w.period +
                 " · consumido " +
-                w.used / 100 +
-                " % · reservado " +
-                w.reserved / 100 +
-                " % · margen " +
-                w.remaining / 100 +
-                " %",
+                (a.unit === "usd_micros"
+                  ? (w.used / 1000000).toFixed(6) + " USD"
+                  : w.used / 100 + " %") +
+                " · reservado " +
+                (a.unit === "usd_micros"
+                  ? (w.reserved / 1000000).toFixed(6) + " USD"
+                  : w.reserved / 100 + " %") +
+                " · margen " +
+                (a.unit === "usd_micros"
+                  ? (w.remaining / 1000000).toFixed(6) + " USD"
+                  : w.remaining / 100 + " %"),
             ),
           );
         if (a.reasons?.length)

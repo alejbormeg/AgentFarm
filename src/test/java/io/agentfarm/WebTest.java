@@ -186,7 +186,8 @@ class WebTest {
             "/api/executors",
             "/api/budget/another-account",
             "/api/work",
-            "/api/evidence"))
+            "/api/evidence",
+            "/api/providers"))
       assertEquals(
           403,
           executor.send(request.apply(denied), HttpResponse.BodyHandlers.ofString()).statusCode(),
@@ -201,6 +202,17 @@ class WebTest {
             .POST(HttpRequest.BodyPublishers.ofString("{\"agent\":\"test-executor\"}"));
     assertEquals(
         403, executor.send(claim.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+    var wrongAccount =
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/providers/admission"))
+            .header("Authorization", bearer)
+            .header("Content-Type", "application/json")
+            .header(csrf.path("header").asText(), csrf.path("token").asText())
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    "{\"provider\":\"codex\",\"account\":\"another-account\",\"profile\":\"balanced\"}"))
+            .build();
+    assertEquals(
+        403, executor.send(wrongAccount, HttpResponse.BodyHandlers.ofString()).statusCode());
     claim.header(csrf.path("header").asText(), csrf.path("token").asText());
     assertEquals(
         200, executor.send(claim.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
@@ -247,6 +259,21 @@ class WebTest {
             .POST(HttpRequest.BodyPublishers.ofString("{}"))
             .build();
     assertEquals(403, client.send(request, HttpResponse.BodyHandlers.ofString()).statusCode());
+  }
+
+  @Test
+  void providerCatalogAndAdmissionKeepAuthenticationAndCsrf() throws Exception {
+    var providers = get("/api/providers", true);
+    assertEquals(200, providers.statusCode());
+    assertTrue(providers.body().contains("claude-code"));
+    assertTrue(providers.body().contains("unavailable"));
+    var req =
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/providers/admission"))
+            .header("Authorization", auth())
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString("{}"))
+            .build();
+    assertEquals(403, client.send(req, HttpResponse.BodyHandlers.ofString()).statusCode());
   }
 
   @AfterAll

@@ -105,38 +105,22 @@ public class FarmDaemon extends CodexRunner {
   }
 
   static JsonNode quotaObservation(JsonNode r, Instant now) throws Exception {
-    var bucket = r.path("rateLimitsByLimitId").path("codex");
-    if (bucket.isMissingNode()) bucket = r.path("rateLimits");
-    JsonNode weekly = null;
-    boolean allowed = r.path("ordinaryUsageAllowed").asBoolean(true);
-    for (String k : List.of("primary", "secondary")) {
-      var w = bucket.path(k);
-      if (w.path("windowDurationMins").asInt() == 10080) weekly = w;
-      if (w.path("usedPercent").isNumber() && w.path("usedPercent").asDouble() >= 98)
-        allowed = false;
+    return io.agentfarm.core.AgentAdapters.get("codex").normalizeQuota(r, now);
+  }
+
+  static void subscriptionIdentity() throws Exception {
+    try {
+      io.agentfarm.core.AgentAdapters.get("codex")
+          .validateAuthentication(rpc("account/read", obj("refreshToken", false)));
+    } catch (IllegalArgumentException e) {
+      quota = JSON.createObjectNode();
+      quotaAt = 0;
+      throw new IOException(e.getMessage());
     }
-    if (weekly == null
-        || !weekly.path("usedPercent").isNumber()
-        || !weekly.path("resetsAt").isNumber()) throw new IOException("Cuota semanal desconocida");
-    double percent = weekly.path("usedPercent").asDouble();
-    long reset = weekly.path("resetsAt").asLong();
-    if (percent < 0 || percent > 100 || reset <= now.getEpochSecond())
-      throw new IOException("Lectura de cuota inválida");
-    return JSON.valueToTree(
-        obj(
-            "weekly_used_percent",
-            percent,
-            "stop_remaining_percent",
-            2,
-            "observed_at",
-            now.toString(),
-            "resets_at",
-            reset,
-            "allowed",
-            allowed));
   }
 
   static synchronized void refreshQuota() throws Exception {
+    subscriptionIdentity();
     var r = rpc("account/rateLimits/read", null);
     quota = quotaObservation(r, Instant.now());
     double percent = quota.path("weekly_used_percent").asDouble();
@@ -199,6 +183,20 @@ public class FarmDaemon extends CodexRunner {
         || !quota.path("allowed").asBoolean()
         || quota.path("weekly_used_percent").asDouble(100) >= 98)
       throw new IOException("Cuota desconocida o límite del 2 % alcanzado");
+    var admission =
+        post(
+            "/providers/admission",
+            obj(
+                "provider",
+                "codex",
+                "account",
+                ACCOUNT,
+                "profile",
+                System.getProperty("agentfarm.resource-profile", "balanced"),
+                "additional_payment",
+                false));
+    if (!admission.path("state").asText().equals("admissible"))
+      throw new IOException("Provider admission blocked: " + admission.path("reasons"));
     if (report("heartbeat").path("paused").asBoolean()) throw new IOException("Pausa solicitada");
     var overview = get("/overview");
     for (var node : overview.path("nodes"))
@@ -210,6 +208,7 @@ public class FarmDaemon extends CodexRunner {
   }
 
   static String turn(String prompt, boolean write) throws Exception {
+    subscriptionIdentity();
     guard();
     events.clear();
     var t =
@@ -940,6 +939,10 @@ public class FarmDaemon extends CodexRunner {
         obj(
             "node",
             AGENT,
+            "provider",
+            "codex",
+            "account",
+            ACCOUNT,
             "host",
             System.getenv("WSL_DISTRO_NAME") != null
                 ? "WSL · " + System.getenv("WSL_DISTRO_NAME")

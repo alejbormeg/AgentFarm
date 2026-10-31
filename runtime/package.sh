@@ -9,6 +9,9 @@ mkdir -p "$out/lib" target/runtime
 cp target/dependency/*.jar "$out/lib/"
 javac --release 21 -cp "target/classes:$out/lib/*" -d target/runtime runtime/CodexRunner.java runtime/FarmDaemon.java
 jar --create --file "$out/executor.jar" -C target/runtime CodexRunner.class -C target/runtime FarmDaemon.class -C target/classes io/agentfarm/core/Json.class -C target/classes io/agentfarm/core/ProjectProfile.class
+for name in AgentAdapter AgentAdapters CodexAdapter UnavailableAdapter; do
+  jar --update --file "$out/executor.jar" -C target/classes "io/agentfarm/core/$name.class"
+done
 cp runtime/executor runtime/install-executor.sh "$out/"
 cp LICENSE NOTICE "$out/"
 cp docs/INSTALLATION.md "$out/README.md"

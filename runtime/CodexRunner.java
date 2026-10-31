@@ -86,6 +86,7 @@ public class CodexRunner {
   static void startServer()throws Exception{
     var builder=new ProcessBuilder(System.getProperty("agentfarm.codex","codex"),"app-server").redirectError(STATE.resolve("codex-stderr.log").toFile());
     builder.environment().put("PATH",System.getProperty("user.home")+"/.local/bin:"+System.getenv("PATH"));
+    for(String key:List.of("OPENAI_API_KEY","CODEX_API_KEY","ANTHROPIC_API_KEY"))builder.environment().remove(key);
     server=builder.start();
     input=new BufferedWriter(new OutputStreamWriter(server.getOutputStream()));
     Thread.ofPlatform().daemon().start(()->{
