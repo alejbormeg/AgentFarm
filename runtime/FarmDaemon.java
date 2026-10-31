@@ -20,11 +20,12 @@ public class FarmDaemon extends CodexRunner {
   static String commandId, itemId, repo;
   static final Path WORK = STATE.resolve("workspaces");
   static final Path JOURNAL = STATE.resolve("reservation-journal.json");
-  static long lastQuota = 0;
+  static volatile long lastQuota = 0;
   static volatile long reservedReset = 0;
 
   static String clean(String s) {
-    return s.replaceAll("(?i)Bearer\\s+[^\\s]+", "Bearer [oculto]")
+    return Objects.toString(s, "Sin detalle del proveedor")
+        .replaceAll("(?i)Bearer\\s+[^\\s]+", "Bearer [oculto]")
         .replaceAll("(gh[pousr]_[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]{12,})", "[secreto oculto]");
   }
 
@@ -387,6 +388,9 @@ public class FarmDaemon extends CodexRunner {
             + " summary, acceptance, as_is, to_be (diagramas Mermaid válidos), unit_test,"
             + " integration_test (SOLO el comando shell, sin prefijos ni explicaciones; ejemplo:"
             + " python3 -m unittest discover -s tests -p test_unit.py -v; o 'N/A: justificación'),"
+            + " criteria (array de objetos con id AC-1, AC-2..., description, method manual o test;"
+            + " para test, checks con unit y/o integration). Cada criterio debe tener una forma"
+            + " de comprobación concreta. No declares que están verificados. Además,"
             + " setup (comando para instalar dependencias en CI Ubuntu 24.04; usa vacío para"
             + " python3 estándar, ya instalado), sources (URLs y motivo), risks. Incluye"
             + " dependencias de CI y alcance en summary. Petición: "
@@ -403,6 +407,8 @@ public class FarmDaemon extends CodexRunner {
               + JSON.writeValueAsString(profile.summary());
     }
     JsonNode p = resultJson(turn(prompt, false));
+    if (!p.path("criteria").isArray() || p.path("criteria").isEmpty())
+      throw new IOException("Research must supply identifiable acceptance criteria");
     if (profile != null) {
       var object = (com.fasterxml.jackson.databind.node.ObjectNode) p;
       object.put("profile_hash", profile.hash());
@@ -978,6 +984,14 @@ public class FarmDaemon extends CodexRunner {
       post("/heartbeat/worker/" + w, obj("state", active.equals(w) ? "busy" : "idle"));
   }
 
+  static ScheduledExecutorService observationLoops(
+      Runnable quotaRead, Runnable heartbeat, long quotaDelay, long heartbeatDelay) {
+    var scheduler = Executors.newScheduledThreadPool(2);
+    scheduler.scheduleWithFixedDelay(quotaRead, 0, quotaDelay, TimeUnit.MILLISECONDS);
+    scheduler.scheduleWithFixedDelay(heartbeat, 0, heartbeatDelay, TimeUnit.MILLISECONDS);
+    return scheduler;
+  }
+
   public static void main(String[] args) throws Exception {
     Files.createDirectories(STATE);
     try (var ch =
@@ -999,24 +1013,26 @@ public class FarmDaemon extends CodexRunner {
                       server.destroy();
                     }
                   }));
-      var scheduler = Executors.newSingleThreadScheduledExecutor();
-      scheduler.scheduleWithFixedDelay(
-          () -> {
-            try {
-              if (System.currentTimeMillis() - lastQuota > (current == null ? 30000 : 5000))
-                refreshQuota();
-            } catch (Exception e) {
-              failure = clean(e.getMessage());
-            }
-            try {
-              telemetry();
-            } catch (Exception e) {
-              System.err.println("Panel disconnected: " + e.getClass().getSimpleName());
-            }
-          },
-          0,
-          2,
-          TimeUnit.SECONDS);
+      var scheduler =
+          observationLoops(
+              () -> {
+                try {
+                  if (System.currentTimeMillis() - lastQuota > (current == null ? 30000 : 5000))
+                    refreshQuota();
+                } catch (Exception e) {
+                  lastQuota = System.currentTimeMillis();
+                  failure = e.getClass().getSimpleName() + ": " + clean(e.getMessage());
+                }
+              },
+              () -> {
+                try {
+                  telemetry();
+                } catch (Exception e) {
+                  System.err.println("Panel disconnected: " + e.getClass().getSimpleName());
+                }
+              },
+              1000,
+              2000);
       while (true) {
         try {
           var claim = post("/work/agent/claim", obj("agent", AGENT));

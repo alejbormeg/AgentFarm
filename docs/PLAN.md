@@ -113,3 +113,10 @@ vigente detiene al 2 % semanal restante, sustituyendo el ejemplo histórico del
 El incremento de fase 1 separa credenciales HTTP de nodo y operador y traslada
 la integración al panel; no acredita separación de identidad Linux.
 [Estado del incremento y límites](INSTALLATION.md).
+
+
+### Inicio autorizado de fase 2
+Tras fusionar PR #11, el promotor pide comenzar fase 2 expresamente.
+Se conservan abiertos los pendientes de #7. El primer incremento de #8
+incorpora [expedientes y decisiones por criterio](EVIDENCE.md); no acredita
+verificación automática separada ni los criterios de salida de la fase 2.

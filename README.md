@@ -12,6 +12,12 @@ paquete Linux del ejecutor y credenciales de nodo revocables.
 La separación de identidad del trabajador, las versiones públicas y el piloto
 de instalación siguen pendientes; no se declara la fase 1 completada.
 
+## Aceptación por criterio — fase 2 en desarrollo
+[Expedientes y decisiones](docs/EVIDENCE.md): criterios ligados a versión/SHA,
+informes declarados, validaciones humanas y excepciones visibles. Integrar exige
+cubrir todos los criterios y volver a comprobar el commit. El verificador
+automático separado sigue pendiente.
+
 ## Instalar y abrir
 
 Necesitas Docker con Compose v2. En Windows, usa Docker Desktop con integración

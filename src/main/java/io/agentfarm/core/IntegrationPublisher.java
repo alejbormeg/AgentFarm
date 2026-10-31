@@ -69,6 +69,7 @@ public class IntegrationPublisher {
       if (!remote.path("head").path("sha").asText().equals(sha))
         throw new IllegalArgumentException("PR head changed; approve the current commit");
       if (!remote.path("merged").asBoolean()) {
+        work.requireAcceptance(item.path("id").asText());
         validate(
             remote,
             parse(item.path("evidence").asText()),

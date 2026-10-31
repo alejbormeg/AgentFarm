@@ -35,6 +35,15 @@ public class WorkflowService {
               c,
               "CREATE UNIQUE INDEX IF NOT EXISTS one_open_command ON work_commands(item) WHERE"
                   + " state IN ('queued','claimed')");
+          EvidenceService.schema(c);
+          return null;
+        });
+  }
+
+  public void requireAcceptance(String id) {
+    db.tx(
+        c -> {
+          EvidenceService.requireReady(c, EvidenceService.item(c, id));
           return null;
         });
   }
@@ -182,6 +191,7 @@ public class WorkflowService {
               case "implement" -> {
                 if (!state.equals("proposed") || number(n, "version") != num(w, "version"))
                   throw new IllegalArgumentException("Approve the current proposal version");
+                EvidenceService.capture(c, w);
                 command(c, id, "implement", obj("version", num(w, "version")));
                 exec(c, "UPDATE work_items SET state='approved',error=NULL WHERE id=?", id);
               }
@@ -190,6 +200,7 @@ public class WorkflowService {
                     || w.get("pr") == null
                     || !text(n, "sha").equals(w.get("sha")))
                   throw new IllegalArgumentException("Approve the current PR commit");
+                EvidenceService.requireReady(c, w);
                 command(c, id, "merge", obj("sha", text(n, "sha")));
                 exec(c, "UPDATE work_items SET state='integrating',error=NULL WHERE id=?", id);
               }
@@ -316,6 +327,7 @@ public class WorkflowService {
             }
           if (phase.equals("proposed")) {
             var p = n.path("proposal");
+            EvidenceService.criteria(p);
             for (String key :
                 List.of("summary", "acceptance", "as_is", "to_be", "unit_test", "integration_test"))
               text(p, key);
