@@ -78,5 +78,25 @@
       "Una afirmación del agente no acredita una comprobación. Cada criterio requiere evidencia o excepción visible.",
       "Publicar una PR forma parte de la implementación aprobada; fusionar requiere una acción humana por SHA."
     ]
+  },
+  {
+    "id": "project-memory",
+    "version": 1,
+    "title": "Actualizar la memoria del proyecto",
+    "purpose": "Proponer decisiones, restricciones o motivos de rechazo con historial revisable.",
+    "research_steps": [
+      "Leer agentfarm-memory.json en la rama base y sus referencias; separar hechos de propuestas.",
+      "Proponer cambios concretos al archivo versionado con decisiones, restricciones o motivos de rechazo y su justificación; no almacenar secretos ni logs.",
+      "Crear una propuesta limitada a los cambios solicitados, manteniendo el esquema y el repositorio correctos. No conceder aprobación a entradas antes de integrar la PR."
+    ],
+    "required_evidence": [
+      "Diff de la memoria desde el commit base, referencias de decisiones y motivos de cada cambio.",
+      "Validación del esquema, ausencia de secretos revisada por el operador y pruebas o excepciones aplicables a un cambio documental."
+    ],
+    "restrictions": [
+      "Investigar y proponer antes de implementar; no ampliar el alcance aprobado.",
+      "Una afirmación del agente no acredita una comprobación. Cada criterio requiere evidencia o excepción visible.",
+      "Publicar una PR forma parte de la implementación aprobada; fusionar requiere una acción humana por SHA."
+    ]
   }
 ]

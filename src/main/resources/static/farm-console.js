@@ -1233,6 +1233,65 @@ class FarmConsole extends HTMLElement {
         );
       const p = json(w.proposal),
         ev = json(w.evidence);
+      if (p.project_memory) {
+        const memory = p.project_memory,
+          box = E("details");
+        box.dataset.key = "memory-" + w.id;
+        box.append(
+          E(
+            "summary",
+            memory.present
+              ? "Memoria de proyecto consultada"
+              : "Sin archivo de memoria en la base consultada",
+          ),
+        );
+        if (/^[a-f0-9]{40}$/.test(memory.base_sha))
+          box.append(
+            link(
+              "Commit de origen · " + memory.base_sha.slice(0, 8),
+              base + "/commit/" + memory.base_sha,
+            ),
+          );
+        if (memory.present) {
+          box.append(E("small", "SHA-256 " + memory.hash));
+          for (const entry of memory.document.entries) {
+            box.append(
+              E(
+                "h4",
+                ({
+                  decision: "Decisión",
+                  constraint: "Restricción",
+                  rejection: "Motivo de rechazo",
+                }[entry.kind] || entry.kind) +
+                  " · " +
+                  entry.id,
+              ),
+            );
+            box.append(E("p", entry.summary), E("p", entry.rationale, "muted"));
+            for (const ref of entry.references || [])
+              box.append(link("Referencia", ref));
+          }
+          box.append(
+            E(
+              "small",
+              "Contexto observado, no aprobación ni evidencia verificada. Los cambios se proponen con la receta «Actualizar la memoria del proyecto».",
+            ),
+          );
+        }
+        task.append(box);
+      }
+      if (ev.project_memory_validation) {
+        const validation = ev.project_memory_validation;
+        task.append(
+          E(
+            "small",
+            validation.status === "passed"
+              ? "Esquema de memoria candidata válido · no acredita aceptación funcional."
+              : "Memoria candidata inválida: " + validation.error,
+            validation.status === "passed" ? "muted" : "error",
+          ),
+        );
+      }
       task.append(E("p", ev.summary || p.summary || w.request));
       const detail = E("details");
       detail.dataset.key = w.id;

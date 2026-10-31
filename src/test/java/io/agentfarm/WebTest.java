@@ -326,7 +326,7 @@ class WebTest {
   void recipesAreAuthenticatedAndCreateAResearchTaskWithCsrf() throws Exception {
     assertTrue(Set.of(401, 302).contains(get("/api/recipes", false).statusCode()));
     var recipes = Json.parse(get("/api/recipes", true).body());
-    assertEquals(4, recipes.size());
+    assertEquals(5, recipes.size());
     var selected = recipes.get(0);
     var body =
         Json.obj(
@@ -356,6 +356,60 @@ class WebTest {
     assertEquals("queued", Json.parse(first.body()).path("state").asText());
     assertEquals(
         first.body(), client.send(builder.build(), HttpResponse.BodyHandlers.ofString()).body());
+  }
+
+  @Test
+  void concurrentSessionPollingKeepsDatabaseEndpointsResponsive() throws Exception {
+    var csrf = Json.parse(get("/api/csrf", true).body());
+    String password = Files.readString(dir.resolve("admin-password.txt")).trim();
+    var login =
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/login"))
+            .header(csrf.path("header").asText(), csrf.path("token").asText())
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    "username=admin&password="
+                        + URLEncoder.encode(password, StandardCharsets.UTF_8)))
+            .build();
+    assertEquals(302, client.send(login, HttpResponse.BodyHandlers.ofString()).statusCode());
+    String cookie =
+        ((CookieManager) client.cookieHandler().orElseThrow())
+            .getCookieStore().getCookies().stream()
+                .map(c -> c.getName() + "=" + c.getValue())
+                .collect(java.util.stream.Collectors.joining("; "));
+    var session = HttpClient.newHttpClient();
+    var pool = java.util.concurrent.Executors.newFixedThreadPool(16);
+    try {
+      var jobs = new ArrayList<java.util.concurrent.Future<?>>();
+      for (int i = 0; i < 16; i++)
+        jobs.add(
+            pool.submit(
+                () -> {
+                  for (int j = 0; j < 12; j++) {
+                    try {
+                      var request =
+                          HttpRequest.newBuilder(
+                                  URI.create(
+                                      "http://localhost:"
+                                          + port
+                                          + (j % 2 == 0 ? "/api/work" : "/api/runtime")))
+                              .timeout(java.time.Duration.ofSeconds(10))
+                              .header("Cookie", cookie)
+                              .GET()
+                              .build();
+                      var response = session.send(request, HttpResponse.BodyHandlers.ofString());
+                      assertEquals(200, response.statusCode());
+                      assertNotNull(Json.parse(response.body()));
+                    } catch (Exception e) {
+                      throw new RuntimeException(e);
+                    }
+                  }
+                }));
+      for (var job : jobs) job.get(30, java.util.concurrent.TimeUnit.SECONDS);
+    } finally {
+      pool.shutdownNow();
+    }
+    assertEquals(200, get("/api/runtime", true).statusCode());
   }
 
   @AfterAll

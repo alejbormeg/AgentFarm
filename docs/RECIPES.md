@@ -8,6 +8,7 @@ el problema concreto. También puedes seguir enviando peticiones libres.
 | Reproducir y corregir un bug | Reproducción en la base, causa y corrección acotada | Antes/después, test de regresión o excepción justificada |
 | Actualizar una dependencia | Versión objetivo, notas oficiales, compatibilidad y reversión | Versiones, instalación reproducible y pruebas de consumidores |
 | Mejorar las pruebas | Riesgo concreto, casos positivos, negativos y de frontera | Qué regresión detecta cada caso y resultados por SHA |
+| Actualizar la memoria del proyecto | Decisiones, restricciones y rechazos con justificación | Diff y validación del archivo versionado mediante PR |
 | Preparar una migración | Interfaces, datos, compatibilidad, transición y riesgos | As-is/To-be del incremento y recuperación ensayada con datos de prueba |
 
 Son guías de investigación y evidencia; no son scripts ejecutables ni pruebas

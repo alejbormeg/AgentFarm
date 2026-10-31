@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "repository": "alejbormeg/AgentFarm",
+  "entries": [
+    {
+      "id": "ADR-001",
+      "kind": "decision",
+      "summary": "Conservar Java, Spring Boot y Mateu; Docker Compose principal y JAR alternativo.",
+      "rationale": "La instalación y la operación deben ser reproducibles para usuarios externos, manteniendo el motor independiente del panel.",
+      "references": [
+        "https://github.com/alejbormeg/AgentFarm/issues/7"
+      ]
+    },
+    {
+      "id": "GOV-001",
+      "kind": "constraint",
+      "summary": "Aprobar alcance antes del desarrollo y fusionar mediante acción humana vinculada al SHA.",
+      "rationale": "Crear una PR forma parte de la implementación aprobada. Agrupar tareas o usar una receta no concede aprobación ni verifica evidencias.",
+      "references": [
+        "https://github.com/alejbormeg/AgentFarm/issues/8",
+        "https://github.com/alejbormeg/AgentFarm/issues/10"
+      ]
+    },
+    {
+      "id": "CLOVER-001",
+      "kind": "constraint",
+      "summary": "Detener la ejecución al 2 % semanal restante de Codex y bloquear admisión con cuota desconocida.",
+      "rationale": "No convertir suscripciones en saldo API ni cambiar implícitamente a un proveedor de pago adicional.",
+      "references": [
+        "https://github.com/alejbormeg/AgentFarm/issues/9"
+      ]
+    },
+    {
+      "id": "DEFER-001",
+      "kind": "rejection",
+      "summary": "Se posponen deliberación multinodo, IDE propio y ampliación extensa de conectores.",
+      "rationale": "El plan prioriza recursos gobernados, recuperación y cambios verificables. Esas ampliaciones deben justificar una mejora medible antes de ampliar el alcance.",
+      "references": [
+        "https://github.com/alejbormeg/AgentFarm/issues/10"
+      ]
+    }
+  ]
+}
