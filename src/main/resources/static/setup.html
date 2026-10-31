@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conectar ejecutor · AgentFarm</title><link rel="stylesheet" href="/farm-console.css">
+<style>body{background:#f5f6f2;color:#203650;font:16px system-ui;margin:0}main{max-width:760px;margin:3rem auto;padding:0 1.2rem}section{background:white;border:1px solid #dde3e6;border-radius:16px;padding:1.5rem;margin:1rem 0}label{display:block;margin-top:1rem}select,textarea{box-sizing:border-box;width:100%;padding:.65rem;margin:.3rem 0 1rem}textarea{font:14px monospace;min-height:5rem}button{margin:.4rem .4rem .4rem 0}small{display:block;color:#526575}#feedback{min-height:1.5rem}.warning{color:#835600}li{margin:.5rem 0}</style>
+<script type="module" src="/setup.js"></script></head><body><main>
+<a href="/governance">← Gobierno</a><h1>Conecta tu ejecutor</h1>
+<p>Un nodo registrado, su cuenta Clover y una credencial revocable. La contraseña del administrador permanece en el panel.</p>
+<p id="feedback" role="status" aria-live="polite">Cargando configuración…</p>
+<section><h2>1. Herramientas y permisos</h2><p>En Linux o WSL necesitas Java 21+, Git, GitHub CLI y Codex autenticados.</p>
+<p><code>gh auth status</code> · <code>codex login status</code></p>
+<p class="warning">El trabajador todavía comparte la identidad Linux del servicio. Este asistente no acredita aislamiento de credenciales.</p>
+<p id="publisher"></p></section>
+<section><h2>2. Credencial del nodo</h2>
+<form id="enroll"><label for="node">Nodo registrado</label><select id="node" required></select>
+<label for="account">Cuenta Clover</label><select id="account" required></select>
+<small>Si no aparecen opciones, registra el nodo en Nodos y configura la cuenta en Clover.</small>
+<button id="create" type="submit">Crear credencial</button></form>
+<div id="secret" hidden><label for="token">Credencial · se muestra una sola vez</label><textarea id="token" readonly autocomplete="off" spellcheck="false"></textarea>
+<p>Guárdala en <code>AGENTFARM_STATE/node-token</code> con permiso 600. No la pegues en comandos con historial ni en Git.</p>
+<button id="download" type="button">Descargar node-token</button>
+<button id="hide" type="button">Ocultar credencial</button></div>
+<h3>Credenciales existentes</h3><ul id="credentials"></ul></section>
+<section><h2>3. Arranque y comprobación</h2>
+<p>Extrae el paquete Linux y configura los IDs elegidos en un archivo privado <code>executor.env</code>. Usa el instalador systemd incluido.</p>
+<p><code>./install-executor.sh /ruta/privada/executor.env</code></p>
+<p id="runtime">Esperando una lectura del servidor.</p>
+<p id="quota">La autenticación de Codex no acredita cuota disponible.</p>
+<button id="check" type="button">Comprobar conexión</button>
+<p><a href="https://github.com/alejbormeg/AgentFarm/blob/main/docs/INSTALLATION.md" target="_blank" rel="noopener noreferrer">Guía de instalación y límites</a></p>
+</section></main></body></html>

@@ -102,3 +102,14 @@ El servicio systemd de WSL informa heartbeats y consulta cuota sin inferencia.
 Detalles y límites actuales en [OPERATIONS.md](OPERATIONS.md).
 Los hitos anteriores de este documento describen la línea base de migración;
 no acreditan consenso multinodo ni servicios Forja desplegados.
+
+
+## Hoja de ruta aprobada — operación gobernada
+La evolución vigente se sigue en issues #7 (instalación fiable), #8 (aceptación
+por evidencias), #9 (adaptadores y Clover) y #10 (equipos y mejora continua).
+Cada fase exige los criterios de salida de la anterior. La política del piloto
+vigente detiene al 2 % semanal restante, sustituyendo el ejemplo histórico del
+50 %. La señal operativa caduca tras 12 segundos, y la cuota tras 60.
+El incremento de fase 1 separa credenciales HTTP de nodo y operador y traslada
+la integración al panel; no acredita separación de identidad Linux.
+[Estado del incremento y límites](INSTALLATION.md).

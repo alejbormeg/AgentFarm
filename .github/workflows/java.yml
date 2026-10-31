@@ -20,11 +20,17 @@ jobs:
           cache: maven
       - run: ./mvnw -B -ntp verify
       - run: bash runtime/verify.sh
+      - run: bash runtime/package.sh
+        if: matrix.java == '21'
       - uses: actions/upload-artifact@v4
         if: matrix.java == '21'
         with:
           name: agentfarm-jar
-          path: target/agentfarm.jar
+          path: |
+            target/agentfarm.jar
+            target/agentfarm-executor-linux.tar.gz
+            LICENSE
+            NOTICE
   container:
     runs-on: ubuntu-24.04
     steps:

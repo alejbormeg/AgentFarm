@@ -118,16 +118,116 @@ class WebTest {
     assertTrue(get("/api/nodes", true).body().contains("unknown"));
   }
 
-  @Test void workflowRequiresCsrfAndPreservesRequestIdentity()throws Exception{
-    String body=Json.encode(Json.obj("request_id","web-work-123","repository","owner/repo","title","Test","request","Investigate"));
-    var builder=HttpRequest.newBuilder(URI.create("http://localhost:"+port+"/api/work")).header("Authorization",auth()).header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(body));
-    assertEquals(403,client.send(builder.build(),HttpResponse.BodyHandlers.ofString()).statusCode());
-    var token=Json.parse(get("/api/csrf",true).body());builder.header(token.path("header").asText(),token.path("token").asText());
-    var first=client.send(builder.build(),HttpResponse.BodyHandlers.ofString());
-    assertEquals(200,first.statusCode());
-    var second=client.send(builder.build(),HttpResponse.BodyHandlers.ofString());assertEquals(first.body(),second.body());
-    assertTrue(get("/api/work",true).body().contains("web-work-123"));
-    assertTrue(Set.of(401,302).contains(get("/api/work",false).statusCode()));
+  @Test
+  void workflowRequiresCsrfAndPreservesRequestIdentity() throws Exception {
+    String body =
+        Json.encode(
+            Json.obj(
+                "request_id",
+                "web-work-123",
+                "repository",
+                "owner/repo",
+                "title",
+                "Test",
+                "request",
+                "Investigate"));
+    var builder =
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/work"))
+            .header("Authorization", auth())
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(body));
+    assertEquals(
+        403, client.send(builder.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+    var token = Json.parse(get("/api/csrf", true).body());
+    builder.header(token.path("header").asText(), token.path("token").asText());
+    var first = client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, first.statusCode());
+    var second = client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+    assertEquals(first.body(), second.body());
+    assertTrue(get("/api/work", true).body().contains("web-work-123"));
+    assertTrue(Set.of(401, 302).contains(get("/api/work", false).statusCode()));
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired NodeCredentials nodeCredentials;
+  @org.springframework.beans.factory.annotation.Autowired Store store;
+
+  @Test
+  void executorIsScopedRevocableAndCannotBecomeOwner() throws Exception {
+    store.tx(
+        c -> {
+          Store.exec(
+              c, "INSERT OR IGNORE INTO farm_nodes(id,role) VALUES('test-executor','napoleon')");
+          Store.exec(
+              c,
+              "INSERT OR IGNORE INTO budget_accounts VALUES('test-account','subscription','{}')");
+          return null;
+        });
+    var issued =
+        Json.MAPPER.valueToTree(nodeCredentials.issue("test-executor", "test-account", "test"));
+    String bearer = "Bearer " + issued.path("token").asText();
+    HttpClient executor =
+        HttpClient.newBuilder()
+            .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
+            .build();
+    java.util.function.Function<String, HttpRequest> request =
+        path ->
+            HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+                .header("Authorization", bearer)
+                .GET()
+                .build();
+    assertEquals(
+        200,
+        executor
+            .send(request.apply("/api/runtime"), HttpResponse.BodyHandlers.ofString())
+            .statusCode());
+    for (String denied :
+        List.of("/api/audit", "/api/executors", "/api/budget/another-account", "/api/work"))
+      assertEquals(
+          403,
+          executor.send(request.apply(denied), HttpResponse.BodyHandlers.ofString()).statusCode(),
+          denied);
+    var csrf =
+        Json.parse(
+            executor.send(request.apply("/api/csrf"), HttpResponse.BodyHandlers.ofString()).body());
+    var claim =
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/work/agent/claim"))
+            .header("Authorization", bearer)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString("{\"agent\":\"test-executor\"}"));
+    assertEquals(
+        403, executor.send(claim.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+    claim.header(csrf.path("header").asText(), csrf.path("token").asText());
+    assertEquals(
+        200, executor.send(claim.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+    assertTrue(
+        Set.of(401, 302, 403)
+            .contains(
+                executor
+                    .send(
+                        HttpRequest.newBuilder(
+                                URI.create("http://localhost:" + port + "/api/audit"))
+                            .GET()
+                            .build(),
+                        HttpResponse.BodyHandlers.ofString())
+                    .statusCode()));
+    assertTrue(
+        Set.of(401, 302)
+            .contains(
+                executor
+                    .send(
+                        HttpRequest.newBuilder(
+                                URI.create("http://localhost:" + port + "/api/runtime"))
+                            .GET()
+                            .build(),
+                        HttpResponse.BodyHandlers.ofString())
+                    .statusCode()));
+    assertFalse(Json.encode(nodeCredentials.list()).contains(issued.path("token").asText()));
+    nodeCredentials.revoke(issued.path("id").asText(), "test");
+    assertEquals(
+        401,
+        executor
+            .send(request.apply("/api/runtime"), HttpResponse.BodyHandlers.ofString())
+            .statusCode());
   }
 
   @AfterAll

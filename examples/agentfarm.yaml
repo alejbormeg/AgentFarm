@@ -1,0 +1,17 @@
+# Review commands before approving a proposal. No command runs on profile load.
+version: 1
+repository: alejbormeg/AgentFarm
+setup: ""
+tests:
+  unit: ./mvnw -B -ntp test
+  integration: ./mvnw -B -ntp verify && bash runtime/verify.sh
+allowed_paths:
+  - src/
+  - runtime/
+  - docs/
+  - examples/
+  - pom.xml
+  - .github/workflows/
+environment: local
+review: human-and-independent
+secret_refs: {}

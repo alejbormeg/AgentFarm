@@ -161,6 +161,19 @@ class WorkflowTest {
   }
 
   @Test
+  void executorCannotClaimIntegration() {
+    create();
+    proposal(command(claim()));
+    service.action("request-123", "implement", n("version", 1), "owner");
+    String c = command(claim()), sha = "a".repeat(40);
+    service.report(c, n("state", "review", "pr", 12, "sha", sha), "agent");
+    service.action("request-123", "merge", n("sha", sha), "owner");
+    assertEquals(Map.of(), service.claim("executor", false));
+    var broker = (Map<String, Object>) service.claimIntegration("control-plane");
+    assertEquals("merge", ((Map<?, ?>) broker.get("command")).get("kind"));
+  }
+
+  @Test
   void pausePreventsClaim() {
     create();
     store.tx(

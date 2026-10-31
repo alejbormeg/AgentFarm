@@ -227,6 +227,18 @@ public class WorkflowService {
   }
 
   public Object claim(String agent) {
+    return claim(agent, true);
+  }
+
+  public Object claim(String agent, boolean integration) {
+    return claim(agent, integration, false);
+  }
+
+  public Object claimIntegration(String agent) {
+    return claim(agent, true, true);
+  }
+
+  private Object claim(String agent, boolean integration, boolean onlyIntegration) {
     ControlService.identifier(agent);
     return db.tx(
         c -> {
@@ -253,8 +265,11 @@ public class WorkflowService {
           var cmd =
               one(
                   c,
-                  "SELECT * FROM work_commands WHERE state='queued' ORDER BY updated,rowid LIMIT"
-                      + " 1");
+                  "SELECT * FROM work_commands WHERE state='queued' "
+                      + (onlyIntegration
+                          ? "AND kind='merge' "
+                          : integration ? "" : "AND kind!='merge' ")
+                      + "ORDER BY updated,rowid LIMIT 1");
           if (cmd == null) return Map.of();
           exec(
               c,

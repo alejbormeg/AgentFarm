@@ -1,6 +1,5 @@
 import com.fasterxml.jackson.databind.*;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.time.*;
 import java.util.*;
@@ -8,8 +7,10 @@ import java.util.concurrent.*;
 
 /** One durable WSL executor; GitHub credentials stay in gh's user configuration. */
 public class FarmDaemon extends CodexRunner {
-  static final String AGENT = "napoleon-wsl",
-      GH = System.getProperty("user.home") + "/.local/bin/gh";
+  static final String AGENT = System.getProperty("agentfarm.node", "napoleon-local"),
+      GH = System.getProperty("agentfarm.gh", "gh");
+  static final String IMPLEMENTER = System.getProperty("agentfarm.implementer", AGENT + "-boxer"),
+      REVIEWER = System.getProperty("agentfarm.reviewer", AGENT + "-reviewer");
   static volatile JsonNode quota = JSON.createObjectNode(), current;
   static volatile String phase = "idle", active = "", model = "", session = "", failure = "";
   static volatile long quotaAt = 0;
@@ -376,7 +377,7 @@ public class FarmDaemon extends CodexRunner {
 
   static void research(JsonNode item, JsonNode payload, int issue) throws Exception {
     phase = "researching";
-    active = "napoleon-wsl";
+    active = AGENT;
     workspace(item, issue, false);
     String prompt =
         "Investiga esta petición para "
@@ -392,7 +393,23 @@ public class FarmDaemon extends CodexRunner {
             + item.path("request").asText()
             + "\nFeedback: "
             + payload.path("feedback").asText();
+    io.agentfarm.core.ProjectProfile profile = null;
+    if (Files.exists(checkout.resolve("agentfarm.yaml"))) {
+      profile = io.agentfarm.core.ProjectProfile.load(checkout.resolve("agentfarm.yaml"));
+      profile.requireSupportedExecution();
+      if (!profile.repository().equals(repo)) throw new IOException("Profile repository mismatch");
+      prompt +=
+          "\nProject profile (commands and scope are binding): "
+              + JSON.writeValueAsString(profile.summary());
+    }
     JsonNode p = resultJson(turn(prompt, false));
+    if (profile != null) {
+      var object = (com.fasterxml.jackson.databind.node.ObjectNode) p;
+      object.put("profile_hash", profile.hash());
+      object.put("unit_test", profile.tests().get("unit"));
+      object.put("integration_test", profile.tests().get("integration"));
+      object.put("setup", profile.setup());
+    }
     ((com.fasterxml.jackson.databind.node.ObjectNode) p)
         .put("base_sha", gitAt("rev-parse", "HEAD"));
     github("PATCH", "repos/" + repo + "/issues/" + issue, obj("body", issueBody(item, p, issue)));
@@ -420,10 +437,15 @@ public class FarmDaemon extends CodexRunner {
 
   static void implement(JsonNode item, int issue) throws Exception {
     phase = "implementing";
-    active = "boxer-forja";
+    active = IMPLEMENTER;
     workspace(item, issue, true);
     var p = JSON.readTree(item.path("proposal").asText());
     String baseSha = gitAt("rev-parse", "HEAD");
+    if (p.has("profile_hash")) {
+      var profile = io.agentfarm.core.ProjectProfile.load(checkout.resolve("agentfarm.yaml"));
+      if (!profile.hash().equals(p.path("profile_hash").asText()))
+        throw new IOException("Project profile changed; approve a new proposal");
+    }
     Path receipt = STATE.resolve("receipts").resolve(itemId + ".json");
     if (Files.exists(receipt)) {
       var saved = JSON.readTree(Files.readString(receipt));
@@ -536,7 +558,7 @@ public class FarmDaemon extends CodexRunner {
     var integration = test("integration", p.path("integration_test").asText());
     if (!gitAt("status", "--porcelain").isBlank())
       throw new IOException("Las pruebas han cambiado el checkout; revisar antes de publicar");
-    active = "boxer-review";
+    active = REVIEWER;
     phase = "reviewing";
     JsonNode review =
         resultJson(
@@ -600,6 +622,15 @@ public class FarmDaemon extends CodexRunner {
     var unit = evidence.path("unit");
     var integration = evidence.path("integration");
     var review = evidence.path("review");
+    if (p.has("profile_hash")) {
+      var profile = io.agentfarm.core.ProjectProfile.load(checkout.resolve("agentfarm.yaml"));
+      if (!profile.hash().equals(p.path("profile_hash").asText()))
+        throw new IOException("Project profile changed during execution");
+      for (String changed :
+          gitAt("diff", "--name-only", p.path("base_sha").asText(), sha).split("\\n"))
+        if (!changed.isBlank() && !profile.permits(changed))
+          throw new IOException("Out of approved profile scope: " + changed);
+    }
     String branch = gitAt("branch", "--show-current");
     guard();
     gitAt("push", "-u", "origin", branch);
@@ -904,9 +935,11 @@ public class FarmDaemon extends CodexRunner {
             "node",
             AGENT,
             "host",
-            "WSL · Ubuntu",
+            System.getenv("WSL_DISTRO_NAME") != null
+                ? "WSL · " + System.getenv("WSL_DISTRO_NAME")
+                : System.getProperty("os.name"),
             "distro",
-            "Ubuntu 24.04 LTS",
+            System.getProperty("os.name") + " " + System.getProperty("os.version"),
             "observed_at",
             Instant.now().toString(),
             "source",
@@ -941,7 +974,7 @@ public class FarmDaemon extends CodexRunner {
     post("/runtime/observations", obj("snapshot", snapshot, "events", batch));
     activity.removeAll(batch);
     post("/heartbeat/node/" + AGENT, obj("state", current == null ? "idle" : "busy"));
-    for (String w : List.of("boxer-forja", "boxer-review"))
+    for (String w : List.of(IMPLEMENTER, REVIEWER))
       post("/heartbeat/worker/" + w, obj("state", active.equals(w) ? "busy" : "idle"));
   }
 
@@ -952,12 +985,7 @@ public class FarmDaemon extends CodexRunner {
                 STATE.resolve("runner.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
         var lock = ch.tryLock()) {
       if (lock == null) throw new IOException("Another AgentFarm executor is running");
-      auth =
-          "Basic "
-              + Base64.getEncoder()
-                  .encodeToString(
-                      ("admin:" + Files.readString(STATE.resolve("panel-password")).trim())
-                          .getBytes(StandardCharsets.UTF_8));
+      auth = "Bearer " + Files.readString(STATE.resolve("node-token")).trim();
       var token = get("/csrf");
       csrfHeader = token.path("header").asText();
       csrf = token.path("token").asText();
