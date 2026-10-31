@@ -1,0 +1,8 @@
+:root {
+  --lumo-primary-color:#285BC5; --lumo-primary-text-color:#285BC5;
+  --lumo-base-color:#F6F5F1; --lumo-body-text-color:#252C35; --lumo-header-text-color:#142D4E;
+  --lumo-secondary-text-color:#586474; --lumo-font-family:Arial,sans-serif;
+}
+body {margin:0;color:#252C35;background:#F6F5F1;font-family:Arial,sans-serif;}
+::selection {background:#E8EEF8;color:#142D4E;}
+:focus-visible {outline:2px solid #285BC5;outline-offset:3px;}

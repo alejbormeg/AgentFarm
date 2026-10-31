@@ -1,6 +1,11 @@
-__pycache__/
-*.pyc
+target/
+data/
+work/
 *.db
 *.db-*
 .env
 report.json
+.idea/
+*.iml
+__pycache__/
+*.pyc

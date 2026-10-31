@@ -1,87 +1,108 @@
 # AgentFarm
 
-Equipo de agentes de desarrollo con autonomía acotada, especificaciones versionadas y control humano verificable. Forja será el primer caso de aplicación; el núcleo no depende de Forja.
+Plano de control local para equipos de agentes, con **Java 21, Spring Boot 4 y Mateu**.
+Boxer ejecutará trabajo; Napoleon dirigirá un nodo; Napoleon y Snowball contrastarán
+propuestas cuando se implemente la coordinación entre nodos. El humano gobierna la granja.
 
-La identidad de AgentFarm se inspira en *Animal Farm*, de George Orwell:
+## Instalar y abrir
 
-| Rol | Nombre en AgentFarm | Responsabilidad prevista |
-| --- | --- | --- |
-| Trabajador | **Boxer** | Ejecutar tareas acotadas. Máxima: «Trabajaré más duro». |
-| Dirección de un único nodo | **Napoleon** | Planificar y coordinar sus Boxer dentro de las políticas aprobadas. |
-| Dirección de varios nodos | **Napoleon y Snowball** | Contrastar propuestas y alcanzar acuerdos entre dirigentes pares. |
+Necesitas Docker con Compose v2. En Windows, usa Docker Desktop con integración
+para la distribución Ubuntu 24.04 LTS de WSL.
 
-Los roles son independientes del proveedor de IA y de la máquina que los aloje.
-La dirección, los trabajadores reales y los acuerdos entre nodos están
-**planificados**; el simulador actual no los ejecuta. El humano conserva la
-aprobación final. Véase el [modelo de roles y topologías](docs/ANIMAL_FARM.md).
-
-**Estado: simulador de coordinación, control de alcance y registro local de presupuesto.** No ejecuta modelos, modifica proyectos, abre PR ni despliega infraestructura. La arquitectura objetivo está en [docs/PLAN.md](docs/PLAN.md).
-
-## Primera ejecución (Python 3.11+, sin dependencias)
+Desde Ubuntu:
 
 ```bash
-python3 -m unittest discover -s tests -v
-python3 coordinator.py --db state.db enqueue examples/task.json
-python3 coordinator.py --db state.db simulate
-python3 coordinator.py --db state.db status
-python3 coordinator.py --db state.db report > report.json
+git clone https://github.com/alejbormeg/AgentFarm.git
+cd AgentFarm
+./agentfarm up
+./agentfarm password
 ```
 
-El resultado `review` significa **simulación pendiente de revisión**, nunca código implementado. No contiene evidencias de implementación. Repetir una tarea idéntica no la duplica; reutilizar su ID con otro contenido se rechaza. Una tarea en ejecución interrumpida requiere reconciliación manual; no se vuelve a ejecutar a ciegas.
-
-Variables opcionales: `ACP_MAX_PENDING=2`, `ACP_MAX_DAILY_RUNS=5`. Son límites de admisión de trabajo simulado, no un control de facturación de proveedores.
-
-## Validar el alcance de un cambio
-
-Requiere Git en el PATH. El comando lee dos commits existentes sin modificar el
-repositorio ni la base de datos del simulador:
+Abre **http://localhost:8080**, usuario **admin**, con la contraseña del último
+comando. El primer arranque compila la aplicación y descarga las imágenes.
+Los siguientes reutilizan las capas. Solo se publica el puerto de loopback.
 
 ```bash
-python3 scope_check.py --repo /ruta/al/proyecto --spec examples/task.json --base SHA_BASE_COMPLETO --candidate SHA_CANDIDATO_COMPLETO
+./agentfarm status
+./agentfarm logs
+./agentfarm stop
 ```
 
-Sustituye ambos SHA por identificadores completos de commits; el candidato debe
-descender de la base. La especificación usa el formato del simulador:
-`allowed_paths: ["docs/"]` permite archivos bajo esa carpeta, mientras que
-`["docs/a.md"]` solo permite ese archivo. Las rutas son literales, sin glob.
+El volumen `farm-data` conserva base de datos y contraseña. Detener el contenedor
+no borra los datos. No uses `docker compose down -v` salvo que quieras eliminarlos.
 
-El control detecta altas, bajas, renombrados (baja + alta) y cambios de modo.
-Bloquea cambios fuera de alcance, enlaces simbólicos, submódulos y las rutas
-protegidas `AGENTS.md`, `.github/`, `.agentfarm/` y `.git/`, aunque se permitan
-en la tarea. El informe JSON incluye ambos commits, hash de especificación,
-versión de política y motivos de bloqueo.
-
-Código de salida: **0** para cambios dentro de alcance, **1** para bloqueo o
-ausencia de cambios y **2** para entradas inválidas o fallos de Git.
-`passed` solo acredita alcance: no valida comportamiento ni representa aprobación
-humana. Los cambios locales, ignorados y no registrados quedan fuera del informe.
-No sustituye al aislamiento. Consulta la [especificación M1-001](docs/tasks/M1-001.md).
-
-La suite se ejecuta en CI con Linux/Windows y Python 3.11/3.13.
-
-## Clover: control de presupuesto
-
-La política de ejemplo es **como máximo el 50% de la cuota semanal de Codex**.
-El precio mensual de la suscripción no se convierte en saldo de API. Para API
-se configuran presupuestos monetarios independientes.
+**Alternativa sin Docker:** descarga el JAR de la PR o compílalo con
+`./mvnw verify`, instala Java 21 y ejecuta:
 
 ```bash
-python3 budget.py --db budget.db configure examples/budget-subscription.json
-python3 budget.py --db budget.db status codex-subscription
+java -jar target/agentfarm.jar
 ```
 
-El registro reserva capacidad de forma atómica para todos los Boxer de la
-cuenta. Se pausa si falta saldo o una lectura vigente, el coste es desconocido
-o un trabajo cruza un reinicio. Sin ventanas observadas, el ejemplo permanece
-en pausa. Todavía no consulta la cuenta real ni limita turnos en el proveedor.
-Consulta [unidades, reservas y límites de esta versión](docs/BUDGET.md).
+El JAR escucha en `127.0.0.1:8080` y guarda sus datos en `./data`. La primera
+contraseña está en `data/admin-password.txt`; nunca se imprime en el log.
+No necesitas Node, Python ni un servidor SQL. Maven Wrapper sirve para desarrollo.
+Más detalles: [instalación](docs/INSTALL.md).
 
-## Qué viene después
+## Panel Mateu
 
-1. Aprobar especificaciones y modelo de amenazas.
-2. Implementar aislamiento y un adaptador real de Codex, después Claude.
-3. Validación del diff, pruebas y revisión independiente.
-4. GitHub y aprobación humana vinculada al commit exacto.
-5. Vistas As-Is, To-Be y transición con evidencias.
+- **Panorama:** inventario y admisión, con actualización periódica.
+- **Nodos:** Napoleon/Snowball registrados, habilitación y heartbeat.
+- **Boxer:** trabajadores, nodo, disponibilidad y heartbeat.
+- **Tareas:** cola, asignación, estado, progreso declarado y cancelación.
+- **Clover:** presupuesto API o cuota de suscripción, ventanas y conciliación.
+- **Gobierno:** pausa/reanudación de admisión y auditoría de acciones.
 
-No hay fusión automática. El proyecto no se atribuye resultados todavía no medidos.
+Un registro nuevo tiene estado desconocido. El heartbeat caduca tras 45 segundos.
+El progreso se identifica como declarado y puede estar vacío. La asignación reserva
+presupuesto y queda en `assigned`; no declara que un modelo haya empezado a trabajar.
+
+**Todavía no hay ejecución real de proveedores, lectura automática de cuotas,
+cancelación de procesos ni consenso distribuido.** El panel gobierna el estado
+persistente y la admisión. La simulación no aporta evidencias de implementación.
+No hay fusión automática ni fallback de pago.
+
+## Presupuesto
+
+La política confirmada es **como máximo 50% de la cuota semanal de Codex**, compartida
+por los trabajadores de una cuenta. La mensualidad de 20 USD no se convierte en
+saldo de API. Sin observación vigente y cota justificable se pausa la admisión.
+
+[Contrato de presupuesto](docs/BUDGET.md) · [Roles Animal Farm](docs/ANIMAL_FARM.md)
+
+## Consola Java
+
+```bash
+java -jar target/agentfarm.jar coordinator --db state.db enqueue examples/task.json
+java -jar target/agentfarm.jar coordinator --db state.db simulate
+java -jar target/agentfarm.jar coordinator --db state.db status
+java -jar target/agentfarm.jar coordinator --db state.db report
+java -jar target/agentfarm.jar budget --db budget.db configure examples/budget-subscription.json
+java -jar target/agentfarm.jar budget --db budget.db status codex-subscription
+java -jar target/agentfarm.jar scope --repo /ruta/al/proyecto --spec examples/task.json --base SHA_BASE_COMPLETO --candidate SHA_CANDIDATO_COMPLETO
+```
+
+`scope` valida árboles Git confirmados sin modificar el checkout. Salidas: 0 si
+pasa, 1 si se bloquea y 2 si hay error. No equivale a aprobación humana ni valida comportamiento.
+
+## Migrar datos anteriores
+
+Detén el proceso anterior y realiza copias consistentes de sus SQLite.
+
+```bash
+java -jar target/agentfarm.jar import --db data/agentfarm.db /ruta/copia/state.db
+java -jar target/agentfarm.jar import --db data/agentfarm.db /ruta/copia/budget.db
+```
+
+Se preservan especificaciones, hashes, estados, consumos y reservas. Los conflictos
+se rechazan y revierten. [Guía de migración](docs/MIGRATION.md).
+
+## Desarrollo y pruebas en WSL
+
+```bash
+./mvnw verify
+./mvnw spring-boot:run
+docker compose up --build --wait -d
+```
+
+Pruebas Java de invariantes, importación SQLite, concurrencia, autenticación y gobierno.
+[Plan técnico](docs/PLAN.md).
