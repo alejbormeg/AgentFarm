@@ -187,7 +187,8 @@ class WebTest {
             "/api/budget/another-account",
             "/api/work",
             "/api/evidence",
-            "/api/providers"))
+            "/api/providers",
+            "/api/initiatives"))
       assertEquals(
           403,
           executor.send(request.apply(denied), HttpResponse.BodyHandlers.ofString()).statusCode(),
@@ -274,6 +275,50 @@ class WebTest {
             .POST(HttpRequest.BodyPublishers.ofString("{}"))
             .build();
     assertEquals(403, client.send(req, HttpResponse.BodyHandlers.ofString()).statusCode());
+  }
+
+  @Test
+  void initiativesRequireOwnerCsrfAndPreserveRequestIdentity() throws Exception {
+    assertTrue(Set.of(401, 302).contains(get("/api/initiatives", false).statusCode()));
+    String body =
+        Json.encode(
+            Json.obj(
+                "request_id",
+                "web-initiative-123",
+                "title",
+                "Release",
+                "goal",
+                "Coordinate accepted changes",
+                "review_limit",
+                2,
+                "milestones",
+                List.of(Json.obj("id", "M1", "title", "First milestone"))));
+    var builder =
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/initiatives"))
+            .header("Authorization", auth())
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(body));
+    assertEquals(
+        403, client.send(builder.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+    var csrf = Json.parse(get("/api/csrf", true).body());
+    builder.header(csrf.path("header").asText(), csrf.path("token").asText());
+    var first = client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, first.statusCode());
+    assertEquals(
+        first.body(), client.send(builder.build(), HttpResponse.BodyHandlers.ofString()).body());
+    assertEquals(200, get("/api/initiatives/web-initiative-123", true).statusCode());
+    var pause =
+        HttpRequest.newBuilder(
+                URI.create(
+                    "http://localhost:" + port + "/api/initiatives/web-initiative-123/pause"))
+            .header("Authorization", auth())
+            .header("Content-Type", "application/json")
+            .header(csrf.path("header").asText(), csrf.path("token").asText())
+            .POST(HttpRequest.BodyPublishers.ofString("{\"version\":1,\"paused\":true}"))
+            .build();
+    assertEquals(200, client.send(pause, HttpResponse.BodyHandlers.ofString()).statusCode());
+    assertEquals(409, client.send(pause, HttpResponse.BodyHandlers.ofString()).statusCode());
+    assertTrue(get("/api/audit", true).body().contains("initiative.pause"));
   }
 
   @AfterAll

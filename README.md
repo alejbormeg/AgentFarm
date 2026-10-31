@@ -129,3 +129,7 @@ Pruebas Java de invariantes, importación SQLite, concurrencia, autenticación y
 ## Operación en vivo y tareas GitHub
 
 [Guía del panel y ejecutor WSL](docs/OPERATIONS.md): idea → issue → propuesta → aprobación → rama → tests → revisión → PR → integración explícita por SHA.
+
+[Iniciativas, hitos y dependencias](docs/INITIATIVES.md): agrupa tareas entre
+repositorios, limita cambios pendientes de revisión y consulta por qué una tarea
+está esperando. La agrupación conserva las aprobaciones individuales.

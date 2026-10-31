@@ -125,7 +125,18 @@ class FarmConsole extends HTMLElement {
         ? await api("/evidence")
         : [];
       const providers = route === "budgets" ? await api("/providers") : null;
-      this.data = { runtime, overview, work, extra, dossiers, providers };
+      const initiatives = ["overview", "tasks"].includes(route)
+        ? await api("/initiatives")
+        : [];
+      this.data = {
+        runtime,
+        overview,
+        work,
+        extra,
+        dossiers,
+        providers,
+        initiatives,
+      };
       this.render();
       this.error.textContent = "";
     } catch (e) {
@@ -376,6 +387,7 @@ class FarmConsole extends HTMLElement {
       this.data.extra,
       this.data.dossiers,
       this.data.providers,
+      this.data.initiatives,
       (r.events || []).at(-1)?.id,
     ]);
     if (signature === this.signature) return;
@@ -525,6 +537,7 @@ class FarmConsole extends HTMLElement {
       );
       this.live.append(detail);
     } else if (this.view === "tasks") {
+      this.initiativeList(this.live);
       this.workList(this.live, work);
       const legacy = E("details");
       legacy.append(E("summary", "Tareas del piloto anterior"));
@@ -713,6 +726,234 @@ class FarmConsole extends HTMLElement {
       }
     }
   }
+  coordinationReason(reason) {
+    if (reason === "initiative_paused")
+      return "Iniciativa en pausa para nuevas órdenes.";
+    if (reason === "initiative_review_limit")
+      return "Esperando espacio en la bandeja de revisión.";
+    if (reason.startsWith("dependency_not_integrated:")) {
+      const id = reason.split(":")[1],
+        task = this.data.work.find((w) => w.id === id);
+      return "Esperando integración: " + (task?.title || id);
+    }
+    return reason;
+  }
+  initiativeList(parent) {
+    const section = E("section");
+    section.append(E("h2", "Iniciativas · todos los repositorios"));
+    const create = E("details");
+    create.dataset.key = "new-initiative";
+    create.append(E("summary", "Crear iniciativa"));
+    const title = E("input");
+    title.setAttribute("aria-label", "Nombre de la iniciativa");
+    title.placeholder = "Nombre de la iniciativa";
+    const goal = E("textarea");
+    goal.setAttribute("aria-label", "Objetivo de la iniciativa");
+    goal.placeholder = "Objetivo y resultado esperado";
+    const milestones = E("textarea");
+    milestones.setAttribute("aria-label", "Hitos, uno por línea");
+    milestones.placeholder = "Hitos, uno por línea";
+    const limit = E("input");
+    limit.type = "number";
+    limit.min = "1";
+    limit.max = "10";
+    limit.value = "2";
+    limit.setAttribute(
+      "aria-label",
+      "Límite de cambios pendientes de revisión",
+    );
+    for (const input of [title, goal, milestones, limit])
+      input.oninput = () => {
+        this.initiativeRequestId = crypto.randomUUID();
+      };
+    create.append(
+      title,
+      goal,
+      milestones,
+      E("p", "Máximo de cambios en desarrollo o pendientes de revisión:"),
+      limit,
+      button("Guardar iniciativa", async () => {
+        this.initiativeRequestId ??= crypto.randomUUID();
+        const titles = milestones.value
+          .split("\n")
+          .map((v) => v.trim())
+          .filter(Boolean);
+        try {
+          await api("/initiatives", {
+            request_id: this.initiativeRequestId,
+            title: title.value.trim(),
+            goal: goal.value.trim(),
+            review_limit: Number(limit.value),
+            milestones: titles.map((title, index) => ({
+              id: "M" + (index + 1),
+              title,
+            })),
+          });
+          this.signature = "";
+          await this.poll();
+        } catch (e) {
+          this.error.textContent = e.message;
+        }
+      }),
+    );
+    section.append(create);
+    if (!this.data.initiatives?.length)
+      section.append(
+        E(
+          "p",
+          "Agrupa tareas existentes. Cada una conserva su issue, propuesta y aprobación.",
+          "empty",
+        ),
+      );
+    for (const initiative of this.data.initiatives || []) {
+      const card = E("article", "", "task"),
+        details = E("details");
+      details.dataset.key = "initiative-" + initiative.id;
+      card.append(
+        E("h3", initiative.title),
+        pill(
+          initiative.complete
+            ? "Integrada"
+            : initiative.paused
+              ? "En pausa"
+              : "Activa",
+          initiative.complete ? "ok" : "",
+        ),
+        E(
+          "p",
+          initiative.integrated +
+            "/" +
+            initiative.total +
+            " tareas integradas · revisión " +
+            initiative.review_slots +
+            "/" +
+            initiative.review_limit,
+        ),
+      );
+      details.append(
+        E("summary", "Hitos, dependencias y gobierno"),
+        E("p", initiative.goal),
+      );
+      for (const milestone of initiative.milestones)
+        details.append(
+          E(
+            "p",
+            milestone.title +
+              " · " +
+              milestone.integrated +
+              "/" +
+              milestone.total +
+              " integradas" +
+              (milestone.complete ? " ✓" : ""),
+          ),
+        );
+      details.append(
+        button(
+          initiative.paused ? "Reanudar iniciativa" : "Pausar nuevas órdenes",
+          () =>
+            this.action("/initiatives/" + initiative.id + "/pause", {
+              version: initiative.version,
+              paused: !initiative.paused,
+            }),
+        ),
+        E(
+          "small",
+          "La pausa afecta a próximas órdenes. Para interrumpir una ejecución usa los controles de tarea o la pausa global.",
+        ),
+      );
+      const task = E("select"),
+        milestone = E("select"),
+        predecessor = E("select");
+      task.setAttribute("aria-label", "Tarea de " + initiative.title);
+      milestone.setAttribute("aria-label", "Hito de " + initiative.title);
+      predecessor.setAttribute(
+        "aria-label",
+        "Predecesora de " + initiative.title,
+      );
+      const option = (select, value, label) => {
+        const node = E("option", label);
+        node.value = value;
+        select.append(node);
+      };
+      option(task, "", "Selecciona una tarea");
+      for (const work of this.data.work) {
+        const owner = this.data.initiatives.find((i) =>
+          i.tasks.some((t) => t.id === work.id),
+        );
+        if (!owner || owner.id === initiative.id)
+          option(task, work.id, work.repo + " · " + work.title);
+      }
+      for (const m of initiative.milestones) option(milestone, m.id, m.title);
+      option(predecessor, "", "Sin añadir dependencia");
+      for (const work of initiative.tasks)
+        option(predecessor, work.id, work.title);
+      details.append(
+        task,
+        milestone,
+        predecessor,
+        button("Vincular tarea o añadir dependencia", () => {
+          if (!task.value) {
+            this.error.textContent = "Selecciona una tarea.";
+            return;
+          }
+          const existing = initiative.tasks.find((t) => t.id === task.value);
+          const deps = [
+            ...new Set([
+              ...(existing?.depends_on || []),
+              ...(predecessor.value ? [predecessor.value] : []),
+            ]),
+          ];
+          return this.action("/initiatives/" + initiative.id + "/tasks", {
+            version: initiative.version,
+            item: task.value,
+            milestone: milestone.value,
+            depends_on: deps,
+          });
+        }),
+      );
+      for (const work of initiative.tasks) {
+        const row = E("details");
+        row.dataset.key = "initiative-task-" + work.id;
+        row.append(
+          E("summary", work.title + " · " + (names[work.state] || work.state)),
+        );
+        row.append(E("p", work.repo + " · " + work.id));
+        if (work.issue)
+          row.append(
+            link(
+              "Issue #" + work.issue,
+              "https://github.com/" + work.repo + "/issues/" + work.issue,
+            ),
+          );
+        for (const reason of work.blockers)
+          row.append(E("p", this.coordinationReason(reason), "warning"));
+        for (const id of work.depends_on) {
+          const before = initiative.tasks.find((t) => t.id === id);
+          row.append(E("p", "Depende de: " + (before?.title || id)));
+          if (
+            !["review", "integrating", "integrated", "cancelled"].includes(
+              work.state,
+            ) &&
+            !work.in_progress
+          )
+            row.append(
+              button("Quitar dependencia " + (before?.title || id), () =>
+                this.action("/initiatives/" + initiative.id + "/tasks", {
+                  version: initiative.version,
+                  item: work.id,
+                  milestone: work.milestone,
+                  depends_on: work.depends_on.filter((d) => d !== id),
+                }),
+              ),
+            );
+        }
+        details.append(row);
+      }
+      card.append(details);
+      section.append(card);
+    }
+    parent.append(section);
+  }
   acceptance(parent, w, d) {
     const box = E("section", "", "acceptance");
     const covered = d.criteria.filter((c) =>
@@ -891,6 +1132,24 @@ class FarmConsole extends HTMLElement {
         );
       }
       task.append(links);
+      const initiative = this.data.initiatives?.find((i) =>
+        i.tasks.some((t) => t.id === w.id),
+      );
+      if (initiative) {
+        const coordinated = initiative.tasks.find((t) => t.id === w.id);
+        task.append(
+          E(
+            "small",
+            "Iniciativa: " +
+              initiative.title +
+              " · Hito: " +
+              initiative.milestones.find((m) => m.id === coordinated.milestone)
+                ?.title,
+          ),
+        );
+        for (const blocker of coordinated.blockers)
+          task.append(E("p", this.coordinationReason(blocker), "warning"));
+      }
       if (!w.issue)
         task.append(
           E("small", "Creación de issue pendiente de confirmación de GitHub."),

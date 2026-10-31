@@ -36,6 +36,7 @@ public class WorkflowService {
               "CREATE UNIQUE INDEX IF NOT EXISTS one_open_command ON work_commands(item) WHERE"
                   + " state IN ('queued','claimed')");
           EvidenceService.schema(c);
+          InitiativeService.schema(c);
           return null;
         });
   }
@@ -273,14 +274,22 @@ public class WorkflowService {
               "UPDATE work_commands SET state='interrupted' WHERE state='claimed' AND updated<?",
               now - 120);
           if (one(c, "SELECT id FROM work_commands WHERE state='claimed'") != null) return Map.of();
-          var cmd =
-              one(
+          Map<String, Object> cmd = null;
+          for (var candidate :
+              rows(
                   c,
                   "SELECT * FROM work_commands WHERE state='queued' "
                       + (onlyIntegration
                           ? "AND kind='merge' "
                           : integration ? "" : "AND kind!='merge' ")
-                      + "ORDER BY updated,rowid LIMIT 1");
+                      + "ORDER BY updated,rowid")) {
+            if (InitiativeService.blockers(
+                    c, candidate.get("item").toString(), candidate.get("kind").toString())
+                .isEmpty()) {
+              cmd = candidate;
+              break;
+            }
+          }
           if (cmd == null) return Map.of();
           exec(
               c,
