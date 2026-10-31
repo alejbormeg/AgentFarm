@@ -43,6 +43,13 @@ Coordinador determinista en Python; SQLite para un nodo. Las reglas de autorizac
 
 Un solo trabajador activo inicialmente; implementación y revisión son roles, no dos máquinas obligatorias. Se pueden alternar plataformas. El revisor no debe modificar el parche que evalúa; si solicita reparaciones se genera otro commit y se repiten comprobaciones.
 
+Identidad de producto: los trabajadores se denominan **Boxer**; la dirección
+de un único nodo, **Napoleon**. Para varios nodos dirigentes se prevé un consejo
+de **Napoleon y Snowball** que contrasten propuestas y registren acuerdos.
+Los nombres no cambian permisos ni sustituyen al coordinador determinista.
+El [modelo Animal Farm](ANIMAL_FARM.md) distingue estos roles de sus capacidades
+todavía pendientes y propone el protocolo de deliberación para una fase posterior.
+
 ## 4. Separación entre motor y proyectos
 
 El motor contiene coordinación, adaptadores, políticas, evidencias y visualización. Cada proyecto aporta su manifiesto: ruta del repositorio, rama base, comandos de pruebas, componentes, contratos, rutas permitidas y políticas aprobadas.
@@ -155,6 +162,12 @@ ADR-003: coordinación determinista y proveedores intercambiables.
 ADR-004: integración humana y contrapresión según capacidad de revisión.
 ADR-005: separar intención, código integrado y despliegue observado.
 ADR-006: simulación explícita hasta validar aislamiento y credenciales reales.
+
+ADR-007: identidad Animal Farm con Boxer como trabajador, Napoleon como dirección
+de un único nodo y Napoleon/Snowball como pares en una futura topología con
+varios nodos dirigentes. La aprobación humana y las políticas se mantienen
+por encima de los roles. El protocolo del consejo se concretará antes de
+implementar coordinación distribuida.
 
 ## 15. Próximos pasos concretos
 

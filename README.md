@@ -2,6 +2,19 @@
 
 Equipo de agentes de desarrollo con autonomía acotada, especificaciones versionadas y control humano verificable. Forja será el primer caso de aplicación; el núcleo no depende de Forja.
 
+La identidad de AgentFarm se inspira en *Animal Farm*, de George Orwell:
+
+| Rol | Nombre en AgentFarm | Responsabilidad prevista |
+| --- | --- | --- |
+| Trabajador | **Boxer** | Ejecutar tareas acotadas. Máxima: «Trabajaré más duro». |
+| Dirección de un único nodo | **Napoleon** | Planificar y coordinar sus Boxer dentro de las políticas aprobadas. |
+| Dirección de varios nodos | **Napoleon y Snowball** | Contrastar propuestas y alcanzar acuerdos entre dirigentes pares. |
+
+Los roles son independientes del proveedor de IA y de la máquina que los aloje.
+La dirección, los trabajadores reales y los acuerdos entre nodos están
+**planificados**; el simulador actual no los ejecuta. El humano conserva la
+aprobación final. Véase el [modelo de roles y topologías](docs/ANIMAL_FARM.md).
+
 **Estado: simulador de coordinación y control de alcance entre commits.** No ejecuta modelos, modifica proyectos, abre PR ni despliega infraestructura. La arquitectura objetivo está en [docs/PLAN.md](docs/PLAN.md).
 
 ## Primera ejecución (Python 3.11+, sin dependencias)
