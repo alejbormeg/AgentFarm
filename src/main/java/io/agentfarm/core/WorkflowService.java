@@ -384,6 +384,10 @@ public class WorkflowService {
             }
           if (phase.equals("proposed")) {
             var p = n.path("proposal");
+            if (p.has("project_memory"))
+              ProjectMemory.validate(
+                  p.get("project_memory"),
+                  one(c, "SELECT repo FROM work_items WHERE id=?", id).get("repo").toString());
             EvidenceService.criteria(p);
             for (String key :
                 List.of("summary", "acceptance", "as_is", "to_be", "unit_test", "integration_test"))

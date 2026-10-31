@@ -30,6 +30,10 @@ public final class Cli {
                 Boolean.parseBoolean(options.getOrDefault("run-tests", "false")));
       } else if (mode.equals("profile")) {
         result = ProjectProfile.load(Path.of(required(options, "file"))).summary();
+      } else if (mode.equals("memory")) {
+        result =
+            ProjectMemory.validateFile(
+                Path.of(required(options, "file")), required(options, "repository"));
       } else if (mode.equals("backup")) {
         result =
             Backups.backup(Path.of(required(options, "db")), Path.of(required(options, "output")));

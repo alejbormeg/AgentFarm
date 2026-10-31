@@ -136,3 +136,7 @@ está esperando. La agrupación conserva las aprobaciones individuales.
 
 [Recetas versionadas](docs/RECIPES.md): guía la investigación de bugs,
 dependencias, pruebas o migraciones y conserva la versión usada por cada tarea.
+
+[Memoria de proyecto](docs/PROJECT_MEMORY.md): decisiones, restricciones y
+motivos de rechazo versionados en Git, consultados desde la rama base y
+modificados mediante propuestas y PR.

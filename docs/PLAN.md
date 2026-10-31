@@ -142,3 +142,9 @@ en fase 4; se entrega su siguiente incremento: [recetas versionadas](RECIPES.md)
 para bugs, dependencias, pruebas y migraciones. Seleccionar una receta inicia
 investigación; no aprueba desarrollo ni verifica criterios. Se conservan abiertos
 los pendientes de #7–#10 y los criterios externos de salida.
+
+### Tercer incremento de fase 4
+Tras aprobar y fusionar PR #15, el promotor pide continuar. Se añade
+[memoria de proyecto versionada](PROJECT_MEMORY.md): decisiones, restricciones
+y rechazos en Git, snapshot del commit base dentro de cada propuesta y receta
+para modificarla mediante PR. No se declara una fase 5 ni se cierran #7–#10.

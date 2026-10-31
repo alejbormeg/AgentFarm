@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "repository": "owner/example",
+  "entries": [
+    {
+      "id": "ADR-001",
+      "kind": "decision",
+      "summary": "Conservar la interfaz pública durante la migración.",
+      "rationale": "Los consumidores existentes necesitan una transición compatible.",
+      "references": [
+        "https://github.com/owner/example/issues/1"
+      ]
+    },
+    {
+      "id": "LIMIT-001",
+      "kind": "constraint",
+      "summary": "No migrar datos reales desde una tarea de desarrollo.",
+      "rationale": "El ensayo se realiza con datos de prueba; el despliegue requiere una decisión independiente."
+    },
+    {
+      "id": "REJECT-001",
+      "kind": "rejection",
+      "summary": "Se rechazó una reescritura completa en un único cambio.",
+      "rationale": "No permitía validar ni revertir incrementos de forma independiente."
+    }
+  ]
+}

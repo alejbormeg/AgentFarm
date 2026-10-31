@@ -8,31 +8,37 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class Store {
+  private static final java.util.concurrent.ConcurrentMap<String, Object> GATES =
+      new java.util.concurrent.ConcurrentHashMap<>();
   private final String url;
+  private final Object gate;
 
   public Store(@Value("${agentfarm.db}") String path) {
     try {
-      Path file = Path.of(path).toAbsolutePath();
+      Path file = Path.of(path).toAbsolutePath().normalize();
       Files.createDirectories(file.getParent());
       url = "jdbc:sqlite:" + file;
-      try (Connection c = connection()) {
-        statement(c, "PRAGMA journal_mode=WAL");
-        String schema =
-            """
-            CREATE TABLE IF NOT EXISTS tasks(project TEXT,id TEXT,spec TEXT NOT NULL,hash TEXT NOT NULL,state TEXT,PRIMARY KEY(project,id));
-            CREATE TABLE IF NOT EXISTS runs(id INTEGER PRIMARY KEY,project TEXT,task TEXT,hash TEXT,started TEXT,mode TEXT,result TEXT);
-            CREATE TABLE IF NOT EXISTS budget_accounts(account TEXT PRIMARY KEY,mode TEXT NOT NULL,shares TEXT NOT NULL);
-            CREATE TABLE IF NOT EXISTS budget_windows(account TEXT NOT NULL REFERENCES budget_accounts(account),period TEXT NOT NULL,start INTEGER NOT NULL,end INTEGER NOT NULL,total INTEGER NOT NULL,share INTEGER NOT NULL,used INTEGER NOT NULL,observed_used INTEGER,observed_at INTEGER,max_age INTEGER NOT NULL,source TEXT NOT NULL,PRIMARY KEY(account,period,start));
-            CREATE TABLE IF NOT EXISTS budget_runs(account TEXT NOT NULL REFERENCES budget_accounts(account),run_id TEXT NOT NULL,amounts TEXT NOT NULL,state TEXT NOT NULL,actual TEXT,PRIMARY KEY(account,run_id));
-            CREATE TABLE IF NOT EXISTS budget_allocations(account TEXT NOT NULL,run_id TEXT NOT NULL,period TEXT NOT NULL,start INTEGER NOT NULL,reserved INTEGER NOT NULL,PRIMARY KEY(account,run_id,period),FOREIGN KEY(account,run_id) REFERENCES budget_runs(account,run_id),FOREIGN KEY(account,period,start) REFERENCES budget_windows(account,period,start));
-            CREATE TABLE IF NOT EXISTS farm_nodes(id TEXT PRIMARY KEY,role TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 1,heartbeat INTEGER,reported_state TEXT NOT NULL DEFAULT 'unknown');
-            CREATE TABLE IF NOT EXISTS farm_workers(id TEXT PRIMARY KEY,node TEXT NOT NULL REFERENCES farm_nodes(id),enabled INTEGER NOT NULL DEFAULT 1,heartbeat INTEGER,reported_state TEXT NOT NULL DEFAULT 'unknown');
-            CREATE TABLE IF NOT EXISTS task_runtime(project TEXT,id TEXT,worker TEXT,progress INTEGER,candidate_sha TEXT,cancel_requested INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(project,id),FOREIGN KEY(project,id) REFERENCES tasks(project,id));
-            CREATE TABLE IF NOT EXISTS governance(id INTEGER PRIMARY KEY CHECK(id=1),paused INTEGER NOT NULL);
-            INSERT OR IGNORE INTO governance VALUES(1,0);
-            CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,at TEXT NOT NULL,actor TEXT NOT NULL,action TEXT NOT NULL,subject TEXT NOT NULL);
-            """;
-        for (String sql : schema.split(";")) if (!sql.isBlank()) statement(c, sql);
+      gate = GATES.computeIfAbsent(url, ignored -> new Object());
+      synchronized (gate) {
+        try (Connection c = connection()) {
+          statement(c, "PRAGMA journal_mode=WAL");
+          String schema =
+              """
+              CREATE TABLE IF NOT EXISTS tasks(project TEXT,id TEXT,spec TEXT NOT NULL,hash TEXT NOT NULL,state TEXT,PRIMARY KEY(project,id));
+              CREATE TABLE IF NOT EXISTS runs(id INTEGER PRIMARY KEY,project TEXT,task TEXT,hash TEXT,started TEXT,mode TEXT,result TEXT);
+              CREATE TABLE IF NOT EXISTS budget_accounts(account TEXT PRIMARY KEY,mode TEXT NOT NULL,shares TEXT NOT NULL);
+              CREATE TABLE IF NOT EXISTS budget_windows(account TEXT NOT NULL REFERENCES budget_accounts(account),period TEXT NOT NULL,start INTEGER NOT NULL,end INTEGER NOT NULL,total INTEGER NOT NULL,share INTEGER NOT NULL,used INTEGER NOT NULL,observed_used INTEGER,observed_at INTEGER,max_age INTEGER NOT NULL,source TEXT NOT NULL,PRIMARY KEY(account,period,start));
+              CREATE TABLE IF NOT EXISTS budget_runs(account TEXT NOT NULL REFERENCES budget_accounts(account),run_id TEXT NOT NULL,amounts TEXT NOT NULL,state TEXT NOT NULL,actual TEXT,PRIMARY KEY(account,run_id));
+              CREATE TABLE IF NOT EXISTS budget_allocations(account TEXT NOT NULL,run_id TEXT NOT NULL,period TEXT NOT NULL,start INTEGER NOT NULL,reserved INTEGER NOT NULL,PRIMARY KEY(account,run_id,period),FOREIGN KEY(account,run_id) REFERENCES budget_runs(account,run_id),FOREIGN KEY(account,period,start) REFERENCES budget_windows(account,period,start));
+              CREATE TABLE IF NOT EXISTS farm_nodes(id TEXT PRIMARY KEY,role TEXT NOT NULL,enabled INTEGER NOT NULL DEFAULT 1,heartbeat INTEGER,reported_state TEXT NOT NULL DEFAULT 'unknown');
+              CREATE TABLE IF NOT EXISTS farm_workers(id TEXT PRIMARY KEY,node TEXT NOT NULL REFERENCES farm_nodes(id),enabled INTEGER NOT NULL DEFAULT 1,heartbeat INTEGER,reported_state TEXT NOT NULL DEFAULT 'unknown');
+              CREATE TABLE IF NOT EXISTS task_runtime(project TEXT,id TEXT,worker TEXT,progress INTEGER,candidate_sha TEXT,cancel_requested INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(project,id),FOREIGN KEY(project,id) REFERENCES tasks(project,id));
+              CREATE TABLE IF NOT EXISTS governance(id INTEGER PRIMARY KEY CHECK(id=1),paused INTEGER NOT NULL);
+              INSERT OR IGNORE INTO governance VALUES(1,0);
+              CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,at TEXT NOT NULL,actor TEXT NOT NULL,action TEXT NOT NULL,subject TEXT NOT NULL);
+              """;
+          for (String sql : schema.split(";")) if (!sql.isBlank()) statement(c, sql);
+        }
       }
     } catch (Exception e) {
       throw new IllegalStateException("Cannot initialize AgentFarm database", e);
@@ -58,19 +64,23 @@ public class Store {
   }
 
   public <T> T tx(Work<T> work) {
-    try (Connection c = connection()) {
-      statement(c, "BEGIN IMMEDIATE");
-      try {
-        T result = work.run(c);
-        statement(c, "COMMIT");
-        return result;
-      } catch (Exception e) {
-        statement(c, "ROLLBACK");
-        if (e instanceof RuntimeException r) throw r;
-        throw new IllegalStateException("Database operation failed", e);
+    // BEGIN IMMEDIATE already serializes transactions. Include native open/close in
+    // that serialization so concurrent polling cannot race their lifecycle.
+    synchronized (gate) {
+      try (Connection c = connection()) {
+        statement(c, "BEGIN IMMEDIATE");
+        try {
+          T result = work.run(c);
+          statement(c, "COMMIT");
+          return result;
+        } catch (Exception e) {
+          statement(c, "ROLLBACK");
+          if (e instanceof RuntimeException r) throw r;
+          throw new IllegalStateException("Database operation failed", e);
+        }
+      } catch (SQLException e) {
+        throw new IllegalStateException("Database unavailable", e);
       }
-    } catch (SQLException e) {
-      throw new IllegalStateException("Database unavailable", e);
     }
   }
 

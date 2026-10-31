@@ -15,6 +15,7 @@ public class AgentFarmApplication {
                 "import",
                 "doctor",
                 "profile",
+                "memory",
                 "backup",
                 "restore")
             .contains(args[0])) {

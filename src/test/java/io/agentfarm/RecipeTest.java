@@ -43,11 +43,11 @@ class RecipeTest {
   }
 
   @Test
-  void catalogHasFourVersionedRecipesWithEvidenceAndStableHashes() {
+  void catalogHasVersionedRecipesWithEvidenceAndStableHashes() {
     var catalog = MAPPER.valueToTree(RecipeCatalog.list());
     var ids = new HashSet<String>();
     for (var recipe : catalog) {
-      assertTrue(ids.add(recipe.path("id").asText()));
+      assertTrue(ids.add(recipe.path("id").asText() + "@" + recipe.path("version").asLong()));
       assertFalse(recipe.path("research_steps").isEmpty());
       assertFalse(recipe.path("required_evidence").isEmpty());
       assertFalse(recipe.path("restrictions").isEmpty());
@@ -55,7 +55,14 @@ class RecipeTest {
       var hash = copy.remove("hash").asText();
       assertEquals(sha256(canonical(copy)), hash);
     }
-    assertEquals(Set.of("bugfix", "dependency-update", "test-improvement", "migration"), ids);
+    assertEquals(
+        Set.of(
+            "bugfix@1",
+            "dependency-update@1",
+            "test-improvement@1",
+            "migration@1",
+            "project-memory@1"),
+        ids);
     var mutable =
         (com.fasterxml.jackson.databind.node.ObjectNode) RecipeCatalog.snapshot("bugfix", 1);
     mutable.put("title", "tampered");
