@@ -1,0 +1,5 @@
+{
+  "account": "api-example",
+  "mode": "api",
+  "shares": {"monthly": 10000, "weekly": 5000}
+}

@@ -128,6 +128,13 @@ Inicio local: cero alquiler cloud, más electricidad y suscripciones existentes.
 
 API opcional: reservar presupuesto antes de admitir una tarea, contabilizar consumo real y conciliar al terminar. Si el proveedor no permite una cota dura, documentar que es un límite de admisión aproximado y reservar margen. Para suscripciones registrar cuotas y bloqueos, no inventar coste por token.
 
+Política del promotor: como máximo 50% de la cuota semanal de Codex, no 50%
+del precio mensual en USD. [M1-002](tasks/M1-002.md) añade el registro local
+`budget.py` con reservas compartidas, ventanas explícitas y conciliación.
+API y suscripción tienen unidades separadas; no hay fallback de pago.
+La lectura real de cuotas y la integración obligatoria con un trabajador
+siguen pendientes. Detalles y garantías: [BUDGET.md](BUDGET.md).
+
 ## 12. Hitos y criterios de salida
 
 M0 — documentación y simulador: cola persistente, deduplicación, límite de pendientes, informes honestos y pruebas. Base publicada en el repositorio privado `alejbormeg/AgentFarm`.
