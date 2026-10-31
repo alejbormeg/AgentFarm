@@ -122,9 +122,10 @@ tareas generadas o líneas de código.
 
 ## Estado y siguiente implementación
 
-- Implementado: simulador local y control de alcance de commits M1-001.
+- Implementado: simulador local, control de alcance de commits M1-001 y registro
+  de admisión por presupuesto [M1-002](BUDGET.md), primera pieza de Clover.
 - Definido como identidad: Boxer, Napoleon, Snowball y ambas topologías.
-- Propuesto: protocolo del consejo y roles adicionales.
+- Propuesto: protocolo del consejo, supervisión completa de Clover y demás roles adicionales.
 - Pendiente: trabajadores reales, aislamiento, adaptadores y comunicación entre nodos.
 
 La siguiente entrega técnica sigue siendo un primer Boxer aislado bajo una

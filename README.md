@@ -15,7 +15,7 @@ La dirección, los trabajadores reales y los acuerdos entre nodos están
 **planificados**; el simulador actual no los ejecuta. El humano conserva la
 aprobación final. Véase el [modelo de roles y topologías](docs/ANIMAL_FARM.md).
 
-**Estado: simulador de coordinación y control de alcance entre commits.** No ejecuta modelos, modifica proyectos, abre PR ni despliega infraestructura. La arquitectura objetivo está en [docs/PLAN.md](docs/PLAN.md).
+**Estado: simulador de coordinación, control de alcance y registro local de presupuesto.** No ejecuta modelos, modifica proyectos, abre PR ni despliega infraestructura. La arquitectura objetivo está en [docs/PLAN.md](docs/PLAN.md).
 
 ## Primera ejecución (Python 3.11+, sin dependencias)
 
@@ -58,6 +58,23 @@ humana. Los cambios locales, ignorados y no registrados quedan fuera del informe
 No sustituye al aislamiento. Consulta la [especificación M1-001](docs/tasks/M1-001.md).
 
 La suite se ejecuta en CI con Linux/Windows y Python 3.11/3.13.
+
+## Clover: control de presupuesto
+
+La política de ejemplo es **como máximo el 50% de la cuota semanal de Codex**.
+El precio mensual de la suscripción no se convierte en saldo de API. Para API
+se configuran presupuestos monetarios independientes.
+
+```bash
+python3 budget.py --db budget.db configure examples/budget-subscription.json
+python3 budget.py --db budget.db status codex-subscription
+```
+
+El registro reserva capacidad de forma atómica para todos los Boxer de la
+cuenta. Se pausa si falta saldo o una lectura vigente, el coste es desconocido
+o un trabajo cruza un reinicio. Sin ventanas observadas, el ejemplo permanece
+en pausa. Todavía no consulta la cuenta real ni limita turnos en el proveedor.
+Consulta [unidades, reservas y límites de esta versión](docs/BUDGET.md).
 
 ## Qué viene después
 

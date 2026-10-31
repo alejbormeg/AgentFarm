@@ -1,0 +1,5 @@
+{
+  "account": "codex-subscription",
+  "mode": "subscription",
+  "shares": {"weekly": 5000}
+}
