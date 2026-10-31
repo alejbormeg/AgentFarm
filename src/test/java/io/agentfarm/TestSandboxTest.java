@@ -117,9 +117,9 @@ class TestSandboxTest {
   // Real Docker: the container sees the commit tree only, offline, without host credentials.
   @Test
   void dockerIsolationEndToEnd() throws Exception {
-    Assumptions.assumeTrue(run(List.of("docker", "info"), Duration.ofSeconds(20)).exit() == 0, "Docker unavailable");
+    Assumptions.assumeTrue(available(List.of("docker", "info"), Duration.ofSeconds(20)), "Docker unavailable");
     Assumptions.assumeTrue(
-        run(List.of("docker", "pull", "-q", "bash:5.2"), Duration.ofMinutes(3)).exit() == 0, "Image unavailable");
+        available(List.of("docker", "pull", "-q", "bash:5.2"), Duration.ofMinutes(3)), "Image unavailable");
     git("init", "-q");
     Files.writeString(repo.resolve("hello.txt"), "tree content");
     git("add", ".");
@@ -148,6 +148,14 @@ class TestSandboxTest {
     var out = run(cmd, Duration.ofSeconds(20));
     if (out.exit() != 0) throw new AssertionError(out.text());
     return out.text();
+  }
+
+  static boolean available(List<String> argv, Duration timeout) {
+    try {
+      return run(argv, timeout).exit() == 0;
+    } catch (Exception e) {
+      return false; // e.g. no docker binary inside the image build
+    }
   }
 
   static Output run(List<String> argv, Duration timeout) throws Exception {
