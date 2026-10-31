@@ -1,0 +1,7 @@
+{
+  "id": "DEMO-001",
+  "project": "example",
+  "title": "Simular una tarea sin modificar ningún repositorio",
+  "acceptance": ["El informe identifica la simulación y no declara código implementado"],
+  "allowed_paths": ["docs/"]
+}
