@@ -103,6 +103,27 @@ public class RuntimeChecks {
       }
       check(rejected);
     }
+    check(!FarmDaemon.clean(null).isBlank());
+    var releaseQuota = new java.util.concurrent.CountDownLatch(1);
+    var heartbeat = new java.util.concurrent.CountDownLatch(1);
+    var loops =
+        FarmDaemon.observationLoops(
+            () -> {
+              try {
+                releaseQuota.await();
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+              }
+            },
+            heartbeat::countDown,
+            20,
+            20);
+    try {
+      check(heartbeat.await(1, java.util.concurrent.TimeUnit.SECONDS));
+    } finally {
+      releaseQuota.countDown();
+      loops.shutdownNow();
+    }
     System.out.println(checks + " runtime checks passed; no inference or network calls");
   }
 }

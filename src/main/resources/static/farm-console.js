@@ -934,7 +934,7 @@ class FarmConsole extends HTMLElement {
         t.append(
           E(
             "summary",
-            "Pruebas unitarias · " + (ev.unit?.status || "Planificadas"),
+            "Unitarias declaradas · " + (ev.unit?.status || "Planificadas"),
           ),
           E("pre", ev.unit ? JSON.stringify(ev.unit, null, 2) : p.unit_test),
         );
@@ -946,7 +946,7 @@ class FarmConsole extends HTMLElement {
         t.append(
           E(
             "summary",
-            "Pruebas de integración · " +
+            "Integración declarada · " +
               (ev.integration?.status || "Planificadas"),
           ),
           E(
@@ -964,7 +964,7 @@ class FarmConsole extends HTMLElement {
         t.append(
           E(
             "summary",
-            "Revisión independiente · " +
+            "Revisión declarada · " +
               (ev.review.passed ? "Sin bloqueos" : "Con incidencias"),
           ),
           E("pre", JSON.stringify(ev.review, null, 2)),
