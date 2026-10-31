@@ -34,7 +34,9 @@ contrato. Ambos exigen autenticación; las mutaciones conservan CSRF. Un nodo
 solo puede consultar admisión de la cuenta concedida en su credencial.
 
 La consulta no reserva recursos ni ejecuta inferencia. El ejecutor la usa antes
-de iniciar turnos, además de los controles de reserva, pausa y cancelación existentes.
+de reservar trabajo nuevo. Una ejecución con reserva conserva los controles de
+cuota, ventana, pausa, identidad e interrupción; no vuelve a exigir que su propio
+margen reservado esté libre para otro trabajo.
 Es una lectura de admisión, no una promesa de facturación exacta o una reserva
 atómica nueva. La parada continúa basada en observaciones discretas.
 

@@ -183,20 +183,24 @@ public class FarmDaemon extends CodexRunner {
         || !quota.path("allowed").asBoolean()
         || quota.path("weekly_used_percent").asDouble(100) >= 98)
       throw new IOException("Cuota desconocida o límite del 2 % alcanzado");
-    var admission =
-        post(
-            "/providers/admission",
-            obj(
-                "provider",
-                "codex",
-                "account",
-                ACCOUNT,
-                "profile",
-                System.getProperty("agentfarm.resource-profile", "balanced"),
-                "additional_payment",
-                false));
-    if (!admission.path("state").asText().equals("admissible"))
-      throw new IOException("Provider admission blocked: " + admission.path("reasons"));
+    // Admission is for new work. An active run already owns the reserved margin.
+    // Rechecking free balance here would reject the run's own reservation.
+    if (reservedReset == 0) {
+      var admission =
+          post(
+              "/providers/admission",
+              obj(
+                  "provider",
+                  "codex",
+                  "account",
+                  ACCOUNT,
+                  "profile",
+                  System.getProperty("agentfarm.resource-profile", "balanced"),
+                  "additional_payment",
+                  false));
+      if (!admission.path("state").asText().equals("admissible"))
+        throw new IOException("Provider admission blocked: " + admission.path("reasons"));
+    }
     if (report("heartbeat").path("paused").asBoolean()) throw new IOException("Pausa solicitada");
     var overview = get("/overview");
     for (var node : overview.path("nodes"))
