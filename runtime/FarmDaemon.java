@@ -19,6 +19,11 @@ public class FarmDaemon extends CodexRunner {
   static Path checkout;
   static String commandId, itemId, repo;
   static final Path WORK = STATE.resolve("workspaces");
+  // Tests run in a disposable container unless the operator explicitly allows the host.
+  static final String SANDBOX = System.getProperty("agentfarm.sandbox", "container"),
+      SANDBOX_IMAGE =
+          System.getProperty("agentfarm.sandbox-image", io.agentfarm.core.TestSandbox.DEFAULT_IMAGE),
+      DOCKER = System.getProperty("agentfarm.docker", "docker");
   static final Path JOURNAL = STATE.resolve("reservation-journal.json");
   static volatile long lastQuota = 0;
   static volatile long reservedReset = 0;
@@ -479,6 +484,12 @@ public class FarmDaemon extends CodexRunner {
       object.put("integration_test", profile.tests().get("integration"));
       object.put("setup", profile.setup());
     }
+    var policy =
+        profile == null
+            ? io.agentfarm.core.TestSandbox.Policy.defaults(SANDBOX_IMAGE)
+            : profile.sandbox(SANDBOX_IMAGE);
+    ((com.fasterxml.jackson.databind.node.ObjectNode) p)
+        .set("sandbox", JSON.valueToTree(policy == null ? Map.of("mode", "host") : policy.summary()));
     ((com.fasterxml.jackson.databind.node.ObjectNode) p)
         .put("base_sha", gitAt("rev-parse", "HEAD"));
     github("PATCH", "repos/" + repo + "/issues/" + issue, obj("body", issueBody(item, p, issue)));
@@ -487,6 +498,69 @@ public class FarmDaemon extends CodexRunner {
 
   static String shellQuote(String text) {
     return "'" + text.replace("'", "'\"'\"'") + "'";
+  }
+
+  static io.agentfarm.core.TestSandbox.Output sandboxProcess(
+      List<String> argv, java.time.Duration timeout) throws Exception {
+    Path log = Files.createTempFile(STATE, "sandbox-", ".log");
+    var b = new ProcessBuilder(argv).redirectErrorStream(true).redirectOutput(log.toFile());
+    for (String key : List.of("OPENAI_API_KEY", "CODEX_API_KEY", "ANTHROPIC_API_KEY", "GH_TOKEN", "GITHUB_TOKEN"))
+      b.environment().remove(key);
+    var p = b.start();
+    try {
+      long deadline = System.currentTimeMillis() + timeout.toMillis();
+      while (!p.waitFor(1, TimeUnit.SECONDS)) {
+        if ((current != null && cancelled) || System.currentTimeMillis() > deadline) {
+          p.descendants().forEach(ProcessHandle::destroyForcibly);
+          p.destroyForcibly();
+          throw new IOException(cancelled ? "Operación cancelada" : "Tiempo agotado: " + argv.get(0));
+        }
+      }
+      String output = Files.readString(log);
+      if (output.length() > 150000) output = output.substring(output.length() - 150000);
+      return new io.agentfarm.core.TestSandbox.Output(p.exitValue(), clean(output.trim()));
+    } finally {
+      Files.deleteIfExists(log);
+    }
+  }
+
+  static String hostUser() throws Exception {
+    var attrs = Files.readAttributes(STATE, "unix:uid,gid", java.nio.file.LinkOption.NOFOLLOW_LINKS);
+    return attrs.get("uid") + ":" + attrs.get("gid");
+  }
+
+  /** Runs setup and both test commands for an approved proposal at {@code sha}. */
+  static List<Map<String, Object>> runTests(JsonNode p, String sha) throws Exception {
+    var tests = new LinkedHashMap<String, String>();
+    tests.put("unit", p.path("unit_test").asText());
+    tests.put("integration", p.path("integration_test").asText());
+    var declared = p.path("sandbox");
+    if (declared.path("mode").asText("container").equals("host")) {
+      if (!SANDBOX.equals("host"))
+        throw new IOException(
+            "El perfil pide ejecutar tests en el host; el operador debe permitirlo con"
+                + " -Dagentfarm.sandbox=host");
+      var results = new ArrayList<Map<String, Object>>();
+      for (var t : tests.entrySet()) results.add(test(t.getKey(), t.getValue()));
+      return results;
+    }
+    // Proposals approved before sandboxing carry no policy; they get the executor defaults.
+    var policy =
+        declared.has("image")
+            ? io.agentfarm.core.TestSandbox.Policy.fromSummary(declared)
+            : io.agentfarm.core.TestSandbox.Policy.defaults(SANDBOX_IMAGE);
+    event("command", "Sandbox " + policy.image() + " · red " + policy.network());
+    var results =
+        new io.agentfarm.core.TestSandbox(FarmDaemon::sandboxProcess, DOCKER, hostUser())
+            .run(checkout, sha, policy, p.path("setup").asText(""), tests);
+    for (var r : results) {
+      event("command", r.get("kind") + ": " + Objects.toString(r.get("command"), ""));
+      event(
+          "passed".equals(r.get("status")) ? "output" : "error",
+          Objects.toString(r.get("output"), Objects.toString(r.get("reason"), "")));
+      r.put("sandbox", policy.summary());
+    }
+    return results;
   }
 
   static Map<String, Object> test(String name, String command) throws Exception {
@@ -625,8 +699,9 @@ public class FarmDaemon extends CodexRunner {
       return;
     }
     phase = "testing";
-    var unit = test("unit", p.path("unit_test").asText());
-    var integration = test("integration", p.path("integration_test").asText());
+    var results = runTests(p, sha);
+    var unit = results.get(0);
+    var integration = results.get(1);
     if (!gitAt("status", "--porcelain").isBlank())
       throw new IOException("Las pruebas han cambiado el checkout; revisar antes de publicar");
     active = REVIEWER;

@@ -1440,6 +1440,28 @@ class FarmConsole extends HTMLElement {
         );
         detail.append(proposed);
       }
+      if (p.sandbox)
+        detail.append(
+          E(
+            "p",
+            p.sandbox.mode === "host"
+              ? "Entorno de pruebas: host del ejecutor (requiere permiso del operador)"
+              : "Entorno de pruebas: contenedor " +
+                  p.sandbox.image +
+                  " · red " +
+                  ({ setup: "solo en setup", none: "sin red", always: "siempre" }[
+                    p.sandbox.network
+                  ] || p.sandbox.network) +
+                  " · " +
+                  p.sandbox.cpus +
+                  " CPU · " +
+                  p.sandbox.memory_mb +
+                  " MB · " +
+                  p.sandbox.timeout_minutes +
+                  " min",
+            "muted",
+          ),
+        );
       if (ev.unit || p.unit_test) {
         const t = E("details");
         t.dataset.key = "unit-" + w.id;

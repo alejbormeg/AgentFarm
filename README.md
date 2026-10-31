@@ -18,8 +18,11 @@ Java 21, Spring Boot 4 y Mateu. Un solo proceso, SQLite, sin Node ni servidor SQ
 | Memoria de proyecto | Decisiones, restricciones y rechazos versionados en Git; cada propuesta guarda el snapshot del commit base. [Memoria](docs/PROJECT_MEMORY.md) |
 | Operación | Pausa global, auditoría de decisiones, heartbeats, doctor, backup/restore. [Instalación del ejecutor](docs/INSTALLATION.md) |
 
+Las pruebas de cada candidato se ejecutan en un contenedor desechable, sin
+credenciales ni `.git` y sin red por defecto. [Detalles](docs/INSTALLATION.md#pruebas-en-contenedor)
+
 **Todavía no:** varias tareas en paralelo (el ejecutor atiende una cada vez),
-ejecución de tests en contenedor aislado, adaptador de Claude Code, disparadores
+adaptador de Claude Code, disparadores
 automáticos (CI rojo, CVE, issues etiquetadas) y coordinación entre varios nodos.
 La hoja de ruta está en [docs/ROADMAP.md](docs/ROADMAP.md).
 

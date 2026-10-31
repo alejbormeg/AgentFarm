@@ -50,8 +50,8 @@ operador del panel. Nunca lo montes en un directorio del trabajador.
 Sin ese archivo, las órdenes de integración no se procesarán.
 
 **Límite importante:** gh y Codex siguen ejecutándose con la identidad Linux
-del servicio. Un sandbox de escritura o checkout separado no es una frontera
-de seguridad. Se necesita una identidad/entorno de trabajador separado y
+del servicio. Las pruebas ya se aíslan en contenedor (ver más abajo), pero el
+sandbox de escritura de Codex sobre el checkout no es una frontera de seguridad. Se necesita una identidad/entorno de trabajador separado y
 credenciales GitHub limitadas antes de afirmar separación completa de privilegios.
 
 ## Perfil de repositorio y diagnóstico
@@ -68,9 +68,40 @@ La cuota figura desconocida: autenticarse no acredita saldo disponible.
 La lectura real pertenece al ejecutor y caduca según la política Clover.
 La configuración se liga por hash a la propuesta; cambiarla exige otra aprobación.
 Los archivos cambiados deben estar dentro de allowed_paths.
-Actualmente solo se admite ejecución local sin inyección de secretos.
-Los perfiles container y secret_refs se pueden describir, pero su ejecución se
-bloquea expresamente. Las tareas históricas sin perfil conservan compatibilidad.
+`secret_refs` se puede describir, pero su ejecución se bloquea expresamente.
+
+## Pruebas en contenedor
+El ejecutor ejecuta `setup` y los comandos de prueba en un contenedor Docker
+desechable por candidato, nunca en el checkout del host:
+
+- El contenedor recibe una copia del árbol del commit (`git archive`): sin `.git`,
+  sin hooks, sin `~/.config/gh`, sin credenciales de Codex ni variables de token.
+- `--cap-drop ALL` (salvo los permisos mínimos de propietario para gestores de
+  paquetes), `no-new-privileges`, límites de CPU, memoria, procesos y tiempo.
+- `setup` corre como root del contenedor con red; después se desconecta la red
+  (`network: setup`, por defecto) y las pruebas corren con tu uid, sin red.
+  `network: none` no da red en ningún momento; `always` la mantiene en las pruebas.
+- El contenedor y la copia se eliminan siempre, también ante fallo o cancelación.
+- La política forma parte de la propuesta que apruebas y queda en la evidencia.
+
+```yaml
+environment: container
+container:
+  image: maven:3.9.11-eclipse-temurin-21   # por defecto buildpack-deps:noble
+  network: setup                          # setup | none | always
+  cpus: 2                                 # 1-16
+  memory_mb: 4096                         # 256-32768
+  timeout_minutes: 20                     # 1-60
+```
+
+Sin perfil, las tareas usan `buildpack-deps:noble` (configurable con
+`-Dagentfarm.sandbox-image=`). Un perfil con `environment: local` solo se ejecuta
+si el operador arranca el ejecutor con `-Dagentfarm.sandbox=host`; si no, la
+tarea se bloquea con el motivo. Codex sigue usando su propio sandbox
+`workspace-write`/`read-only` en el checkout del host.
+
+Límite: Docker con el uid del ejecutor equivale a privilegios de root en el host;
+el contenedor protege frente al código del candidato, no frente al operador.
 
 ## Copia y recuperación
 ```bash
