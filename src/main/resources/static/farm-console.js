@@ -154,6 +154,7 @@ class FarmConsole extends HTMLElement {
     this.content.append(header, this.error, this.strip, this.body);
     this.signature = "";
     if (["overview", "tasks"].includes(this.view)) {
+      this.repoOptions = null;
       this.repositorySelect = E("select");
       this.repositorySelect.setAttribute("aria-label", "Filtrar repositorio");
       this.repositorySelect.onchange = () => {
@@ -663,7 +664,7 @@ class FarmConsole extends HTMLElement {
         [...d.querySelectorAll("textarea,input")].forEach(
           (input, i) => (input.value = saved[1][i] || ""),
         );
-      if (focusState?.key === d.dataset.key && focusState.index >= 0) {
+      if (focusState && focusState.key === d.dataset.key && focusState.index >= 0) {
         const input = [...d.querySelectorAll("textarea,input")][
           focusState.index
         ];
