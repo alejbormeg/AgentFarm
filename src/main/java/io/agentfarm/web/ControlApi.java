@@ -14,11 +14,13 @@ public class ControlApi {
   private final CoordinatorService tasks;
   private final ControlService control;
   private final BudgetService budgets;
+  private final TelemetryService telemetry;
 
-  public ControlApi(CoordinatorService t, ControlService c, BudgetService b) {
+  public ControlApi(CoordinatorService t, ControlService c, BudgetService b, TelemetryService telemetry) {
     tasks = t;
     control = c;
     budgets = b;
+    this.telemetry=telemetry;
   }
 
   @GetMapping("/csrf")
@@ -40,7 +42,16 @@ public class ControlApi {
         "budget_accounts",
         budgets.accounts(),
         "provider_execution",
-        false);
+        "Consult /api/runtime for observed external executions");
+  }
+
+  @GetMapping("/runtime")
+  public Object runtime() { return telemetry.snapshot(); }
+
+  @PostMapping("/runtime/observations")
+  public Object observeRuntime(@RequestBody JsonNode n) {
+    telemetry.ingest(n);
+    return Map.of("state","recorded");
   }
 
   @GetMapping("/nodes")
@@ -135,6 +146,16 @@ public class ControlApi {
         p.getName());
     return Map.of("state", "reported");
   }
+
+  @PostMapping("/tasks/{project}/{id}/candidate")
+  public Object candidate(@PathVariable String project, @PathVariable String id,
+      @RequestBody JsonNode n, Principal p) {
+    control.finish(project,id,Json.text(n,"worker"),Json.text(n,"sha"),p.getName());
+    return Map.of("state","review","implementation_verified",false);
+  }
+
+  @GetMapping("/budget/{account}/reservations")
+  public Object reservations(@PathVariable String account){return budgets.reservations(account);}
 
   @GetMapping("/budget/{account}")
   public Object budget(@PathVariable String account) {

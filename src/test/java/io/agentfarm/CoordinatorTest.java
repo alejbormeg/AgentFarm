@@ -221,4 +221,22 @@ class CoordinatorTest {
     assertEquals("already_enqueued", service.enqueue(parse(original), "test").get("state"));
     assertEquals(hash, service.tasks().getFirst().get("hash"));
   }
+  @Test
+  void candidateRequiresAssignedWorkerAndStaysUnverified() {
+    service.enqueue(spec("candidate"),"test");
+    control.registerNode("n","napoleon","test");
+    control.registerWorker("boxer","n","test");
+    store.tx(c -> {
+      exec(c,"UPDATE tasks SET state='running' WHERE id='candidate'");
+      exec(c,"UPDATE task_runtime SET worker='boxer' WHERE project='demo' AND id='candidate'");
+      return null;
+    });
+    String sha="a".repeat(40);
+    assertThrows(IllegalArgumentException.class,()->control.finish("demo","candidate","other",sha,"test"));
+    assertThrows(IllegalArgumentException.class,()->control.finish("demo","candidate","boxer","short","test"));
+    control.finish("demo","candidate","boxer",sha,"test");
+    assertEquals("review",service.tasks().getFirst().get("state"));
+    assertThrows(IllegalArgumentException.class,()->control.finish("demo","candidate","boxer",sha,"test"));
+  }
+
 }

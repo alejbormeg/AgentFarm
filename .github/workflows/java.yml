@@ -19,6 +19,7 @@ jobs:
           java-version: ${{ matrix.java }}
           cache: maven
       - run: ./mvnw -B -ntp verify
+      - run: bash runtime/verify.sh
       - uses: actions/upload-artifact@v4
         if: matrix.java == '21'
         with:
