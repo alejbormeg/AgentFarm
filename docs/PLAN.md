@@ -127,3 +127,11 @@ El promotor aprueba fusionar PR #12 y pide continuar con la siguiente fase.
 #7 y #8 permanecen abiertas. El primer incremento de #9 introduce
 [contrato de adaptadores y admisión](PROVIDERS.md), sin declarar disponibles
 Claude Code, optimización de costes o un planificador multinodo.
+
+### Inicio autorizado de fase 4
+El promotor pide fusionar PR #13 y continuar con la siguiente fase.
+#7, #8 y #9 permanecen abiertas: esta autorización adelanta un incremento,
+sin declarar superados sus criterios de salida. El primer incremento de #10
+añade [iniciativas, hitos y dependencias](INITIATIVES.md), con límite de cambios
+en desarrollo o revisión y sin ampliar las aprobaciones de alcance o integración.
+Recetas, memoria versionada, roles y pilotos permanecen pendientes.
