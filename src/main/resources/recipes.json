@@ -1,0 +1,82 @@
+[
+  {
+    "id": "bugfix",
+    "version": 1,
+    "title": "Reproducir y corregir un bug",
+    "purpose": "Demostrar el fallo y comprobar una corrección acotada.",
+    "research_steps": [
+      "Identificar comportamiento esperado, observado y pasos de reproducción.",
+      "Intentar reproducir el fallo en el commit base y registrar comando, entorno y resultado; explicar si no es posible.",
+      "Proponer la corrección mínima y un test de regresión ligado a un criterio de aceptación."
+    ],
+    "required_evidence": [
+      "Resultado antes/después ligado a los SHA base y candidato, o excepción visible justificada.",
+      "Pruebas unitarias de las reglas modificadas y de integración de las interacciones afectadas; justificar los tipos no aplicables."
+    ],
+    "restrictions": [
+      "Investigar y proponer antes de implementar; no ampliar el alcance aprobado.",
+      "Una afirmación del agente no acredita una comprobación. Cada criterio requiere evidencia o excepción visible.",
+      "Publicar una PR forma parte de la implementación aprobada; fusionar requiere una acción humana por SHA."
+    ]
+  },
+  {
+    "id": "dependency-update",
+    "version": 1,
+    "title": "Actualizar una dependencia",
+    "purpose": "Actualizar una dependencia concreta con compatibilidad comprobable.",
+    "research_steps": [
+      "Identificar dependencia, versión instalada, versión objetivo solicitada y restricciones del proyecto.",
+      "Consultar notas oficiales de versión, compatibilidad, migraciones y avisos pertinentes con enlaces y fecha.",
+      "Proponer cambios en manifiesto y lockfile, pruebas de consumidores y forma de revertir; no actualizar otras dependencias sin aprobación."
+    ],
+    "required_evidence": [
+      "Versiones antes/después, fuentes oficiales y limitaciones conocidas.",
+      "Instalación reproducible y pruebas relevantes unitarias e integración de consumidores, con excepciones justificadas."
+    ],
+    "restrictions": [
+      "Investigar y proponer antes de implementar; no ampliar el alcance aprobado.",
+      "Una afirmación del agente no acredita una comprobación. Cada criterio requiere evidencia o excepción visible.",
+      "Publicar una PR forma parte de la implementación aprobada; fusionar requiere una acción humana por SHA."
+    ]
+  },
+  {
+    "id": "test-improvement",
+    "version": 1,
+    "title": "Mejorar las pruebas",
+    "purpose": "Cubrir un comportamiento o riesgo concreto con pruebas útiles.",
+    "research_steps": [
+      "Identificar un comportamiento o riesgo sin cobertura suficiente y revisar los tests existentes.",
+      "Proponer casos positivos, negativos y de frontera vinculados a criterios de aceptación.",
+      "Separar pruebas unitarias e integración aplicables; evitar pruebas que solo repitan la implementación."
+    ],
+    "required_evidence": [
+      "Casos añadidos, comandos, resultados y entorno ligados al SHA candidato.",
+      "Explicación de qué regresión detecta cada caso; no inventar cobertura porcentual no medida."
+    ],
+    "restrictions": [
+      "Investigar y proponer antes de implementar; no ampliar el alcance aprobado.",
+      "Una afirmación del agente no acredita una comprobación. Cada criterio requiere evidencia o excepción visible.",
+      "Publicar una PR forma parte de la implementación aprobada; fusionar requiere una acción humana por SHA."
+    ]
+  },
+  {
+    "id": "migration",
+    "version": 1,
+    "title": "Preparar una migración",
+    "purpose": "Dividir una migración en cambios revisables con compatibilidad y recuperación.",
+    "research_steps": [
+      "Inventariar arquitectura, interfaces, datos y restricciones en el commit base.",
+      "Definir alcance de este incremento, compatibilidad, transición de datos y riesgos; separar aspiraciones pendientes.",
+      "Proponer pasos, pruebas de compatibilidad y restauración o reversión; no desplegar ni migrar datos reales sin autorización específica."
+    ],
+    "required_evidence": [
+      "As-is desde la base y To-be de lo realmente implementado en el candidato.",
+      "Pruebas de las reglas e interacciones afectadas y ensayo de recuperación con datos de prueba o excepción explícita."
+    ],
+    "restrictions": [
+      "Investigar y proponer antes de implementar; no ampliar el alcance aprobado.",
+      "Una afirmación del agente no acredita una comprobación. Cada criterio requiere evidencia o excepción visible.",
+      "Publicar una PR forma parte de la implementación aprobada; fusionar requiere una acción humana por SHA."
+    ]
+  }
+]

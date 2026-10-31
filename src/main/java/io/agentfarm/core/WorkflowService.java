@@ -35,6 +35,10 @@ public class WorkflowService {
               c,
               "CREATE UNIQUE INDEX IF NOT EXISTS one_open_command ON work_commands(item) WHERE"
                   + " state IN ('queued','claimed')");
+          statement(
+              c,
+              "CREATE TABLE IF NOT EXISTS work_recipes(item TEXT PRIMARY KEY REFERENCES"
+                  + " work_items(id),snapshot TEXT NOT NULL)");
           EvidenceService.schema(c);
           InitiativeService.schema(c);
           return null;
@@ -50,7 +54,12 @@ public class WorkflowService {
   }
 
   public List<Map<String, Object>> items() {
-    return db.tx(c -> rows(c, "SELECT * FROM work_items ORDER BY created DESC"));
+    return db.tx(
+        c -> {
+          var items = rows(c, "SELECT * FROM work_items ORDER BY created DESC");
+          for (var item : items) withRecipe(c, item);
+          return items;
+        });
   }
 
   public Map<String, Object> get(String id) {
@@ -58,8 +67,15 @@ public class WorkflowService {
         c -> {
           var w = one(c, "SELECT * FROM work_items WHERE id=?", id);
           if (w == null) throw new IllegalArgumentException("Unknown work item");
-          return w;
+          return withRecipe(c, w);
         });
+  }
+
+  private static Map<String, Object> withRecipe(java.sql.Connection c, Map<String, Object> item)
+      throws Exception {
+    var saved = one(c, "SELECT snapshot FROM work_recipes WHERE item=?", item.get("id"));
+    if (saved != null) item.put("recipe", parse(saved.get("snapshot").toString()));
+    return item;
   }
 
   private void command(java.sql.Connection c, String id, String kind, Object payload)
@@ -83,6 +99,12 @@ public class WorkflowService {
         || !repo.matches("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
         || title.length() > 180
         || request.length() > 20000) throw new IllegalArgumentException("Invalid request");
+    var selected = n.get("recipe");
+    if (selected != null
+        && (!selected.isObject()
+            || !selected.path("id").isTextual()
+            || !selected.path("version").isIntegralNumber()))
+      throw new IllegalArgumentException("Recipe id and integer version required");
     return db.tx(
         c -> {
           var old = one(c, "SELECT * FROM work_items WHERE id=?", id);
@@ -91,8 +113,20 @@ public class WorkflowService {
                 || !old.get("title").equals(title)
                 || !old.get("request").equals(request))
               throw new IllegalArgumentException("Request identifier already used");
-            return old;
+            var prior = withRecipe(c, old);
+            var saved = MAPPER.valueToTree(prior).path("recipe");
+            if ((selected == null) != saved.isMissingNode()
+                || (selected != null
+                    && (!text(selected, "id").equals(saved.path("id").asText())
+                        || number(selected, "version") != saved.path("version").asLong())))
+              throw new IllegalArgumentException(
+                  "Request identifier already used with another recipe");
+            return prior;
           }
+          var recipe =
+              selected == null
+                  ? null
+                  : RecipeCatalog.snapshot(text(selected, "id"), number(selected, "version"));
           exec(
               c,
               "INSERT INTO work_items(id,repo,title,request,state,created) VALUES(?,?,?,?,?,?)",
@@ -102,9 +136,23 @@ public class WorkflowService {
               request,
               "queued",
               clock.instant().getEpochSecond());
+          if (recipe != null) {
+            exec(c, "INSERT INTO work_recipes VALUES(?,?)", id, encode(recipe));
+            audit(
+                c,
+                actor,
+                "work.recipe",
+                id
+                    + " "
+                    + recipe.path("id").asText()
+                    + "@"
+                    + recipe.path("version").asLong()
+                    + " "
+                    + recipe.path("hash").asText());
+          }
           command(c, id, "research", Map.of());
           audit(c, actor, "work.request", id);
-          return one(c, "SELECT * FROM work_items WHERE id=?", id);
+          return withRecipe(c, one(c, "SELECT * FROM work_items WHERE id=?", id));
         });
   }
 
@@ -298,7 +346,7 @@ public class WorkflowService {
               now,
               cmd.get("id"));
           var item = one(c, "SELECT * FROM work_items WHERE id=?", cmd.get("item"));
-          return obj("command", cmd, "item", item);
+          return obj("command", cmd, "item", withRecipe(c, item));
         });
   }
 

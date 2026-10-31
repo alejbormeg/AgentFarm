@@ -29,7 +29,9 @@ public class RuntimeChecks {
     check(
         !FarmDaemon.quotaObservation(
                 CodexRunner.JSON.readTree(
-                    sample(20, ",\"primary\":{\"usedPercent\":99,\"resetsAt\":2000000,\"windowDurationMins\":300}")),
+                    sample(
+                        20,
+                        ",\"primary\":{\"usedPercent\":99,\"resetsAt\":2000000,\"windowDurationMins\":300}")),
                 now)
             .path("allowed")
             .asBoolean());
@@ -124,6 +126,12 @@ public class RuntimeChecks {
       releaseQuota.countDown();
       loops.shutdownNow();
     }
+    check(FarmDaemon.recipeContext(CodexRunner.JSON.readTree("{}")).isEmpty());
+    var recipeItem =
+        CodexRunner.JSON.readTree(
+            "{\"recipe\":{\"id\":\"bugfix\",\"version\":1,\"hash\":\"abc\"}}");
+    check(FarmDaemon.recipeContext(recipeItem).contains("bugfix"));
+    check(FarmDaemon.recipeContext(recipeItem).contains("no concede aprobación"));
     System.out.println(checks + " runtime checks passed; no inference or network calls");
   }
 }
