@@ -122,8 +122,8 @@ tareas generadas o líneas de código.
 
 ## Estado y siguiente implementación
 
-- Implementado: simulador local, control de alcance de commits M1-001 y registro
-  de admisión por presupuesto [M1-002](BUDGET.md), primera pieza de Clover.
+- Implementado en Java: simulador, alcance Git, presupuesto Clover y control
+  plane Mateu local con registros, heartbeat y auditoría. [Migración](MIGRATION.md).
 - Definido como identidad: Boxer, Napoleon, Snowball y ambas topologías.
 - Propuesto: protocolo del consejo, supervisión completa de Clover y demás roles adicionales.
 - Pendiente: trabajadores reales, aislamiento, adaptadores y comunicación entre nodos.

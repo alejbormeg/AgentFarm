@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+if ! command -v docker >/dev/null || ! docker compose version >/dev/null 2>&1; then
+  echo "Instala Docker con Compose v2; en WSL activa la integración de Docker Desktop." >&2
+  exit 2
+fi
+case "${1:-up}" in
+  up)
+    docker compose up --build --wait -d
+    printf '\nAgentFarm: http://localhost:8080\nUsuario: admin\nConsulta tu contraseña con: ./agentfarm password\n'
+    ;;
+  password) docker compose exec -T agentfarm cat /data/admin-password.txt; printf '\n' ;;
+  stop) docker compose stop ;;
+  logs) docker compose logs --tail 100 agentfarm ;;
+  status) docker compose ps ;;
+  *) echo "Uso: ./agentfarm {up|password|stop|logs|status}" >&2; exit 2 ;;
+esac

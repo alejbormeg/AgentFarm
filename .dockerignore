@@ -1,0 +1,9 @@
+.git
+target
+data
+work
+outputs
+**/*.db*
+**/*.py
+__pycache__
+tests

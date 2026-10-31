@@ -4,7 +4,7 @@ Decisión del promotor: AgentFarm podrá usar **como máximo el 50% de la cuota
 semanal de Codex**. La mensualidad declarada de 20 USD es el precio de su
 suscripción; no se convierte en saldo de API ni en 10 USD semanales.
 
-`budget.py` implementa un registro local persistente de presupuestos y reservas.
+`BudgetService` implementa un registro local persistente de presupuestos y reservas.
 Todavía no hay un trabajador real ni un lector automático de cuotas conectado.
 Este incremento permite probar la decisión de admisión sin gastar dinero.
 
@@ -99,8 +99,8 @@ exacta con registros del proveedor sigue pendiente.
 ## Uso de la herramienta
 
 ```bash
-python3 budget.py --db budget.db configure examples/budget-subscription.json
-python3 budget.py --db budget.db status codex-subscription
+java -jar agentfarm.jar budget --db budget.db configure examples/budget-subscription.json
+java -jar agentfarm.jar budget --db budget.db status codex-subscription
 ```
 
 Sin una ventana y una observación vigentes, `status` devuelve `paused`.
