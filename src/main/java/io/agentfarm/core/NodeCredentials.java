@@ -27,8 +27,14 @@ public class NodeCredentials {
   }
 
   public Object issue(String node, String account, String actor) {
+    return issue(node, account, null, actor);
+  }
+
+  /** {@code apiAccount}: optional Clover API (USD) account for metered providers. */
+  public Object issue(String node, String account, String apiAccount, String actor) {
     ControlService.nodeIdentifier(node);
     ControlService.identifier(account);
+    if (apiAccount != null) ControlService.identifier(apiAccount);
     byte[] bytes = new byte[32];
     new java.security.SecureRandom().nextBytes(bytes);
     String token = "afn_" + Base64.getUrlEncoder().withoutPadding().encodeToString(bytes),
@@ -39,14 +45,23 @@ public class NodeCredentials {
               || one(c, "SELECT account FROM budget_accounts WHERE account=?", account) == null)
             throw new IllegalArgumentException(
                 "Register the node and budget account before enrollment");
+          if (apiAccount != null
+              && one(
+                      c,
+                      "SELECT 1 FROM budget_accounts WHERE account=? AND mode='api'",
+                      apiAccount)
+                  == null)
+            throw new IllegalArgumentException("The metered account must be a Clover api account");
           exec(
               c,
-              "INSERT INTO node_credentials VALUES(?,?,?,?,?,0)",
+              "INSERT INTO node_credentials(id,node,account,hash,created,revoked,api_account)"
+                  + " VALUES(?,?,?,?,?,0,?)",
               id,
               node,
               account,
               sha256(token),
-              clock.instant().getEpochSecond());
+              clock.instant().getEpochSecond(),
+              apiAccount);
           audit(c, actor, "node.credential.issue", id + " -> " + node);
           return obj(
               "id",
@@ -55,6 +70,8 @@ public class NodeCredentials {
               node,
               "account",
               account,
+              "api_account",
+              apiAccount == null ? "" : apiAccount,
               "token",
               token,
               "capabilities",
@@ -69,7 +86,8 @@ public class NodeCredentials {
         c ->
             one(
                 c,
-                "SELECT id,node,account FROM node_credentials WHERE hash=? AND revoked=0",
+                "SELECT id,node,account,COALESCE(api_account,'') api_account FROM node_credentials"
+                    + " WHERE hash=? AND revoked=0",
                 sha256(token)));
   }
 
@@ -78,7 +96,7 @@ public class NodeCredentials {
         c ->
             rows(
                 c,
-                "SELECT id,node,account,created,revoked FROM node_credentials ORDER BY created"
+                "SELECT id,node,account,api_account,created,revoked FROM node_credentials ORDER BY created"
                     + " DESC"));
   }
 

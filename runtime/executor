@@ -9,6 +9,12 @@ exec java "-Dagentfarm.url=${AGENTFARM_URL:-http://localhost:8080}" \
   "-Dagentfarm.node=$AGENTFARM_NODE" "-Dagentfarm.account=$AGENTFARM_ACCOUNT" \
   "-Dagentfarm.slot=${AGENTFARM_SLOT:-}" \
   "-Dagentfarm.sandbox=${AGENTFARM_SANDBOX:-container}" \
+  "-Dagentfarm.slots=${AGENTFARM_SLOTS:-1}" \
+  "-Dagentfarm.provider.research=${AGENTFARM_PROVIDER_RESEARCH:-codex}" \
+  "-Dagentfarm.provider.implement=${AGENTFARM_PROVIDER_IMPLEMENT:-codex}" \
+  "-Dagentfarm.provider.review=${AGENTFARM_PROVIDER_REVIEW:-codex}" \
+  "-Dagentfarm.claude-account=${AGENTFARM_CLAUDE_ACCOUNT:-}" \
+  "-Dagentfarm.claude-model=${AGENTFARM_CLAUDE_MODEL:-}" \
   "-Dagentfarm.implementer=${AGENTFARM_IMPLEMENTER:-$AGENTFARM_NODE-boxer}" \
   "-Dagentfarm.reviewer=${AGENTFARM_REVIEWER:-$AGENTFARM_NODE-reviewer}" \
   "-Dagentfarm.codex=${AGENTFARM_CODEX:-codex}" "-Dagentfarm.gh=${AGENTFARM_GH:-gh}" \

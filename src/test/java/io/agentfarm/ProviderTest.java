@@ -125,6 +125,14 @@ class ProviderTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> AgentAdapters.get("claude-code").normalizeQuota(raw(10), now));
+    assertEquals(
+        1_234_568,
+        AgentAdapters.get("claude-code")
+            .normalizeQuota(
+                n("type", "result", "subtype", "success", "is_error", false, "result", "ok", "total_cost_usd", 1.2345671),
+                now)
+            .path("used")
+            .asLong());
     assertThrows(IllegalArgumentException.class, () -> AgentAdapters.get("unknown"));
   }
 
@@ -217,6 +225,51 @@ class ProviderTest {
         "blocked",
         state(
             request(), n("state", "available", "mode", "api", "account", "account-a"), runtime()));
+  }
+
+  @Test
+  void claudeCodeIsAdmittedOnlyAgainstAnAvailableApiAccount() {
+    var claude = n("provider", "claude-code", "profile", "reinforced", "account", "api-a");
+    assertEquals(
+        "admissible",
+        state(claude, n("state", "available", "mode", "api", "account", "api-a"), runtime()));
+    assertEquals(
+        "blocked",
+        state(claude, n("state", "paused", "mode", "api", "account", "api-a"), runtime()));
+    assertEquals(
+        "blocked",
+        state(claude, n("state", "available", "mode", "subscription", "account", "api-a"), runtime()));
+    assertEquals(
+        "blocked",
+        state(
+            n("provider", "claude-code", "profile", "balanced", "account", "api-a", "additional_payment", true),
+            n("state", "available", "mode", "api", "account", "api-a"),
+            runtime()));
+  }
+
+  @Test
+  void claudeCodeCommandAndResultAreStrict() {
+    var review = ClaudeCodeAdapter.command("claude", "review", "");
+    assertTrue(review.containsAll(List.of("-p", "--output-format", "json", "Read,Glob,Grep")));
+    assertEquals("Bash", review.get(review.indexOf("--disallowedTools") + 1));
+    assertEquals(
+        "acceptEdits",
+        ClaudeCodeAdapter.command("claude", "implement", "").get(5));
+    assertThrows(IllegalArgumentException.class, () -> ClaudeCodeAdapter.command("claude", "merge", ""));
+    assertThrows(
+        IllegalArgumentException.class, () -> ClaudeCodeAdapter.command("claude", "review", "x; rm -rf /"));
+    var ok =
+        ClaudeCodeAdapter.parse(
+            "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"{}\","
+                + "\"session_id\":\"s1\",\"total_cost_usd\":0.5,\"modelUsage\":{\"claude-x\":{}}}");
+    assertEquals(500_000, ok.costMicros());
+    assertEquals("claude-x", ok.model());
+    for (String bad :
+        List.of(
+            "not json",
+            "{\"type\":\"result\",\"subtype\":\"error_max_turns\",\"is_error\":true,\"total_cost_usd\":1}",
+            "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"x\"}"))
+      assertThrows(IllegalArgumentException.class, () -> ClaudeCodeAdapter.parse(bad), bad);
   }
 
   @Test

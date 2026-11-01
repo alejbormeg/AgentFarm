@@ -26,9 +26,9 @@ Ver [CHANGELOG](../CHANGELOG.md#sin-publicar--auditoría-fase-0).
 
 | # | Entrega | Criterio de salida |
 | --- | --- | --- |
-| 2.1 | Adaptador Claude Code (CLI/SDK headless) sobre el contrato `AgentAdapter`, con lectura de cuota y cancelación. | Una tarea completa con Claude Code bajo las mismas reglas de admisión. |
-| 2.2 | Revisión cruzada: implementa un motor, revisa otro (rol Benjamin). | La evidencia registra motor y modelo de cada rol. |
-| 2.3 | Política de selección por receta y coste, sin fallback de pago implícito. | Elegir motor queda auditado y explicado en la tarea. |
+| 2.1 ✅ | Adaptador Claude Code (CLI/SDK headless) sobre el contrato `AgentAdapter`, con lectura de cuota y cancelación. | Una tarea completa con Claude Code bajo las mismas reglas de admisión. |
+| 2.2 ✅ | Revisión cruzada: implementa un motor, revisa otro (rol Benjamin). | La evidencia registra motor y modelo de cada rol. |
+| 2.3 ✅ | Política de selección por receta y coste, sin fallback de pago implícito. | Elegir motor queda auditado y explicado en la tarea. |
 
 ## Fase 3 — Proactivo
 

@@ -11,8 +11,8 @@ su ciclo de vida a una interfaz intercambiable.
 El catálogo declara capacidades de **AgentFarm**, no todas las del proveedor.
 Codex está integrado mediante app-server: eventos, interrupción y lectura de cuota
 de suscripción. La reanudación automática y la verificación independiente figuran
-como no implementadas. Claude Code figura como no integrado y cuota desconocida:
-no se instala ni ejecuta, no se simula su consumo y no se selecciona como fallback.
+como no implementadas. Claude Code está integrado en modo medido (ver abajo);
+nunca se selecciona como fallback.
 
 El normalizador Codex se comparte entre dominio y ejecutor. Usa el bucket codex
 de rateLimitsByLimitId cuando existe, o el formato legacy rateLimits cuando no.
@@ -56,3 +56,34 @@ eventos/interrupción/reanudación/artefactos, límites por proyecto y tarea,
 plazos y reintentos, planificación de varios ejecutores, perfiles realmente
 optimizados y medición de recursos/atención humana por cambio aceptado.
 El benchmark común entre proveedores y los criterios de salida siguen pendientes.
+
+## Claude Code (fase 2)
+El ejecutor puede usar Claude Code para cualquier rol, configurado por rol y
+nunca como sustituto automático de Codex:
+
+```text
+AGENTFARM_PROVIDER_RESEARCH=codex
+AGENTFARM_PROVIDER_IMPLEMENT=codex
+AGENTFARM_PROVIDER_REVIEW=claude-code   # revisión cruzada: implementa Codex, revisa Claude
+AGENTFARM_CLAUDE_ACCOUNT=claude-api     # cuenta Clover en modo api (USD)
+AGENTFARM_CLAUDE_MODEL=                 # opcional
+```
+
+- Ejecución: `claude -p --output-format json` en el checkout, con el prompt por
+  stdin. Herramientas cerradas por rol: investigación `Read,Glob,Grep,WebSearch,WebFetch`;
+  implementación `Read,Glob,Grep,Edit,Write,MultiEdit` con `acceptEdits`; revisión
+  `Read,Glob,Grep`. `Bash` siempre denegado: las pruebas corren en el sandbox.
+- Credencial: `STATE/anthropic-api-key` (permiso 600), inyectada solo en el
+  proceso de Claude Code; nunca en Git, en el panel ni en el sandbox de pruebas.
+- Coste: la cuota de suscripción de Claude no es observable, así que solo se
+  admite una cuenta Clover `api`. Antes de cada turno se reserva
+  `agentfarm.claude-turn-micros` (3 USD por defecto) en cada periodo; al terminar se
+  liquida con el `total_cost_usd` que informa Claude Code. Si el turno falla sin
+  coste conocido, la reserva queda `unknown` y Clover bloquea más trabajo hasta
+  que el propietario concilie.
+- La credencial del nodo se emite con `api_account` opcional
+  (`POST /api/executors {"node","account","api_account"}`); con ella el nodo solo
+  puede leer, reservar y liquidar esa cuenta, nunca configurarla.
+- La evidencia registra el proveedor de cada rol. El descriptor declara
+  `independent_verification: true`, de modo que el perfil reforzado es admisible
+  cuando la revisión la hace un proveedor distinto del implementador.

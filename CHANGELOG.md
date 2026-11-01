@@ -4,7 +4,17 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — fase 1: paralelo, CI del proyecto, prompts y migraciones
+## Sin publicar — fase 2: Claude Code y revisión cruzada
+
+- Adaptador Claude Code (`claude -p` JSON) con herramientas cerradas por rol y
+  sin Bash; proveedor configurable por rol, sin fallback automático.
+- Coste medido en USD contra una cuenta Clover `api`: reserva por turno y
+  liquidación con el coste real; credenciales de nodo con `api_account` opcional.
+- Evidencias y propuestas registran el proveedor de cada rol.
+- Las ranuras reservan su parte del margen semanal (`AGENTFARM_SLOTS`) en vez
+  de todo el margen restante, que impedía admitir trabajo en paralelo.
+
+## Fase 1: paralelo, CI del proyecto, prompts y migraciones (#19)
 
 - Varias tareas a la vez: límite global (`agentfarm.max-parallel`) y por
   repositorio; ranuras de ejecutor `<nodo>-s<N>` con estado propio y señal propia.
