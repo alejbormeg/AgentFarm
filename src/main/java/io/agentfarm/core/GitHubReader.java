@@ -7,7 +7,6 @@ import java.net.URI;
 import java.net.http.*;
 import java.nio.file.*;
 import java.time.Duration;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /** Read-only GitHub REST access with the owner's token file; used by triggers. */
@@ -19,15 +18,20 @@ public class GitHubReader {
     JsonNode get(String repo, String path) throws Exception;
   }
 
-  private final String tokenFile;
+  private final GitHubCredentials credentials;
   private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 
-  public GitHubReader(@Value("${agentfarm.github-token-file:}") String tokenFile) {
-    this.tokenFile = tokenFile;
+  @org.springframework.beans.factory.annotation.Autowired
+  public GitHubReader(GitHubCredentials credentials) {
+    this.credentials = credentials;
+  }
+
+  public GitHubReader(String tokenFile) {
+    this(GitHubCredentials.file(tokenFile));
   }
 
   public boolean configured() {
-    return !tokenFile.isBlank() && Files.isReadable(Path.of(tokenFile));
+    return credentials.configured();
   }
 
   public JsonNode get(String repo, String path) throws Exception {
@@ -37,7 +41,7 @@ public class GitHubReader {
         http.send(
             HttpRequest.newBuilder(URI.create("https://api.github.com/repos/" + repo + path))
                 .timeout(Duration.ofSeconds(20))
-                .header("Authorization", "Bearer " + Files.readString(Path.of(tokenFile)).trim())
+                .header("Authorization", "Bearer " + credentials.token())
                 .header("Accept", "application/vnd.github+json")
                 .GET()
                 .build(),

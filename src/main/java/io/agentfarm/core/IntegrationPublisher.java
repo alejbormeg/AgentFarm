@@ -16,27 +16,30 @@ import org.springframework.stereotype.Service;
 @Service
 public class IntegrationPublisher {
   private final WorkflowService work;
-  private final String tokenFile;
+  private final GitHubCredentials credentials;
   private final HttpClient http;
 
   @org.springframework.beans.factory.annotation.Autowired
-  public IntegrationPublisher(
-      WorkflowService work, @Value("${agentfarm.github-token-file:}") String tokenFile) {
-    this(work, tokenFile, HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());
+  public IntegrationPublisher(WorkflowService work, GitHubCredentials credentials) {
+    this(work, credentials, HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());
   }
 
   public IntegrationPublisher(WorkflowService work, String tokenFile, HttpClient http) {
+    this(work, GitHubCredentials.file(tokenFile), http);
+  }
+
+  public IntegrationPublisher(WorkflowService work, GitHubCredentials credentials, HttpClient http) {
     this.work = work;
-    this.tokenFile = tokenFile;
+    this.credentials = credentials;
     this.http = http;
   }
 
   public boolean configured() {
-    return !tokenFile.isBlank() && Files.isReadable(Path.of(tokenFile));
+    return credentials.configured();
   }
 
   private JsonNode github(String repo, String path, Object body) throws Exception {
-    String secret = Files.readString(Path.of(tokenFile)).trim();
+    String secret = credentials.token();
     var request =
         HttpRequest.newBuilder(URI.create("https://api.github.com/repos/" + repo + path))
             .timeout(Duration.ofSeconds(20))

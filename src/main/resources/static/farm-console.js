@@ -69,6 +69,29 @@ const liveSnapshots = (r) =>
       : [];
 const running = (r, id) =>
   liveSnapshots(r).find((x) => x.task_id === id && x.run_state !== "idle");
+// Expected implementation cost from settled runs of the same recipe (no estimate without data).
+const expectedCost = (costs, w) => {
+  const recipe = w.recipe?.id || "libre";
+  const found = Object.values(costs || {}).filter(
+    (c) => c.recipe === recipe && c.kind === "implement",
+  );
+  if (!found.length) return "";
+  return (
+    "Coste observado al implementar " +
+    (recipe === "libre" ? "peticiones libres" : "la receta " + recipe) +
+    ": " +
+    found
+      .map((c) =>
+        c.unit === "usd_micros"
+          ? "mediana " + (c.median / 1e6).toFixed(2) + " USD, p90 " + (c.p90 / 1e6).toFixed(2) + " USD"
+          : "mediana " + c.median / 100 + " %, p90 " + c.p90 / 100 + " % de la cuota semanal",
+      )
+      .join(" · ") +
+    " (" +
+    found.reduce((n, c) => n + c.runs, 0) +
+    " ejecuciones)."
+  );
+};
 const lastRepoKey = "agentfarm.lastRepository";
 const lastRepo = () => {
   try {
@@ -199,6 +222,10 @@ class FarmConsole extends HTMLElement {
         route === "governance" ? await api("/automation").catch(() => null) : null;
       const metrics =
         route === "overview" ? await api("/work/metrics").catch(() => null) : null;
+      const costs = ["overview", "tasks"].includes(route)
+        ? await api("/work/costs").catch(() => ({}))
+        : {};
+      this.me ||= await api("/me").catch(() => ({ role: "owner" }));
       const initiatives = ["overview", "tasks"].includes(route)
         ? await api("/initiatives")
         : [];
@@ -212,6 +239,8 @@ class FarmConsole extends HTMLElement {
         initiatives,
         automation,
         metrics,
+        costs,
+        me: this.me,
       };
       this.notifyAttention(work);
       this.render();
@@ -506,6 +535,11 @@ class FarmConsole extends HTMLElement {
         r.quota_fresh ? "" : "warn",
       ),
     );
+    const me = this.data.me;
+    if (me && me.role !== "owner")
+      this.strip.append(
+        pill(me.user + " · " + ({ reviewer: "revisor", observer: "observador" }[me.role] || me.role)),
+      );
     if (r.quota_fresh && q.allowed === false)
       this.strip.append(pill("Codex no admite trabajo", "warn"));
     const signature = JSON.stringify([
@@ -1727,7 +1761,11 @@ class FarmConsole extends HTMLElement {
       if (w.sha) detail.append(E("p", "Commit: " + w.sha));
       task.append(detail);
       const actions = E("div", "", "actions");
-      if (w.state === "proposed")
+      if (w.state === "proposed") {
+        const estimate = expectedCost(this.data.costs, w);
+        if (estimate) task.append(E("p", estimate, "muted"));
+      }
+      if (w.state === "proposed" && this.data.me?.role !== "observer")
         actions.append(
           button(
             "Implementar propuesta v" + w.version,
@@ -1738,7 +1776,7 @@ class FarmConsole extends HTMLElement {
             true,
           ),
         );
-      if (w.state === "review") {
+      if (w.state === "review" && this.data.me?.role === "owner") {
         const approve = E("details");
         approve.dataset.key = "approve-" + w.id;
         approve.append(

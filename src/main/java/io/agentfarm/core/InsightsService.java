@@ -29,6 +29,59 @@ public class InsightsService {
         + String.format("%02d", d.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
   }
 
+  /**
+   * Observed cost of finished runs per recipe and command kind (research, implement…), from
+   * settled Clover reservations. Used to show an expected range before approving a proposal.
+   */
+  public Map<String, Object> costs() {
+    return db.tx(
+        c -> {
+          var samples = new TreeMap<String, List<Long>>();
+          var units = new HashMap<String, String>();
+          for (var r :
+              rows(
+                  c,
+                  "SELECT b.run_id, b.actual, a.mode FROM budget_runs b JOIN budget_accounts a"
+                      + " USING(account) WHERE b.actual IS NOT NULL AND b.state IN"
+                      + " ('settled','overrun','reconciled')")) {
+            String run = r.get("run_id").toString();
+            String command =
+                run.startsWith("work-")
+                    ? run.substring(5)
+                    : run.startsWith("claude-") ? run.substring(7, Math.min(run.length(), 43)) : null;
+            if (command == null) continue;
+            var cmd =
+                one(
+                    c,
+                    "SELECT w.kind, COALESCE(json_extract(r.snapshot,'$.id'),'libre') recipe FROM"
+                        + " work_commands w LEFT JOIN work_recipes r ON r.item=w.item WHERE w.id=?",
+                    command);
+            if (cmd == null) continue;
+            long value = 0;
+            for (var v : parse(r.get("actual").toString())) value = Math.max(value, v.asLong());
+            String key = cmd.get("recipe") + "/" + cmd.get("kind") + "/" + r.get("mode");
+            samples.computeIfAbsent(key, k -> new ArrayList<>()).add(value);
+            units.put(key, r.get("mode").equals("api") ? "usd_micros" : "basis_points");
+          }
+          var out = new TreeMap<String, Object>();
+          for (var e : samples.entrySet()) {
+            var v = e.getValue();
+            Collections.sort(v);
+            String[] k = e.getKey().split("/");
+            out.put(
+                e.getKey(),
+                obj(
+                    "recipe", k[0],
+                    "kind", k[1],
+                    "unit", units.get(e.getKey()),
+                    "runs", v.size(),
+                    "median", v.get(v.size() / 2),
+                    "p90", v.get(Math.min(v.size() - 1, (int) Math.ceil(v.size() * 0.9) - 1))));
+          }
+          return out;
+        });
+  }
+
   public Map<String, Object> metrics(int weeks) {
     if (weeks < 1 || weeks > 26) throw new IllegalArgumentException("weeks must be 1-26");
     Instant since = clock.instant().minus(Duration.ofDays(7L * weeks));
