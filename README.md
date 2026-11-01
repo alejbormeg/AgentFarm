@@ -21,8 +21,10 @@ Java 21, Spring Boot 4 y Mateu. Un solo proceso, SQLite, sin Node ni servidor SQ
 Las pruebas de cada candidato se ejecutan en un contenedor desechable, sin
 credenciales ni `.git` y sin red por defecto. [Detalles](docs/INSTALLATION.md#pruebas-en-contenedor)
 
-**Todavía no:** varias tareas en paralelo (el ejecutor atiende una cada vez),
-adaptador de Claude Code, disparadores
+Varias tareas avanzan a la vez con ranuras de ejecutor, dentro de límites
+globales y por repositorio. [Paralelo](docs/INSTALLATION.md#varias-tareas-en-paralelo)
+
+**Todavía no:** adaptador de Claude Code, disparadores
 automáticos (CI rojo, CVE, issues etiquetadas) y coordinación entre varios nodos.
 La hoja de ruta está en [docs/ROADMAP.md](docs/ROADMAP.md).
 

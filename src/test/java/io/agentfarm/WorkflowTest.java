@@ -94,6 +94,25 @@ class WorkflowTest {
   }
 
   @Test
+  void slotsRunInParallelWithinGlobalAndRepositoryLimits() {
+    var parallel =
+        new WorkflowService(store, Clock.fixed(Instant.ofEpochSecond(1000), ZoneOffset.UTC), 2, 1);
+    for (String[] r :
+        new String[][] {{"request-a1", "owner/a"}, {"request-a2", "owner/a"}, {"request-b1", "owner/b"}, {"request-c1", "owner/c"}})
+      parallel.create(n("request_id", r[0], "repository", r[1], "title", "T", "request", "R"), "owner");
+    var first = (Map<?, ?>) parallel.claim("node-s1");
+    assertEquals("request-a1", ((Map<?, ?>) first.get("item")).get("id"));
+    assertTrue(((Map<?, ?>) parallel.claim("node-s1")).isEmpty(), "one command per executor");
+    var second = (Map<?, ?>) parallel.claim("node-s2");
+    assertEquals(
+        "request-b1", ((Map<?, ?>) second.get("item")).get("id"), "same repository is skipped");
+    assertTrue(((Map<?, ?>) parallel.claim("node-s3")).isEmpty(), "global limit reached");
+    assertThrows(IllegalArgumentException.class, () -> new WorkflowService(store, Clock.systemUTC(), 2, 3));
+    assertThrows(IllegalArgumentException.class, () -> ControlService.nodeIdentifier("napoleon-s1"));
+    assertDoesNotThrow(() -> ControlService.nodeIdentifier("napoleon-sur"));
+  }
+
+  @Test
   void claimReturnsTheClaimedCommand() {
     create();
     var command = (Map<?, ?>) claim().get("command");

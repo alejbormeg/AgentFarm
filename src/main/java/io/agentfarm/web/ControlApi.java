@@ -54,7 +54,12 @@ public class ControlApi {
   @PostMapping("/runtime/observations")
   public Object observeRuntime(@RequestBody JsonNode n, Principal p) {
     if (p.getName().startsWith("node:")
-        && !n.path("snapshot").path("node").asText().equals(p.getName().substring(5)))
+        && (!n.path("snapshot").path("node").asText().equals(p.getName().substring(5))
+            || !n.path("snapshot")
+                .path("executor")
+                .asText(p.getName().substring(5))
+                .matches(
+                    java.util.regex.Pattern.quote(p.getName().substring(5)) + "(-s[0-9]{1,2})?")))
       throw new org.springframework.security.access.AccessDeniedException("Node mismatch");
     telemetry.ingest(n);
     return Map.of("state", "recorded");

@@ -60,6 +60,15 @@ const attention = {
   integrated: 4,
   cancelled: 5,
 };
+// Fresh snapshots from every executor slot; older servers only send one snapshot.
+const liveSnapshots = (r) =>
+  r.executors?.length
+    ? r.executors.filter((x) => x.fresh).map((x) => x.snapshot)
+    : r.fresh
+      ? [r.snapshot || {}]
+      : [];
+const running = (r, id) =>
+  liveSnapshots(r).find((x) => x.task_id === id && x.run_state !== "idle");
 const lastRepoKey = "agentfarm.lastRepository";
 const lastRepo = () => {
   try {
@@ -441,7 +450,7 @@ class FarmConsole extends HTMLElement {
       s = r.snapshot || {},
       fresh = r.fresh,
       q = s.quota || {},
-      busy = fresh && !!s.codex_pid;
+      busy = liveSnapshots(r).some((x) => !!x.codex_pid);
     let work = allWork;
     if (this.repositorySelect && ["overview", "tasks"].includes(this.view)) {
       const repos = [...new Set(allWork.map((w) => w.repo))];
@@ -462,7 +471,14 @@ class FarmConsole extends HTMLElement {
       );
     }
     this.strip.replaceChildren(
-      pill(fresh ? "WSL conectado" : "WSL sin señal", fresh ? "ok" : "bad"),
+      pill(
+        fresh
+          ? liveSnapshots(r).length > 1
+            ? liveSnapshots(r).length + " ejecutores conectados"
+            : "WSL conectado"
+          : "WSL sin señal",
+        fresh ? "ok" : "bad",
+      ),
       pill(
         busy
           ? "Codex trabajando"
@@ -489,6 +505,7 @@ class FarmConsole extends HTMLElement {
       this.view,
       s.run_state,
       s.task_id,
+      liveSnapshots(r).map((x) => [x.executor, x.run_state, x.task_id]),
       fresh,
       busy,
       r.quota_fresh,
@@ -533,26 +550,27 @@ class FarmConsole extends HTMLElement {
     this.live.replaceChildren();
     if (this.view === "overview") {
       const map = E("div", "", "map");
-      const phase = s.run_state || s.phase || "idle";
+      const phases = liveSnapshots(r).map((x) => x.run_state || x.phase || "idle");
+      const phase = (p) => phases.includes(p);
       for (const [name, icon, state] of [
         [
           "Napoleon",
           hat,
-          phase === "researching" ? "Investigando" : "Coordina la cola",
+          phase("researching") ? "Investigando" : "Coordina la cola",
         ],
         [
           "Boxer",
           () => horse(),
-          phase === "implementing"
+          phase("implementing")
             ? "Implementando"
-            : phase === "testing"
+            : phase("testing")
               ? "Ejecutando tests"
               : "Disponible",
         ],
         [
           "Revisor",
           () => horse("Caballo revisor"),
-          phase === "reviewing" ? "Revisando" : "Disponible",
+          phase("reviewing") ? "Revisando" : "Disponible",
         ],
       ]) {
         if (map.children.length) map.append(E("span", "→", "arrow"));
@@ -1217,16 +1235,14 @@ class FarmConsole extends HTMLElement {
       row.append(
         E("h3", w.title),
         pill(
-          this.data.runtime.fresh &&
-            this.data.runtime.snapshot?.task_id === w.id &&
-            this.data.runtime.snapshot?.run_state !== "idle"
+          running(this.data.runtime, w.id)
             ? {
                 researching: "Napoleon investigando",
                 implementing: "Boxer implementando",
                 testing: "Ejecutando tests",
                 reviewing: "Revisión independiente",
                 integrating: "Integrando PR",
-              }[this.data.runtime.snapshot.run_state] || names[w.state]
+              }[running(this.data.runtime, w.id).run_state] || names[w.state]
             : names[w.state] || w.state,
           w.state === "blocked" ? "bad" : w.state === "integrated" ? "ok" : "",
         ),

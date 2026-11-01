@@ -218,6 +218,18 @@ class WebTest {
     claim.header(csrf.path("header").asText(), csrf.path("token").asText());
     assertEquals(
         200, executor.send(claim.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+    for (var agent : Map.of("test-executor-s2", 200, "other-executor", 403, "test-executor-x", 403).entrySet())
+      assertEquals(
+          agent.getValue(),
+          executor
+              .send(
+                  claim
+                      .copy()
+                      .POST(HttpRequest.BodyPublishers.ofString("{\"agent\":\"" + agent.getKey() + "\"}"))
+                      .build(),
+                  HttpResponse.BodyHandlers.ofString())
+              .statusCode(),
+          agent.getKey());
     assertTrue(
         Set.of(401, 302, 403)
             .contains(

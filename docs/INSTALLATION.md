@@ -123,3 +123,40 @@ Publicar JAR/imagen/paquete de ejecutor; probar desde una máquina limpia;
 separar de verdad la identidad y permisos GitHub del trabajador; completar
 reconciliación/retención; revisar licencias de distribución; medir instalación
 y primera tarea con cinco usuarios (al menos cuatro en menos de 15 minutos).
+
+## Varias tareas en paralelo
+El panel admite varios comandos reclamados a la vez: como máximo
+`agentfarm.max-parallel` (2 por defecto, `AGENTFARM_MAX_PARALLEL`) y
+`agentfarm.max-per-repository` por repositorio (1). Cada ejecutor reclama un
+único comando. Para trabajar en paralelo instala varias ranuras del mismo nodo:
+
+```bash
+./install-executor.sh /ruta/executor.env 1
+./install-executor.sh /ruta/executor.env 2
+systemctl --user status agentfarm-executor-s1 agentfarm-executor-s2
+```
+
+Cada ranura reclama como `<nodo>-s<N>` con la credencial del nodo, usa su propio
+directorio de trabajo, recibos y diario de reservas, y publica su señal por
+separado; el panel muestra cuántos ejecutores están conectados. Todas comparten
+la cuenta de cuota, así que Clover sigue limitando la admisión conjunta.
+
+## CI del proyecto
+Si el commit base ya tiene workflows en `.github/workflows/`, AgentFarm no añade
+el suyo: la evidencia exige que **todas** las comprobaciones de GitHub del SHA
+terminen bien (`ci_checks: ["*"]`). Solo los repositorios sin CI reciben
+`.github/workflows/agentfarm.yml` con los comandos aprobados. Un candidato que
+modifica los workflows propios del proyecto queda como PR en borrador
+(`workflow_changes` en la evidencia): ese cambio debe revisarlo una persona,
+porque podría debilitar la misma comprobación que lo valida.
+
+## Prompts versionados
+Las instrucciones de investigación, implementación y revisión viven en
+`src/main/resources/prompts/*.vN.md`. La propuesta y la evidencia guardan el id
+y el hash SHA-256 de la plantilla usada. Cambiar un prompt es crear `vN+1` y
+actualizar `Prompts.CURRENT`, de modo que los resultados previos siguen trazables.
+
+## Migraciones de esquema
+`schema_migrations` registra las versiones aplicadas. Cada versión nueva se
+aplica una vez y en una transacción; un panel antiguo se niega a abrir una base
+de datos escrita por una versión más reciente. Haz `backup` antes de actualizar.
