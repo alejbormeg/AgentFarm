@@ -20,7 +20,8 @@ PROPOSAL = {
     "integration_test": "grep -q hola greeting.txt",
     "setup": "",
     "criteria": [
-        {"id": "AC-1", "description": "greeting.txt existe", "method": "test", "checks": ["unit"]},
+        # Shape returned by the real Codex in the first forja pilot: commands keyed by check.
+        {"id": "AC-1", "description": "greeting.txt existe", "method": "test", "checks": {"unit": "test -f greeting.txt"}},
         {"id": "AC-2", "description": "contiene hola", "method": "test", "checks": ["integration"]},
     ],
     "sources": [],

@@ -4,7 +4,16 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — fase 7: señales de producción
+## Sin publicar — primer piloto real (forja)
+
+- Prompt de investigación `research.v2` con la forma exacta de `checks`; el
+  ejecutor normaliza variantes inofensivas (objeto o texto) antes de enviar la
+  propuesta. En el piloto, Codex devolvió `checks: {"unit": "comando"}` y el
+  panel rechazó una investigación ya pagada.
+- Las lecturas de GitHub se reintentan (3 veces, con espera) ante fallos de red
+  pasajeros; las escrituras no, para no duplicar issues ni PR.
+
+## Fase 7: señales de producción (#26)
 
 - Disparador Sentry: errores nuevos sin resolver abren propuestas `bugfix`, una vez cada uno.
 - Herramientas MCP por proyecto: el perfil solo nombra servidores definidos por el

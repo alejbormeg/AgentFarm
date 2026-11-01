@@ -95,8 +95,24 @@ public class FarmDaemon extends CodexRunner {
       Files.writeString(body, JSON.writeValueAsString(payload == null ? Map.of() : payload));
       var args = new ArrayList<>(List.of(GH, "api", "--method", method, endpoint));
       if (payload != null) args.addAll(List.of("--input", body.toString()));
-      String result = process(STATE, 45, args.toArray(String[]::new));
-      return result.isBlank() ? JSON.createObjectNode() : JSON.readTree(result);
+      // Reads are retried on transient network failures; writes are not, to avoid duplicates.
+      for (int attempt = 1; ; attempt++) {
+        try {
+          String result = process(STATE, 45, args.toArray(String[]::new));
+          return result.isBlank() ? JSON.createObjectNode() : JSON.readTree(result);
+        } catch (IOException e) {
+          String m = String.valueOf(e.getMessage());
+          boolean transientFailure =
+              m.contains("timeout")
+                  || m.contains("TLS handshake")
+                  || m.contains("connection reset")
+                  || m.contains("HTTP 502")
+                  || m.contains("HTTP 503");
+          if (!method.equals("GET") || !transientFailure || attempt == 3) throw e;
+          event("error", "GitHub no respondió (" + attempt + "/3); reintento: " + clean(m));
+          Thread.sleep(5000L * attempt);
+        }
+      }
     } finally {
       Files.deleteIfExists(body);
     }
@@ -604,6 +620,7 @@ public class FarmDaemon extends CodexRunner {
               + JSON.writeValueAsString(profile.summary());
     prompt += memoryContext(memory);
     JsonNode p = resultJson(agentTurn("research", prompt));
+    io.agentfarm.core.ProposalShape.normalize(p);
     ((com.fasterxml.jackson.databind.node.ObjectNode) p)
         .set("prompt", JSON.valueToTree(rendered.reference()));
     ((com.fasterxml.jackson.databind.node.ObjectNode) p).put("provider", providerFor("research"));
