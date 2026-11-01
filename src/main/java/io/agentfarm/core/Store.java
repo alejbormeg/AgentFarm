@@ -122,6 +122,16 @@ public class Store {
     for (int i = 0; i < args.length; i++) p.setObject(i + 1, args[i]);
   }
 
+  /** Adds a nullable column to an existing table once; safe on fresh and upgraded databases. */
+  public static void ensureColumn(Connection c, String table, String column, String type)
+      throws SQLException {
+    if (!table.matches("[a-z_]+") || !column.matches("[a-z_]+") || !type.matches("[A-Z]+"))
+      throw new IllegalArgumentException("Invalid schema identifier");
+    for (var col : rows(c, "PRAGMA table_info(" + table + ")"))
+      if (column.equals(col.get("name"))) return;
+    statement(c, "ALTER TABLE " + table + " ADD COLUMN " + column + " " + type);
+  }
+
   public static void audit(Connection c, String actor, String action, String subject)
       throws SQLException {
     exec(

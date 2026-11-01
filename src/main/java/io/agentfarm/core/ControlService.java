@@ -17,6 +17,11 @@ public class ControlService {
     this.store = store;
     this.clock = clock;
     this.budgets = budgets;
+    store.tx(
+        c -> {
+          Store.ensureColumn(c, "farm_nodes", "busy_until", "INTEGER");
+          return null;
+        });
   }
 
   public static void identifier(String id) {
@@ -126,13 +131,26 @@ public class ControlService {
           case "worker" -> "farm_workers";
           default -> throw new IllegalArgumentException("Unknown entity type");
         };
+    long now = clock.instant().getEpochSecond();
     store.tx(
         c -> {
+          // Several executor slots share one node: a busy report holds for a heartbeat window,
+          // so an idle slot does not flip a node that another slot keeps busy.
+          String reported = state;
+          if (kind.equals("node")) {
+            if (state.equals("busy"))
+              exec(c, "UPDATE farm_nodes SET busy_until=? WHERE id=?", now + 12, id);
+            else {
+              var row = one(c, "SELECT busy_until FROM farm_nodes WHERE id=?", id);
+              if (row != null && row.get("busy_until") != null && num(row, "busy_until") > now)
+                reported = "busy";
+            }
+          }
           if (exec(
                   c,
                   "UPDATE " + table + " SET heartbeat=?,reported_state=? WHERE id=?",
-                  clock.instant().getEpochSecond(),
-                  state,
+                  now,
+                  reported,
                   id)
               == 0) throw new IllegalArgumentException("Unknown entity");
           return null;

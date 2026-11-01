@@ -53,6 +53,16 @@ class WebTest {
   }
 
   @Test
+  void healthIsPublicButOnlyTheOwnerSeesDetails() throws Exception {
+    var anonymous = get("/api/health", false);
+    assertEquals(200, anonymous.statusCode());
+    assertEquals("{\"status\":\"UP\"}", anonymous.body());
+    var owner = Json.parse(get("/api/health", true).body());
+    assertEquals("UP", owner.path("status").asText());
+    assertTrue(owner.has("waiting_for_owner") && owner.has("executors_fresh"));
+  }
+
+  @Test
   void anonymousCannotReadControlPlane() throws Exception {
     assertTrue(Set.of(401, 302).contains(get("/api/overview", false).statusCode()));
   }

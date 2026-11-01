@@ -31,7 +31,11 @@ Disparadores (issue etiquetada, CI roto, Dependabot, revisión semanal, feedback
 PR) abren propuestas solos, y la autonomía por receta puede aprobar cambios de
 bajo riesgo verificados por tests. Integrar siempre es tuyo. [Automatización](docs/AUTOMATION.md)
 
-**Todavía no:** coordinación entre varios nodos.
+Consulta la bandeja y crea peticiones desde Claude Code o Claude Desktop con el
+servidor MCP incluido. [MCP](docs/MCP.md)
+
+**Todavía no:** coordinación entre varios nodos, roles de equipo y una ejecución
+de punta a punta automatizada en CI. Ver la [segunda auditoría](docs/AUDIT-2026-11.md).
 La hoja de ruta está en [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Empezar en 3 pasos

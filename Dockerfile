@@ -18,5 +18,5 @@ COPY --from=build /native/libsqlitejdbc.so /app/native/libsqlitejdbc.so
 USER 10001:10001
 ENV AGENTFARM_BIND=0.0.0.0 AGENTFARM_DB=/data/agentfarm.db
 EXPOSE 8080
-HEALTHCHECK --interval=10s --timeout=3s --start-period=40s --retries=6 CMD curl -fsS http://127.0.0.1:8080/login >/dev/null || exit 1
+HEALTHCHECK --interval=10s --timeout=3s --start-period=40s --retries=6 CMD curl -fsS http://127.0.0.1:8080/api/health >/dev/null || exit 1
 ENTRYPOINT ["java","-Dorg.sqlite.lib.path=/app/native","-jar","/app/agentfarm.jar"]
