@@ -60,7 +60,7 @@ public class SecurityConfig {
       throws Exception {
     http.authorizeHttpRequests(
             a ->
-                a.requestMatchers("/login", "/error")
+                a.requestMatchers("/login", "/error", "/api/health")
                     .permitAll()
                     .requestMatchers(
                         "/api/providers/admission",

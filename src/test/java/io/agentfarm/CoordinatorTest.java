@@ -112,6 +112,21 @@ class CoordinatorTest {
   }
 
   @Test
+  void busySlotHoldsNodeStateAgainstIdleSlots() {
+    control.registerNode("napoleon-1", "napoleon", "owner");
+    control.heartbeat("node", "napoleon-1", "busy", "node:napoleon-1");
+    control.heartbeat("node", "napoleon-1", "idle", "node:napoleon-1");
+    assertEquals("busy", store.tx(c -> Store.one(c, "SELECT reported_state FROM farm_nodes")).get("reported_state"));
+    var later =
+        new ControlService(
+            store,
+            Clock.fixed(clock.instant().plusSeconds(13), ZoneOffset.UTC),
+            new BudgetService(store, clock));
+    later.heartbeat("node", "napoleon-1", "idle", "node:napoleon-1");
+    assertEquals("idle", store.tx(c -> Store.one(c, "SELECT reported_state FROM farm_nodes")).get("reported_state"));
+  }
+
+  @Test
   void heartbeatIsUnknownUntilObservedAndExpires() {
     control.registerNode("napoleon-1", "napoleon", "owner");
     assertEquals("unknown", control.nodes().getFirst().get("status"));

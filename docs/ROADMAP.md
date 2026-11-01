@@ -39,7 +39,7 @@ Ver [CHANGELOG](../CHANGELOG.md#sin-publicar--auditoría-fase-0).
 | 3.3 ✅ | Niveles de autonomía por receta (p. ej. dependencias *patch* con CI verde pueden autoaprobarse); por defecto todo requiere al humano. | La política es versionada, visible y auditada; desactivarla bloquea al instante. |
 | 3.4 ✅ | Sobre la [memoria de proyecto](PROJECT_MEMORY.md) existente: el revisor propone lecciones nuevas (tests inestables, rechazos repetidos) como PR de memoria que el humano aprueba. | Un rechazo con motivo genera una propuesta de memoria enlazada. |
 
-## Fase 4 — Medible
+## Fase 4 — Medible (hecha salvo 4.4, movida a 7.1)
 
 | # | Entrega | Criterio de salida |
 | --- | --- | --- |
@@ -47,6 +47,32 @@ Ver [CHANGELOG](../CHANGELOG.md#sin-publicar--auditoría-fase-0).
 | 4.2 ✅ | Métricas: propuestas aprobadas, PR integradas sin corrección, cuota por PR integrada, tiempo de ciclo, regresiones posteriores. | Panel con series semanales calculadas desde la auditoría. |
 | 4.3 ✅ | Notificaciones (web push, Telegram o correo) cuando algo espera tu decisión. | Aviso en menos de un minuto tras pasar a *proposed* o *review*. |
 | 4.4 | Herramientas MCP opcionales por proyecto (Sentry, base de datos de pruebas, navegador). | Declaradas en `agentfarm.yaml` y visibles en la propuesta. |
+
+## Fase 5 — Operable desde donde trabajas (auditoría de noviembre)
+
+Origen: [segunda auditoría](AUDIT-2026-11.md).
+
+| # | Entrega | Criterio de salida |
+| --- | --- | --- |
+| 5.1 ✅ | Servidor MCP de AgentFarm (stdio): bandeja, peticiones, propuestas y métricas desde Claude Code o Claude Desktop; sin aprobar ni integrar. | Un cliente MCP lista la bandeja y crea una petición con la credencial del propietario. |
+| 5.2 ✅ | `GET /api/health` sin secretos (panel, base de datos, ejecutores frescos, cola) y latido de nodo agregado entre ranuras. | El healthcheck de Compose usa `/api/health`; el nodo no parpadea con dos ranuras. |
+| 5.3 | Ejecución de punta a punta en CI con Codex app-server y `gh` simulados. | Una tarea recorre research → implement → review → PR en CI sin red ni cuota. |
+
+## Fase 6 — Equipo pequeño
+
+| # | Entrega | Criterio de salida |
+| --- | --- | --- |
+| 6.1 | Roles propietario, revisor y observador; 2FA opcional. | Un revisor aprueba propuestas pero no integra. |
+| 6.2 | GitHub App con permisos mínimos por repositorio. | El panel funciona sin token personal. |
+| 6.3 | Coste esperado por receta antes de aprobar, desde el histórico. | La propuesta muestra el rango de coste observado. |
+
+## Fase 7 — Señales de producción
+
+| # | Entrega | Criterio de salida |
+| --- | --- | --- |
+| 7.1 | Herramientas MCP por proyecto declaradas en `agentfarm.yaml` (antigua 4.4). | Visibles en la propuesta y limitadas por rol. |
+| 7.2 | Disparadores desde Sentry/Grafana. | Un error nuevo abre una propuesta `bugfix` enlazada. |
+| 7.3 | Interfaz fuera de Mateu beta o actualizada a Vaadin 26. | Sin avisos de deprecación; mismas vistas. |
 
 ## Fuera de alcance por ahora
 

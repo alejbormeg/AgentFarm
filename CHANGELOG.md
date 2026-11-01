@@ -4,7 +4,15 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — fase 4: bandeja, resultados y avisos
+## Sin publicar — fase 5: MCP, salud y segunda auditoría
+
+- Segunda auditoría crítica ([AUDIT-2026-11](docs/AUDIT-2026-11.md)) y fases 5–7 en la hoja de ruta.
+- `agentfarm.jar mcp`: servidor MCP por stdio para Claude Code y Claude Desktop
+  (bandeja, tareas, peticiones, métricas y estado; sin aprobar ni integrar). [Guía](docs/MCP.md)
+- `GET /api/health` público (UP/DOWN) con detalles para el propietario; healthcheck de Docker.
+- El estado del nodo ya no parpadea con varias ranuras: un latido ocupado se mantiene 12 s.
+
+## Fase 4: bandeja, resultados y avisos (#22)
 
 - Visor de diff del candidato en la bandeja (`GET /api/work/{id}/diff`).
 - Resultados por semana desde la auditoría (`GET /api/work/metrics`) en Panorama.
