@@ -810,10 +810,18 @@ public class FarmDaemon extends CodexRunner {
               "AgentFarm " + kind,
               "runs-on",
               "ubuntu-24.04",
+              // Same image as the local sandbox: setup runs as root there, as in the container.
+              "container",
+              p.path("sandbox").path("mode").asText("container").equals("host")
+                  ? null
+                  : obj(
+                      "image",
+                      p.path("sandbox").path("image").asText(SANDBOX_IMAGE)),
               "timeout-minutes",
               15,
               "steps",
               steps));
+      jobs.values().forEach(job -> ((Map<?, ?>) job).values().removeIf(Objects::isNull));
     }
     // Respect the project's own CI: only repositories without workflows get the template.
     if (!ownCi) {

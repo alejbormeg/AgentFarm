@@ -104,6 +104,7 @@ public final class TestSandbox {
       } finally {
         Files.deleteIfExists(archive);
       }
+      ensureImage(policy.image());
       check(runner.run(createArgs(name, tree, policy), Duration.ofMinutes(10)), "docker create");
       check(runner.run(List.of(docker, "start", name), Duration.ofMinutes(1)), "docker start");
       var results = new ArrayList<Map<String, Object>>();
@@ -140,6 +141,44 @@ public final class TestSandbox {
     } finally {
       cleanup(name, tree);
     }
+  }
+
+  /**
+   * Pulls a missing image before the run. Transient registry failures are retried; a credential
+   * helper that does not exist on this host (e.g. Docker Desktop's, left in ~/.docker/config.json)
+   * falls back to an anonymous pull, which is enough for public images.
+   */
+  void ensureImage(String image) throws Exception {
+    if (runner.run(List.of(docker, "image", "inspect", "--format", "{{.Id}}", image), Duration.ofSeconds(30)).exit() == 0)
+      return;
+    String last = "";
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      var out = runner.run(List.of(docker, "pull", "-q", image), Duration.ofMinutes(15));
+      if (out.exit() == 0) return;
+      last = out.text();
+      if (last.contains("docker-credential-")) {
+        Path anonymous = Files.createTempDirectory("agentfarm-docker-config-");
+        try {
+          out =
+              runner.run(
+                  List.of(docker, "--config", anonymous.toString(), "pull", "-q", image),
+                  Duration.ofMinutes(15));
+          if (out.exit() == 0) return;
+          last = out.text();
+        } finally {
+          Files.deleteIfExists(anonymous);
+        }
+      }
+      if (!(last.contains("timeout") || last.contains("TLS") || last.contains("connection reset"))) break;
+    }
+    throw new IllegalStateException(
+        "Sandbox image "
+            + image
+            + " unavailable: "
+            + last.substring(0, Math.min(last.length(), 600))
+            + (last.contains("docker-credential-")
+                ? " (remove the stale credsStore from ~/.docker/config.json)"
+                : ""));
   }
 
   private void cleanup(String name, Path tree) {

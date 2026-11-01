@@ -30,13 +30,18 @@ class TestSandboxTest {
         return new Output(0, "");
       }
       if (argv.get(0).equals("tar")) return new Output(0, "");
+      if (argv.contains("inspect")) return answers.getOrDefault("inspect", new Output(0, "sha256:x"));
+      if (argv.contains("pull"))
+        return argv.contains("--config")
+            ? answers.getOrDefault("anonymous-pull", new Output(0, ""))
+            : answers.getOrDefault("pull", new Output(0, ""));
       String command = argv.get(argv.size() - 1);
       return answers.getOrDefault(command, new Output(0, "ok"));
     }
 
     List<String> docker() {
       return calls.stream()
-          .filter(c -> c.get(0).equals("docker"))
+          .filter(c -> c.get(0).equals("docker") && !c.contains("inspect"))
           .map(c -> c.get(1) + (c.get(1).equals("exec") ? " " + c.get(3) + " " + c.get(c.size() - 1) : ""))
           .toList();
     }
@@ -101,6 +106,25 @@ class TestSandboxTest {
     assertEquals("none", create.get(create.indexOf("--network") + 1));
     assertFalse(fake.docker().contains("network"));
     assertEquals("not_applicable", results.get(1).get("status"));
+  }
+
+  @Test
+  void missingImageIsPulledWithRetriesAndWithoutAStaleCredentialHelper() throws Exception {
+    var fake = new Fake();
+    fake.answers.put("inspect", new Output(1, "No such image"));
+    fake.answers.put("pull", new Output(1, "error getting credentials - err: exec: \"docker-credential-desktop.exe\": executable file not found"));
+    new TestSandbox(fake, "docker", "1000:1000").run(repo, SHA, Policy.defaults("img:1"), "", tests("a", "b"));
+    assertTrue(fake.calls.stream().anyMatch(c -> c.contains("--config") && c.contains("pull")), "anonymous fallback");
+    var failing = new Fake();
+    failing.answers.put("inspect", new Output(1, "No such image"));
+    failing.answers.put("pull", new Output(1, "net/http: TLS handshake timeout"));
+    var error =
+        assertThrows(
+            IllegalStateException.class,
+            () -> new TestSandbox(failing, "docker", "1000:1000").run(repo, SHA, Policy.defaults("img:1"), "", tests("a", "b")));
+    assertTrue(error.getMessage().contains("img:1"));
+    assertEquals(3, failing.calls.stream().filter(c -> c.contains("pull")).count(), "transient failures retried");
+    assertEquals("rm", failing.docker().getLast(), "cleanup still runs");
   }
 
   @Test

@@ -111,7 +111,7 @@ assert len(item["sha"]) == 40 and item["branch"].startswith("agentfarm/"), item
 assert evidence["passed"] is True, evidence
 assert evidence["unit"]["status"] == "passed" and evidence["integration"]["status"] == "passed", evidence
 assert evidence["review"]["passed"] is True
-assert evidence["prompts"]["review"]["id"] == "review.v1"
+assert evidence["prompts"]["review"]["id"] == "review.v2"
 pulls = json.load(open(gh))["pulls"]
 assert pulls["1"]["draft"] is False and pulls["1"]["head"] == item["branch"], pulls
 print("E2E OK:", item["state"], "PR", item["pr"], item["sha"][:12], "sandbox", evidence["unit"].get("sandbox", {}).get("mode", "host"))
@@ -119,3 +119,15 @@ PY
 git -C "$work/remote.git" rev-parse --verify -q "refs/heads/$(state >/dev/null; curl -fs -u "admin:$password" "$panel/api/work" | python3 -c 'import json,sys;print([x for x in json.load(sys.stdin) if x["id"]=="e2e-request-0001"][0]["branch"])')" > /dev/null \
   || fail "branch not pushed to the remote"
 echo "Branch pushed to remote"
+branch=$(git -C "$work/remote.git" branch --list 'agentfarm/*' | tr -d ' *' | head -1)
+git -C "$work/remote.git" show "$branch:.github/workflows/agentfarm.yml" | python3 -c '
+import json, sys
+jobs = json.load(sys.stdin)["jobs"]
+mode = sys.argv[1]
+for name, job in jobs.items():
+    if mode == "host":
+        assert "container" not in job, job
+    else:
+        assert job["container"]["image"] == "bash:5.2", job
+print("CI template runs in the sandbox image:", mode != "host")
+' "$sandbox"
