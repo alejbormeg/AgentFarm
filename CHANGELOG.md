@@ -4,7 +4,16 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — fase 2: Claude Code y revisión cruzada
+## Sin publicar — fase 3: automatización gobernada
+
+- Disparadores por repositorio (issue etiquetada, CI roto, Dependabot, revisión
+  semanal, comentarios y checks de PR) que abren propuestas una sola vez y con límite.
+- Autonomía por receta: `auto_implement` para cambios de bajo riesgo verificados
+  por tests en contenedor; la integración sigue siendo humana.
+- Lecciones de memoria propuestas a partir de tus correcciones (opcional).
+- Sección Automatización en Gobierno y API `/api/automation`. [Guía](docs/AUTOMATION.md)
+
+## Fase 2: Claude Code y revisión cruzada (#20)
 
 - Adaptador Claude Code (`claude -p` JSON) con herramientas cerradas por rol y
   sin Bash; proveedor configurable por rol, sin fallback automático.

@@ -189,7 +189,8 @@ class WebTest {
             "/api/evidence",
             "/api/providers",
             "/api/initiatives",
-            "/api/recipes"))
+            "/api/recipes",
+            "/api/automation"))
       assertEquals(
           403,
           executor.send(request.apply(denied), HttpResponse.BodyHandlers.ofString()).statusCode(),

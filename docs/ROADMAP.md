@@ -34,10 +34,10 @@ Ver [CHANGELOG](../CHANGELOG.md#sin-publicar--auditoría-fase-0).
 
 | # | Entrega | Criterio de salida |
 | --- | --- | --- |
-| 3.1 | Disparadores con política: issue con etiqueta `agentfarm`, CI rojo en la rama principal, alertas Dependabot/CVE, cron semanal de mejoras. Cada uno crea una propuesta, nunca una implementación. | Un CI rojo genera una propuesta enlazada al run fallido. |
-| 3.2 | Bucle de revisión: comentarios de la PR y checks fallidos generan una nueva versión del candidato dentro del presupuesto. | Un comentario de revisión produce un commit nuevo y nueva aprobación por SHA. |
-| 3.3 | Niveles de autonomía por receta (p. ej. dependencias *patch* con CI verde pueden autoaprobarse); por defecto todo requiere al humano. | La política es versionada, visible y auditada; desactivarla bloquea al instante. |
-| 3.4 | Sobre la [memoria de proyecto](PROJECT_MEMORY.md) existente: el revisor propone lecciones nuevas (tests inestables, rechazos repetidos) como PR de memoria que el humano aprueba. | Un rechazo con motivo genera una propuesta de memoria enlazada. |
+| 3.1 ✅ | Disparadores con política: issue con etiqueta `agentfarm`, CI rojo en la rama principal, alertas Dependabot/CVE, cron semanal de mejoras. Cada uno crea una propuesta, nunca una implementación. | Un CI rojo genera una propuesta enlazada al run fallido. |
+| 3.2 ✅ | Bucle de revisión: comentarios de la PR y checks fallidos generan una nueva versión del candidato dentro del presupuesto. | Un comentario de revisión produce un commit nuevo y nueva aprobación por SHA. |
+| 3.3 ✅ | Niveles de autonomía por receta (p. ej. dependencias *patch* con CI verde pueden autoaprobarse); por defecto todo requiere al humano. | La política es versionada, visible y auditada; desactivarla bloquea al instante. |
+| 3.4 ✅ | Sobre la [memoria de proyecto](PROJECT_MEMORY.md) existente: el revisor propone lecciones nuevas (tests inestables, rechazos repetidos) como PR de memoria que el humano aprueba. | Un rechazo con motivo genera una propuesta de memoria enlazada. |
 
 ## Fase 4 — Medible
 

@@ -195,6 +195,8 @@ class FarmConsole extends HTMLElement {
         ? await api("/evidence")
         : [];
       const providers = route === "budgets" ? await api("/providers") : null;
+      const automation =
+        route === "governance" ? await api("/automation").catch(() => null) : null;
       const initiatives = ["overview", "tasks"].includes(route)
         ? await api("/initiatives")
         : [];
@@ -206,6 +208,7 @@ class FarmConsole extends HTMLElement {
         dossiers,
         providers,
         initiatives,
+        automation,
       };
       this.render();
       this.error.textContent = "";
@@ -822,6 +825,7 @@ class FarmConsole extends HTMLElement {
           "Cada propuesta necesita tu aprobación. Cada integración queda vinculada al commit revisado.",
         ),
       );
+      this.automation(this.data.automation);
       const audit = E("section");
       this.live.append(audit);
       audit.append(E("h2", "Últimas decisiones"));
@@ -1213,6 +1217,104 @@ class FarmConsole extends HTMLElement {
     if (d.exceptions)
       box.append(E("p", "Excepciones aceptadas: " + d.exceptions, "warning"));
     parent.append(box);
+  }
+  automation(a) {
+    if (!a) return;
+    const section = E("section");
+    section.append(E("h2", "Automatización"));
+    const levels = Object.fromEntries((a.autonomy || []).map((x) => [x.recipe, x.level]));
+    section.append(
+      E(
+        "p",
+        "Los disparadores solo abren propuestas. La autonomía por receta puede aprobar la implementación de cambios de bajo riesgo verificados por tests; integrar siempre exige tu aprobación del SHA.",
+        "muted",
+      ),
+    );
+    for (const [recipe, label] of [
+      ["bugfix", "Corrección de bugs"],
+      ["dependency-update", "Actualización de dependencias"],
+      ["test-improvement", "Mejora de pruebas"],
+    ]) {
+      const auto = levels[recipe] === "auto_implement";
+      const row = E("div", "", "row");
+      row.append(
+        E("span", label + " · " + (auto ? "implementa sin esperar si todos los criterios son tests" : "requiere tu aprobación")),
+        button(auto ? "Volver a manual" : "Permitir autonomía", () =>
+          this.action("/automation/autonomy", {
+            recipe,
+            level: auto ? "manual" : "auto_implement",
+          }),
+        ),
+      );
+      section.append(row);
+    }
+    const lessons = levels["project-memory"] === "propose_on_feedback";
+    const memoryRow = E("div", "", "row");
+    memoryRow.append(
+      E("span", "Memoria · " + (lessons ? "tus correcciones abren una propuesta de lección" : "sin propuestas automáticas")),
+      button(lessons ? "Desactivar" : "Proponer lecciones", () =>
+        this.action("/automation/autonomy", {
+          recipe: "project-memory",
+          level: lessons ? "manual" : "propose_on_feedback",
+        }),
+      ),
+    );
+    section.append(memoryRow);
+    section.append(E("h3", "Disparadores por repositorio"));
+    if (!a.github_configured)
+      section.append(
+        E("p", "Configura AGENTFARM_GITHUB_TOKEN_FILE en el panel para leer GitHub.", "error"),
+      );
+    const kinds = {
+      labeled_issue: "Issues con etiqueta agentfarm",
+      failing_ci: "CI roto en la rama principal",
+      dependabot: "Alertas Dependabot",
+      weekly: "Revisión semanal",
+      pr_feedback: "Comentarios y checks de sus PR",
+    };
+    for (const t of a.triggers || [])
+      section.append(
+        E(
+          "p",
+          t.repo +
+            " · " +
+            (t.enabled ? t.kinds.map((k) => kinds[k] || k).join(", ") : "desactivado") +
+            " · máx. " +
+            t.max_new +
+            " por pasada" +
+            (t.last_run ? " · última " + new Date(t.last_run * 1000).toLocaleString("es-ES") : "") +
+            (t.last_error ? " · error: " + t.last_error : ""),
+        ),
+      );
+    const form = E("details");
+    form.dataset.key = "triggers";
+    form.append(E("summary", "Configurar disparadores"));
+    const repo = E("input");
+    repo.placeholder = "owner/repositorio";
+    repo.setAttribute("aria-label", "Repositorio");
+    form.append(repo);
+    const boxes = {};
+    for (const [k, label] of Object.entries(kinds)) {
+      const l = E("label", "");
+      const box = E("input");
+      box.type = "checkbox";
+      boxes[k] = box;
+      l.append(box, document.createTextNode(" " + label));
+      form.append(l);
+    }
+    form.append(
+      button("Guardar", () =>
+        this.action("/automation/triggers", {
+          repository: repo.value.trim(),
+          kinds: Object.keys(boxes).filter((k) => boxes[k].checked),
+          max_new: 2,
+          enabled: true,
+        }),
+      ),
+      button("Revisar ahora", () => this.action("/automation/triggers/run", {})),
+    );
+    section.append(form);
+    this.live.append(section);
   }
   workList(parent, work) {
     if (!work.length) {

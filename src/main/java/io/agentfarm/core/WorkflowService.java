@@ -57,6 +57,10 @@ public class WorkflowService {
               c,
               "CREATE TABLE IF NOT EXISTS work_recipes(item TEXT PRIMARY KEY REFERENCES"
                   + " work_items(id),snapshot TEXT NOT NULL)");
+          statement(
+              c,
+              "CREATE TABLE IF NOT EXISTS autonomy_policies(recipe TEXT PRIMARY KEY,level TEXT NOT"
+                  + " NULL,updated INTEGER NOT NULL)");
           EvidenceService.schema(c);
           InitiativeService.schema(c);
           return null;
@@ -109,6 +113,11 @@ public class WorkflowService {
   }
 
   public Map<String, Object> create(JsonNode n, String actor) {
+    return db.tx(c -> create(c, n, actor));
+  }
+
+  /** Same as {@link #create(JsonNode, String)} inside an existing transaction. */
+  Map<String, Object> create(java.sql.Connection c, JsonNode n, String actor) throws Exception {
     String id = text(n, "request_id"),
         repo = text(n, "repository"),
         title = text(n, "title"),
@@ -123,55 +132,52 @@ public class WorkflowService {
             || !selected.path("id").isTextual()
             || !selected.path("version").isIntegralNumber()))
       throw new IllegalArgumentException("Recipe id and integer version required");
-    return db.tx(
-        c -> {
-          var old = one(c, "SELECT * FROM work_items WHERE id=?", id);
-          if (old != null) {
-            if (!old.get("repo").equals(repo)
-                || !old.get("title").equals(title)
-                || !old.get("request").equals(request))
-              throw new IllegalArgumentException("Request identifier already used");
-            var prior = withRecipe(c, old);
-            var saved = MAPPER.valueToTree(prior).path("recipe");
-            if ((selected == null) != saved.isMissingNode()
-                || (selected != null
-                    && (!text(selected, "id").equals(saved.path("id").asText())
-                        || number(selected, "version") != saved.path("version").asLong())))
-              throw new IllegalArgumentException(
-                  "Request identifier already used with another recipe");
-            return prior;
-          }
-          var recipe =
-              selected == null
-                  ? null
-                  : RecipeCatalog.snapshot(text(selected, "id"), number(selected, "version"));
-          exec(
-              c,
-              "INSERT INTO work_items(id,repo,title,request,state,created) VALUES(?,?,?,?,?,?)",
-              id,
-              repo,
-              title,
-              request,
-              "queued",
-              clock.instant().getEpochSecond());
-          if (recipe != null) {
-            exec(c, "INSERT INTO work_recipes VALUES(?,?)", id, encode(recipe));
-            audit(
-                c,
-                actor,
-                "work.recipe",
-                id
-                    + " "
-                    + recipe.path("id").asText()
-                    + "@"
-                    + recipe.path("version").asLong()
-                    + " "
-                    + recipe.path("hash").asText());
-          }
-          command(c, id, "research", Map.of());
-          audit(c, actor, "work.request", id);
-          return withRecipe(c, one(c, "SELECT * FROM work_items WHERE id=?", id));
-        });
+    var old = one(c, "SELECT * FROM work_items WHERE id=?", id);
+    if (old != null) {
+      if (!old.get("repo").equals(repo)
+          || !old.get("title").equals(title)
+          || !old.get("request").equals(request))
+        throw new IllegalArgumentException("Request identifier already used");
+      var prior = withRecipe(c, old);
+      var saved = MAPPER.valueToTree(prior).path("recipe");
+      if ((selected == null) != saved.isMissingNode()
+          || (selected != null
+              && (!text(selected, "id").equals(saved.path("id").asText())
+                  || number(selected, "version") != saved.path("version").asLong())))
+        throw new IllegalArgumentException(
+            "Request identifier already used with another recipe");
+      return prior;
+    }
+    var recipe =
+        selected == null
+            ? null
+            : RecipeCatalog.snapshot(text(selected, "id"), number(selected, "version"));
+    exec(
+        c,
+        "INSERT INTO work_items(id,repo,title,request,state,created) VALUES(?,?,?,?,?,?)",
+        id,
+        repo,
+        title,
+        request,
+        "queued",
+        clock.instant().getEpochSecond());
+    if (recipe != null) {
+      exec(c, "INSERT INTO work_recipes VALUES(?,?)", id, encode(recipe));
+      audit(
+          c,
+          actor,
+          "work.recipe",
+          id
+              + " "
+              + recipe.path("id").asText()
+              + "@"
+              + recipe.path("version").asLong()
+              + " "
+              + recipe.path("hash").asText());
+    }
+    command(c, id, "research", Map.of());
+    audit(c, actor, "work.request", id);
+    return withRecipe(c, one(c, "SELECT * FROM work_items WHERE id=?", id));
   }
 
   public Map<String, Object> importCandidate(JsonNode n, String actor) {
@@ -279,6 +285,7 @@ public class WorkflowService {
                 String feedback = text(n, "feedback");
                 command(c, id, "research", obj("feedback", feedback));
                 exec(c, "UPDATE work_items SET state='queued',error=NULL WHERE id=?", id);
+                proposeLesson(c, w, feedback, actor);
               }
               case "retry" -> {
                 if (!state.equals("blocked"))
@@ -304,6 +311,100 @@ public class WorkflowService {
           audit(c, actor, "work." + action, id);
           return one(c, "SELECT * FROM work_items WHERE id=?", id);
         });
+  }
+
+  // Recipes whose proposals may start implementation without the owner; merge stays human.
+  static final Set<String> AUTO_IMPLEMENTABLE = Set.of("bugfix", "dependency-update", "test-improvement");
+
+  public List<Map<String, Object>> autonomy() {
+    return db.tx(c -> rows(c, "SELECT * FROM autonomy_policies ORDER BY recipe"));
+  }
+
+  /**
+   * manual (default), auto_implement (low-risk recipes only) or, for project-memory,
+   * propose_on_feedback: owner corrections open a memory proposal.
+   */
+  public Map<String, Object> setAutonomy(String recipe, String level, String actor) {
+    boolean valid =
+        level.equals("manual")
+            || (level.equals("auto_implement") && AUTO_IMPLEMENTABLE.contains(recipe))
+            || (level.equals("propose_on_feedback") && recipe.equals("project-memory"));
+    if (!valid) throw new IllegalArgumentException("Level not allowed for this recipe");
+    return db.tx(
+        c -> {
+          exec(
+              c,
+              "INSERT INTO autonomy_policies VALUES(?,?,?) ON CONFLICT(recipe) DO UPDATE SET"
+                  + " level=excluded.level,updated=excluded.updated",
+              recipe,
+              level,
+              clock.instant().getEpochSecond());
+          audit(c, actor, "autonomy." + level, recipe);
+          return obj("recipe", recipe, "level", level);
+        });
+  }
+
+  private static String level(java.sql.Connection c, String recipe) throws Exception {
+    var row = one(c, "SELECT level FROM autonomy_policies WHERE recipe=?", recipe);
+    return row == null ? "manual" : row.get("level").toString();
+  }
+
+  /**
+   * Approves the current proposal when its recipe is auto_implement and every criterion is
+   * verified by tests in the container sandbox. Anything manual or host-run waits for the owner.
+   */
+  private void autoApprove(java.sql.Connection c, String id) throws Exception {
+    var w = withRecipe(c, one(c, "SELECT * FROM work_items WHERE id=?", id));
+    var recipe = MAPPER.valueToTree(w).path("recipe");
+    if (recipe.isMissingNode() || !level(c, recipe.path("id").asText()).equals("auto_implement"))
+      return;
+    var p = parse(w.get("proposal").toString());
+    if (p.path("sandbox").path("mode").asText("container").equals("host")) return;
+    if (!p.path("criteria").isArray() || p.path("criteria").isEmpty()) return;
+    for (var criterion : p.path("criteria"))
+      if (!criterion.path("method").asText().equals("test")) return;
+    if (num(one(c, "SELECT paused FROM governance WHERE id=1"), "paused") == 1) return;
+    EvidenceService.capture(c, w);
+    command(c, id, "implement", obj("version", num(w, "version")));
+    exec(c, "UPDATE work_items SET state='approved',error=NULL WHERE id=?", id);
+    audit(
+        c,
+        "policy:autonomy/" + recipe.path("id").asText(),
+        "work.implement",
+        id + " v" + num(w, "version"));
+  }
+
+  /** With project-memory set to propose_on_feedback, a correction opens a memory proposal. */
+  private void proposeLesson(java.sql.Connection c, Map<String, Object> w, String feedback, String actor)
+      throws Exception {
+    if (feedback.isBlank() || !level(c, "project-memory").equals("propose_on_feedback")) return;
+    var recipe = MAPPER.valueToTree(withRecipe(c, new LinkedHashMap<>(w))).path("recipe");
+    if (recipe.path("id").asText().equals("project-memory")) return;
+    String lesson = ("mem-" + w.get("id") + "-v" + w.get("version"));
+    if (lesson.length() > 80) lesson = "mem-" + sha256(lesson).substring(0, 40);
+    if (one(c, "SELECT 1 FROM work_items WHERE id=?", lesson) != null) return;
+    create(
+        c,
+        MAPPER.valueToTree(
+            obj(
+                "request_id",
+                lesson,
+                "repository",
+                w.get("repo"),
+                "title",
+                "Memoria: lección de «" + truncate(w.get("title").toString(), 120) + "»",
+                "request",
+                "Propón registrar en la memoria del proyecto la lección de esta corrección del"
+                    + " propietario, si es una decisión o restricción duradera. Si no lo es,"
+                    + " explica por qué y no cambies nada.\n\nCorrección: "
+                    + truncate(feedback, 8000),
+                "recipe",
+                obj("id", "project-memory", "version", 1))),
+        actor);
+  }
+
+  private static String truncate(String text, int max) {
+    return text.length() <= max ? text : text.substring(0, max);
   }
 
   public Object claim(String agent) {
@@ -454,6 +555,7 @@ public class WorkflowService {
               id);
           exec(c, "UPDATE work_commands SET state='done' WHERE id=?", command);
           audit(c, agent, "work." + phase, id);
+          if (phase.equals("proposed")) autoApprove(c, id);
           return Map.of("state", phase);
         });
   }

@@ -27,8 +27,11 @@ globales y por repositorio. [Paralelo](docs/INSTALLATION.md#varias-tareas-en-par
 Claude Code puede investigar, implementar o revisar (p. ej. revisión cruzada de
 lo que implementa Codex), medido en USD contra una cuenta Clover. [Proveedores](docs/PROVIDERS.md#claude-code-fase-2)
 
-**Todavía no:** disparadores
-automáticos (CI rojo, CVE, issues etiquetadas) y coordinación entre varios nodos.
+Disparadores (issue etiquetada, CI roto, Dependabot, revisión semanal, feedback de
+PR) abren propuestas solos, y la autonomía por receta puede aprobar cambios de
+bajo riesgo verificados por tests. Integrar siempre es tuyo. [Automatización](docs/AUTOMATION.md)
+
+**Todavía no:** coordinación entre varios nodos.
 La hoja de ruta está en [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Empezar en 3 pasos
