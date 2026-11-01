@@ -770,9 +770,10 @@ class FarmConsole extends HTMLElement {
                 ? "Ejecutor integrado"
                 : "Bloqueado: integración pendiente") +
               " · Cuota: " +
-              (provider.quota === "unknown"
-                ? "desconocida"
-                : "suscripción observada"),
+              ({
+                unknown: "desconocida",
+                "api-cost-observed": "coste API en USD por turno (cuenta Clover api)",
+              }[provider.quota] || "suscripción observada"),
           ),
         );
       adapters.append(

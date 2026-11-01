@@ -262,6 +262,60 @@ class WebTest {
   }
 
   @Test
+  void meteredAccountOnlyReservesAndSettles() throws Exception {
+    store.tx(
+        c -> {
+          Store.exec(c, "INSERT OR IGNORE INTO farm_nodes(id,role) VALUES('metered-node','napoleon')");
+          Store.exec(c, "INSERT OR IGNORE INTO budget_accounts VALUES('sub-m','subscription','{}')");
+          Store.exec(c, "INSERT OR IGNORE INTO budget_accounts VALUES('api-m','api','{\"monthly\":10000}')");
+          return null;
+        });
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> nodeCredentials.issue("metered-node", "sub-m", "sub-m", "test"));
+    var issued = Json.MAPPER.valueToTree(nodeCredentials.issue("metered-node", "sub-m", "api-m", "test"));
+    String bearer = "Bearer " + issued.path("token").asText();
+    HttpClient node =
+        HttpClient.newBuilder().cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL)).build();
+    var csrf =
+        Json.parse(
+            node.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/csrf"))
+                        .header("Authorization", bearer)
+                        .build(),
+                    HttpResponse.BodyHandlers.ofString())
+                .body());
+    java.util.function.BiFunction<String, String, Integer> post =
+        (path, body) -> {
+          try {
+            return node.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+                        .header("Authorization", bearer)
+                        .header("Content-Type", "application/json")
+                        .header(csrf.path("header").asText(), csrf.path("token").asText())
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .build(),
+                    HttpResponse.BodyHandlers.ofString())
+                .statusCode();
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        };
+    assertEquals(
+        200,
+        node.send(
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/budget/api-m"))
+                    .header("Authorization", bearer)
+                    .build(),
+                HttpResponse.BodyHandlers.ofString())
+            .statusCode());
+    assertNotEquals(403, post.apply("/api/budget/reserve", "{\"account\":\"api-m\",\"run_id\":\"r1\",\"amounts\":{\"monthly\":1}}"));
+    assertEquals(403, post.apply("/api/budget/configure", "{\"account\":\"api-m\",\"mode\":\"api\",\"shares\":{\"monthly\":1}}"));
+    assertEquals(403, post.apply("/api/budget/rollover", "{\"account\":\"api-m\"}"));
+    assertEquals(403, post.apply("/api/budget/settle", "{\"account\":\"sub-m\",\"run_id\":\"r1\",\"actual\":null}"));
+  }
+
+  @Test
   void evidenceApiIsOwnerOnlyAndMutationsRequireCsrf() throws Exception {
     assertEquals(200, get("/api/evidence", true).statusCode());
     assertEquals(409, get("/api/evidence/unknown-task", true).statusCode());
@@ -280,7 +334,7 @@ class WebTest {
     var providers = get("/api/providers", true);
     assertEquals(200, providers.statusCode());
     assertTrue(providers.body().contains("claude-code"));
-    assertTrue(providers.body().contains("unavailable"));
+    assertTrue(providers.body().contains("api-cost-observed"));
     var req =
         HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/providers/admission"))
             .header("Authorization", auth())

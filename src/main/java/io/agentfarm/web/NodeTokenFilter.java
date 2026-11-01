@@ -32,7 +32,9 @@ public class NodeTokenFilter extends OncePerRequestFilter {
           method.equals("GET")
               && (Set.of("/api/csrf", "/api/overview", "/api/runtime").contains(path)
                   || path.equals("/api/budget/" + identity.get("account"))
-                  || path.equals("/api/budget/" + identity.get("account") + "/reservations"));
+                  || path.equals("/api/budget/" + identity.get("account") + "/reservations")
+                  || (!identity.get("api_account").toString().isEmpty()
+                      && path.equals("/api/budget/" + identity.get("api_account"))));
       allowed |=
           method.equals("POST")
               && (Set.of(
@@ -42,6 +44,7 @@ public class NodeTokenFilter extends OncePerRequestFilter {
                           "/api/budget/observe",
                           "/api/budget/reserve",
                           "/api/budget/settle-observed",
+                          "/api/budget/settle",
                           "/api/budget/rollover")
                       .contains(path)
                   || path.startsWith("/api/work/agent/commands/")
@@ -52,6 +55,7 @@ public class NodeTokenFilter extends OncePerRequestFilter {
       }
       request.setAttribute("agentfarm.node", identity.get("node"));
       request.setAttribute("agentfarm.account", identity.get("account"));
+      request.setAttribute("agentfarm.api-account", identity.get("api_account"));
       SecurityContextHolder.getContext()
           .setAuthentication(
               new UsernamePasswordAuthenticationToken(

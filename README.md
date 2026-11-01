@@ -24,7 +24,10 @@ credenciales ni `.git` y sin red por defecto. [Detalles](docs/INSTALLATION.md#pr
 Varias tareas avanzan a la vez con ranuras de ejecutor, dentro de límites
 globales y por repositorio. [Paralelo](docs/INSTALLATION.md#varias-tareas-en-paralelo)
 
-**Todavía no:** adaptador de Claude Code, disparadores
+Claude Code puede investigar, implementar o revisar (p. ej. revisión cruzada de
+lo que implementa Codex), medido en USD contra una cuenta Clover. [Proveedores](docs/PROVIDERS.md#claude-code-fase-2)
+
+**Todavía no:** disparadores
 automáticos (CI rojo, CVE, issues etiquetadas) y coordinación entre varios nodos.
 La hoja de ruta está en [docs/ROADMAP.md](docs/ROADMAP.md).
 

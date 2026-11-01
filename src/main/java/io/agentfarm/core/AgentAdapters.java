@@ -5,7 +5,7 @@ import java.util.*;
 /** Stable IDs; never selects another provider as fallback. */
 public final class AgentAdapters {
   private static final Map<String, AgentAdapter> ADAPTERS =
-      Map.of("codex", new CodexAdapter(), "claude-code", new UnavailableAdapter("claude-code"));
+      Map.of("codex", new CodexAdapter(), "claude-code", new ClaudeCodeAdapter());
 
   public static AgentAdapter get(String id) {
     var adapter = ADAPTERS.get(id);

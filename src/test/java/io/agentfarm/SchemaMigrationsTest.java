@@ -17,7 +17,8 @@ class SchemaMigrationsTest {
   void migrationsRunOnceInOrderAndRefuseNewerDatabases() {
     var store = new Store(dir.resolve("db").toString());
     new SchemaMigrations(
-        store, new WorkflowService(store, Clock.systemUTC()), new TelemetryService(store, Clock.systemUTC()));
+        store, new WorkflowService(store, Clock.systemUTC()), new TelemetryService(store, Clock.systemUTC()),
+        new NodeCredentials(store, Clock.systemUTC()));
     int latest = SchemaMigrations.ALL.getLast().version();
     assertEquals(latest, SchemaMigrations.version(store));
     assertEquals(latest, SchemaMigrations.apply(store, SchemaMigrations.ALL), "idempotent");

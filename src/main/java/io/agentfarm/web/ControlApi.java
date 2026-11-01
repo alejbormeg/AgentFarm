@@ -193,9 +193,18 @@ public class ControlApi {
       @RequestBody JsonNode n,
       Principal p,
       jakarta.servlet.http.HttpServletRequest request) {
-    if (p.getName().startsWith("node:")
-        && !n.path("account").asText().equals(request.getAttribute("agentfarm.account")))
-      throw new org.springframework.security.access.AccessDeniedException("Account mismatch");
+    if (p.getName().startsWith("node:")) {
+      String account = n.path("account").asText();
+      boolean subscription =
+          account.equals(request.getAttribute("agentfarm.account")) && !operation.equals("settle");
+      // The metered account only reserves and settles per-turn cost; it is never reconfigured.
+      boolean metered =
+          !account.isEmpty()
+              && account.equals(request.getAttribute("agentfarm.api-account"))
+              && java.util.Set.of("reserve", "settle").contains(operation);
+      if (!subscription && !metered)
+        throw new org.springframework.security.access.AccessDeniedException("Account mismatch");
+    }
     return budgets.execute(operation, n, p.getName());
   }
 

@@ -21,7 +21,13 @@ public class ExecutorApi {
 
   @PostMapping
   public Object issue(@RequestBody JsonNode n, Principal p) {
-    return credentials.issue(Json.text(n, "node"), Json.text(n, "account"), p.getName());
+    return credentials.issue(
+        Json.text(n, "node"),
+        Json.text(n, "account"),
+        n.hasNonNull("api_account") && !n.path("api_account").asText().isBlank()
+            ? Json.text(n, "api_account")
+            : null,
+        p.getName());
   }
 
   @PostMapping("/{id}/revoke")

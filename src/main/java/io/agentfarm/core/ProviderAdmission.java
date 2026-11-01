@@ -24,6 +24,32 @@ public final class ProviderAdmission {
         && !Boolean.TRUE.equals(adapter.get("independent_verification")))
       reasons.add("independent_verifier_unavailable");
     if (!budget.path("account").asText().equals(account)) reasons.add("budget_account_mismatch");
+    if ("api-cost-observed".equals(adapter.get("quota"))) {
+      // Metered providers: each turn is reserved and settled in USD against a Clover API account.
+      if (!budget.path("mode").asText().equals("api"))
+        reasons.add("resource_unit_not_supported_by_adapter");
+      if (!budget.path("state").asText().equals("available"))
+        reasons.add("clover_budget_not_available");
+      return obj(
+          "state",
+          reasons.isEmpty() ? "admissible" : "blocked",
+          "provider",
+          provider,
+          "profile",
+          profile,
+          "account",
+          account,
+          "reasons",
+          reasons,
+          "unit",
+          "usd_micros",
+          "additional_payment",
+          false,
+          "reserved",
+          false,
+          "optimization_active",
+          false);
+    }
     if (!budget.path("mode").asText().equals("subscription"))
       reasons.add("resource_unit_not_supported_by_adapter");
     if (!budget.path("state").asText().equals("available"))

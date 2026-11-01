@@ -23,10 +23,15 @@ public class SchemaMigrations {
               List.of(
                   "CREATE INDEX IF NOT EXISTS work_commands_state ON work_commands(state, kind)",
                   "CREATE INDEX IF NOT EXISTS work_commands_item ON work_commands(item)",
-                  "CREATE INDEX IF NOT EXISTS audit_at ON audit(at)")));
+                  "CREATE INDEX IF NOT EXISTS audit_at ON audit(at)")),
+          new Migration(
+              3,
+              "optional metered API account per node credential",
+              List.of("ALTER TABLE node_credentials ADD COLUMN api_account TEXT")));
 
   // Services create their baseline tables in their constructors; depending on them orders this.
-  public SchemaMigrations(Store store, WorkflowService work, TelemetryService telemetry) {
+  public SchemaMigrations(
+      Store store, WorkflowService work, TelemetryService telemetry, NodeCredentials nodes) {
     apply(store, ALL);
   }
 

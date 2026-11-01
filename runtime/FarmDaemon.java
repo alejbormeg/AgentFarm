@@ -221,6 +221,96 @@ public class FarmDaemon extends CodexRunner {
         throw new IOException("Boxer deshabilitado");
   }
 
+  // Provider per role. Claude Code is metered in USD against a Clover API account.
+  static final String CLAUDE = System.getProperty("agentfarm.claude", "claude"),
+      CLAUDE_ACCOUNT = System.getProperty("agentfarm.claude-account", ""),
+      CLAUDE_MODEL = System.getProperty("agentfarm.claude-model", "");
+  static final long CLAUDE_TURN_MICROS =
+      Long.getLong("agentfarm.claude-turn-micros", 3_000_000L);
+  static volatile String provider = "codex";
+
+  static String providerFor(String role) {
+    String p = System.getProperty("agentfarm.provider." + role, "codex");
+    if (!Set.of("codex", "claude-code").contains(p))
+      throw new IllegalArgumentException("Unknown provider for " + role + ": " + p);
+    return p;
+  }
+
+  static String agentTurn(String role, String prompt) throws Exception {
+    provider = providerFor(role);
+    try {
+      return provider.equals("claude-code")
+          ? claudeTurn(role, prompt)
+          : turn(prompt, role.equals("implement"));
+    } finally {
+      provider = "codex";
+    }
+  }
+
+  static String claudeTurn(String role, String prompt) throws Exception {
+    if (CLAUDE_ACCOUNT.isBlank())
+      throw new IOException("Claude Code requiere -Dagentfarm.claude-account con una cuenta Clover api");
+    Path key = STATE.resolve("anthropic-api-key");
+    if (!Files.isReadable(key)) throw new IOException("Falta " + key + " (permiso 600)");
+    var status = get("/budget/" + CLAUDE_ACCOUNT);
+    if (!status.path("mode").asText().equals("api"))
+      throw new IOException("La cuenta Claude Code debe ser de modo api (USD)");
+    var amounts = new LinkedHashMap<String, Object>();
+    for (var w : status.path("windows")) amounts.put(w.path("period").asText(), CLAUDE_TURN_MICROS);
+    String run = "claude-" + commandId + "-" + role + "-" + UUID.randomUUID().toString().substring(0, 8);
+    var reserved =
+        post("/budget/reserve", obj("account", CLAUDE_ACCOUNT, "run_id", run, "amounts", amounts));
+    if (!reserved.path("state").asText().equals("reserved"))
+      throw new IOException("Clover rechazó la reserva Claude Code: " + reserved.path("reasons"));
+    event("lifecycle", "Claude Code · " + role + " · reserva " + CLAUDE_TURN_MICROS / 1e6 + " USD");
+    Object actual = null;
+    try {
+      var b =
+          new ProcessBuilder(io.agentfarm.core.ClaudeCodeAdapter.command(CLAUDE, role, CLAUDE_MODEL))
+              .directory(checkout.toFile())
+              .redirectErrorStream(false);
+      for (String k : List.of("OPENAI_API_KEY", "CODEX_API_KEY", "GH_TOKEN", "GITHUB_TOKEN"))
+        b.environment().remove(k);
+      b.environment().put("ANTHROPIC_API_KEY", Files.readString(key).trim());
+      b.redirectError(STATE.resolve("claude-stderr" + SUFFIX + ".log").toFile());
+      Path out = Files.createTempFile(STATE, "claude-", ".json");
+      b.redirectOutput(out.toFile());
+      var p = b.start();
+      try {
+        try (var in = p.getOutputStream()) {
+          in.write(prompt.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        long deadline = System.currentTimeMillis() + 2_700_000;
+        while (!p.waitFor(1, TimeUnit.SECONDS)) {
+          if (cancelled || System.currentTimeMillis() > deadline) {
+            p.descendants().forEach(ProcessHandle::destroyForcibly);
+            p.destroyForcibly();
+            throw new IOException(cancelled ? "Operación cancelada" : "Turno supera 45 minutos");
+          }
+        }
+        var result = io.agentfarm.core.ClaudeCodeAdapter.parse(Files.readString(out));
+        session = result.session();
+        model = result.model();
+        var cost = new LinkedHashMap<String, Object>();
+        for (var period : amounts.keySet()) cost.put(period, result.costMicros());
+        actual = cost;
+        event("message", result.text());
+        event("lifecycle", "Claude Code · coste " + result.costMicros() / 1e6 + " USD");
+        return result.text();
+      } finally {
+        Files.deleteIfExists(out);
+      }
+    } finally {
+      // Unknown cost (crash, timeout) leaves the run "unknown": Clover blocks more work until
+      // the owner reconciles it.
+      try {
+        post("/budget/settle", obj("account", CLAUDE_ACCOUNT, "run_id", run, "actual", actual));
+      } catch (Exception e) {
+        failure = "Liquidación Claude Code pendiente: " + clean(e.getMessage());
+      }
+    }
+  }
+
   static String turn(String prompt, boolean write) throws Exception {
     subscriptionIdentity();
     guard();
@@ -479,9 +569,10 @@ public class FarmDaemon extends CodexRunner {
           "\nProject profile (commands and scope are binding): "
               + JSON.writeValueAsString(profile.summary());
     prompt += memoryContext(memory);
-    JsonNode p = resultJson(turn(prompt, false));
+    JsonNode p = resultJson(agentTurn("research", prompt));
     ((com.fasterxml.jackson.databind.node.ObjectNode) p)
         .set("prompt", JSON.valueToTree(rendered.reference()));
+    ((com.fasterxml.jackson.databind.node.ObjectNode) p).put("provider", providerFor("research"));
     ((com.fasterxml.jackson.databind.node.ObjectNode) p).set("project_memory", memory);
     if (!p.path("criteria").isArray() || p.path("criteria").isEmpty())
       throw new IOException("Research must supply identifiable acceptance criteria");
@@ -625,7 +716,8 @@ public class FarmDaemon extends CodexRunner {
           "La base cambió desde la investigación; solicita actualizar la propuesta");
     boolean ownCi = ownWorkflows(baseSha);
     String result =
-        turn(
+        agentTurn(
+            "implement",
             (implementPrompt =
                     io.agentfarm.core.Prompts.render(
                         "implement",
@@ -638,8 +730,7 @@ public class FarmDaemon extends CodexRunner {
                             p.toString(),
                             "request",
                             item.path("request").asText() + recipeContext(item))))
-                .text(),
-            true);
+                .text());
     var change = resultJson(result);
     ((com.fasterxml.jackson.databind.node.ObjectNode) change)
         .set("prompt", JSON.valueToTree(implementPrompt.reference()));
@@ -735,7 +826,8 @@ public class FarmDaemon extends CodexRunner {
     phase = "reviewing";
     JsonNode review =
         resultJson(
-            turn(
+            agentTurn(
+                "review",
                 (reviewPrompt =
                         io.agentfarm.core.Prompts.render(
                             "review",
@@ -748,8 +840,7 @@ public class FarmDaemon extends CodexRunner {
                                 p.toString(),
                                 "tests",
                                 unit + " " + integration)))
-                    .text(),
-                false));
+                    .text()));
     boolean pass =
         unit.get("status").equals("passed") || unit.get("status").equals("not_applicable");
     pass &=
@@ -783,6 +874,8 @@ public class FarmDaemon extends CodexRunner {
             change.path("to_be").asText(),
             "limitations",
             change.path("limitations").asText(),
+            "providers",
+            obj("implement", providerFor("implement"), "review", providerFor("review")),
             "prompts",
             obj(
                 "implement",
@@ -1055,6 +1148,8 @@ public class FarmDaemon extends CodexRunner {
         for (var w : balance.path("windows"))
           if (w.path("period").asText().equals("weekly")) remaining = w.path("remaining").asInt();
         if (remaining < 1) throw new IOException("Clover no tiene margen disponible");
+        // With several slots each run reserves its share, so the others can still be admitted.
+        int share = Math.max(1, remaining / Math.max(1, Integer.getInteger("agentfarm.slots", 1)));
         Files.writeString(
             JOURNAL,
             JSON.writeValueAsString(
@@ -1076,7 +1171,7 @@ public class FarmDaemon extends CodexRunner {
                     "run_id",
                     reservation,
                     "amounts",
-                    obj("weekly", remaining)));
+                    obj("weekly", share)));
         if (!r.path("state").asText().equals("reserved"))
           throw new IOException("Clover rechazó la reserva: " + r);
         reserved = true;
@@ -1142,7 +1237,7 @@ public class FarmDaemon extends CodexRunner {
             "executor",
             CLAIMANT,
             "provider",
-            "codex",
+            provider,
             "account",
             ACCOUNT,
             "host",
