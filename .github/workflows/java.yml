@@ -33,6 +33,21 @@ jobs:
             target/agentfarm-executor-linux.tar.gz
             LICENSE
             NOTICE
+  e2e:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - run: ./mvnw -B -ntp -DskipTests package
+      - run: docker pull -q bash:5.2
+      - name: Task end to end with Codex and GitHub doubles, tests in the container sandbox
+        run: bash tests/e2e/run.sh
   container:
     runs-on: ubuntu-24.04
     steps:

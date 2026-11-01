@@ -1335,6 +1335,17 @@ public class FarmDaemon extends CodexRunner {
               },
               1000,
               2000);
+      // Publish a quota reading (which opens the Clover window) and a snapshot before the
+      // first claim; otherwise the first task fails admission on a fresh account.
+      for (int attempt = 0; attempt < 30 && quotaAt == 0; attempt++) {
+        try {
+          refreshQuota();
+          telemetry();
+        } catch (Exception e) {
+          failure = "Arranque: " + clean(e.getMessage());
+          Thread.sleep(2000);
+        }
+      }
       while (true) {
         try {
           var claim = post("/work/agent/claim", obj("agent", CLAIMANT));

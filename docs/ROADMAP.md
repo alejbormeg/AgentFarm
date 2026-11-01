@@ -56,7 +56,7 @@ Origen: [segunda auditoría](AUDIT-2026-11.md).
 | --- | --- | --- |
 | 5.1 ✅ | Servidor MCP de AgentFarm (stdio): bandeja, peticiones, propuestas y métricas desde Claude Code o Claude Desktop; sin aprobar ni integrar. | Un cliente MCP lista la bandeja y crea una petición con la credencial del propietario. |
 | 5.2 ✅ | `GET /api/health` sin secretos (panel, base de datos, ejecutores frescos, cola) y latido de nodo agregado entre ranuras. | El healthcheck de Compose usa `/api/health`; el nodo no parpadea con dos ranuras. |
-| 5.3 | Ejecución de punta a punta en CI con Codex app-server y `gh` simulados. | Una tarea recorre research → implement → review → PR en CI sin red ni cuota. |
+| 5.3 ✅ | Ejecución de punta a punta en CI con Codex app-server y `gh` simulados. | Una tarea recorre research → implement → review → PR en CI sin red ni cuota. |
 
 ## Fase 6 — Equipo pequeño
 
