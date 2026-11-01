@@ -11,14 +11,16 @@ Ver [CHANGELOG](../CHANGELOG.md#sin-publicar--auditoría-fase-0).
 
 ## Fase 1 — Seguro y paralelo
 
+1.5 parcial: `TestSandbox`, `Prompts` y la puerta de CI ya viven en el módulo con pruebas; queda trasladar el resto de `FarmDaemon` (estado estático por tarea).
+
 | # | Entrega | Criterio de salida |
 | --- | --- | --- |
 | 1.1 ✅ | Tests y `setup` en un contenedor efímero por tarea: sin `~/.config/gh` ni credenciales de Codex, red limitada, CPU/memoria/tiempo acotados. El push lo hace el ejecutor fuera del contenedor. | Un test que lee `~/.config/gh` o abre red no permitida falla; los tests de proyecto pasan igual que en el host. |
-| 1.2 | Planificador con N ranuras: lease y heartbeat por comando, límite por repositorio y por cuenta; varias tareas a la vez en worktrees separados. | Dos tareas de repos distintos avanzan en paralelo; nunca hay doble claim tras caída del ejecutor. |
-| 1.3 | Usar el CI declarado en `agentfarm.yaml` del proyecto; dejar de sobrescribir `.github/workflows/agentfarm.yml`. Plantilla solo si el proyecto no tiene CI. | Una PR en un repo con CI propio no añade workflows. |
-| 1.4 | Prompts como ficheros versionados (`prompts/*.md`) con hash guardado en la evidencia, igual que las recetas. | La evidencia identifica la versión de prompt usada. |
-| 1.5 | `FarmDaemon` como módulo Maven con pruebas; estado por tarea en vez de estáticos globales. | Cobertura de los caminos research/implement/merge con dobles de Codex y `gh`. |
-| 1.6 | Migraciones de esquema versionadas en lugar de `CREATE TABLE IF NOT EXISTS` dispersos. | Base de datos de la versión anterior se actualiza sin pérdida. |
+| 1.2 ✅ | Planificador con N ranuras: lease y heartbeat por comando, límite por repositorio y por cuenta; varias tareas a la vez en worktrees separados. | Dos tareas de repos distintos avanzan en paralelo; nunca hay doble claim tras caída del ejecutor. |
+| 1.3 ✅ | Usar el CI declarado en `agentfarm.yaml` del proyecto; dejar de sobrescribir `.github/workflows/agentfarm.yml`. Plantilla solo si el proyecto no tiene CI. | Una PR en un repo con CI propio no añade workflows. |
+| 1.4 ✅ | Prompts como ficheros versionados (`prompts/*.md`) con hash guardado en la evidencia, igual que las recetas. | La evidencia identifica la versión de prompt usada. |
+| 1.5 (parcial) | `FarmDaemon` como módulo Maven con pruebas; estado por tarea en vez de estáticos globales. | Cobertura de los caminos research/implement/merge con dobles de Codex y `gh`. |
+| 1.6 ✅ | Migraciones de esquema versionadas en lugar de `CREATE TABLE IF NOT EXISTS` dispersos. | Base de datos de la versión anterior se actualiza sin pérdida. |
 
 ## Fase 2 — Varios motores y revisión cruzada
 

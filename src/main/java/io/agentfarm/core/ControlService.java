@@ -24,6 +24,13 @@ public class ControlService {
       throw new IllegalArgumentException("Use 1-80 letters, digits, hyphens or underscores");
   }
 
+  /** Node ids must not collide with executor slot identities (<node>-s<N>). */
+  public static void nodeIdentifier(String id) {
+    identifier(id);
+    if (id.matches(".*-s[0-9]{1,2}"))
+      throw new IllegalArgumentException("Node ids cannot end in -s<number>; it is reserved for slots");
+  }
+
   public List<Map<String, Object>> nodes() {
     return store.tx(c -> decorate(rows(c, "SELECT * FROM farm_nodes ORDER BY id")));
   }
@@ -68,7 +75,7 @@ public class ControlService {
   }
 
   public void registerNode(String id, String role, String actor) {
-    identifier(id);
+    nodeIdentifier(id);
     if (!Set.of("napoleon", "snowball").contains(role))
       throw new IllegalArgumentException("Node role must be napoleon or snowball");
     store.tx(

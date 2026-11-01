@@ -15,6 +15,7 @@ public class TelemetryService {
     this.store=store;this.clock=clock;
     store.tx(c->{
       statement(c,"CREATE TABLE IF NOT EXISTS runtime_snapshot(id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,received_at INTEGER NOT NULL)");
+      statement(c,"CREATE TABLE IF NOT EXISTS runtime_executors(executor TEXT PRIMARY KEY,payload TEXT NOT NULL,received_at INTEGER NOT NULL)");
       statement(c,"CREATE TABLE IF NOT EXISTS runtime_events(id INTEGER PRIMARY KEY,external_id TEXT NOT NULL UNIQUE,at TEXT NOT NULL,worker TEXT NOT NULL,kind TEXT NOT NULL,text TEXT NOT NULL)");
       return null;
     });
@@ -37,7 +38,7 @@ public class TelemetryService {
     var snapshot=n.path("snapshot");
     if(!snapshot.isObject())throw new IllegalArgumentException("Snapshot required");
     var accepted=MAPPER.createObjectNode();
-    for(String k:List.of("provider","account","node","host","distro","repository","branch","run_state","phase","cli_version","model","session","observed_at","last_event_at","supervisor_pid","codex_pid","code_host_pid","implementation_done","review_done","quota","changed_files","files_count","source","active_worker","executor_available","task_id","task_title","github_error")) {
+    for(String k:List.of("provider","account","node","executor","host","distro","repository","branch","run_state","phase","cli_version","model","session","observed_at","last_event_at","supervisor_pid","codex_pid","code_host_pid","implementation_done","review_done","quota","changed_files","files_count","source","active_worker","executor_available","task_id","task_title","github_error")) {
       var v=snapshot.get(k);if(v==null)continue;
       if(encode(v).length()>50000)throw new IllegalArgumentException("Snapshot field too large");
       if(v.isTextual())accepted.put(k,clean(v.asText()));else accepted.set(k,v);
@@ -56,6 +57,10 @@ public class TelemetryService {
     long now=clock.instant().getEpochSecond();
     store.tx(c->{
       exec(c,"INSERT INTO runtime_snapshot VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,received_at=excluded.received_at",encode(accepted),now);
+      String executor=accepted.path("executor").asText(accepted.path("node").asText("executor"));
+      ControlService.identifier(executor);
+      exec(c,"INSERT INTO runtime_executors VALUES(?,?,?) ON CONFLICT(executor) DO UPDATE SET payload=excluded.payload,received_at=excluded.received_at",executor,encode(accepted),now);
+      exec(c,"DELETE FROM runtime_executors WHERE received_at<?",now-86400);
       for(var e:checked)exec(c,"INSERT OR IGNORE INTO runtime_events(external_id,at,worker,kind,text) VALUES(?,?,?,?,?)",e.get("external_id"),e.get("at"),e.get("worker"),e.get("kind"),e.get("text"));
       exec(c,"DELETE FROM runtime_events WHERE id < COALESCE((SELECT id FROM runtime_events ORDER BY id DESC LIMIT 1 OFFSET 599),0)");
       return null;
@@ -64,7 +69,13 @@ public class TelemetryService {
   public Map<String,Object> snapshot() {
     return store.tx(c->{
       var row=one(c,"SELECT * FROM runtime_snapshot WHERE id=1");
-      var result=obj("connected",false,"fresh",false,"age_seconds",null,"snapshot",Map.of(),"events",rows(c,"SELECT * FROM (SELECT id,at,worker,kind,text FROM runtime_events ORDER BY id DESC LIMIT 200) ORDER BY id"));
+      long now=clock.instant().getEpochSecond();
+      var executors=new ArrayList<Object>();
+      for(var r:rows(c,"SELECT * FROM runtime_executors ORDER BY executor")){
+        long age=now-((Number)r.get("received_at")).longValue();
+        executors.add(obj("executor",r.get("executor"),"fresh",age>=0&&age<=12,"age_seconds",age,"snapshot",parse(r.get("payload").toString())));
+      }
+      var result=obj("connected",false,"fresh",false,"age_seconds",null,"snapshot",Map.of(),"executors",executors,"events",rows(c,"SELECT * FROM (SELECT id,at,worker,kind,text FROM runtime_events ORDER BY id DESC LIMIT 200) ORDER BY id"));
       if(row!=null){
         long age=clock.instant().getEpochSecond()-((Number)row.get("received_at")).longValue();
         result.put("connected",true);result.put("fresh",age>=0&&age<=12);

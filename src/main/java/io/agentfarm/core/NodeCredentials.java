@@ -27,7 +27,7 @@ public class NodeCredentials {
   }
 
   public Object issue(String node, String account, String actor) {
-    ControlService.identifier(node);
+    ControlService.nodeIdentifier(node);
     ControlService.identifier(account);
     byte[] bytes = new byte[32];
     new java.security.SecureRandom().nextBytes(bytes);

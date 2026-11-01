@@ -129,8 +129,10 @@ public class IntegrationPublisher {
       throw new IllegalArgumentException("Complete expected checks required");
     for (var expected : required) {
       boolean found = false;
+      // "*" binds to the project's own CI: any successful run, and every run must pass below.
       for (var check : checks.path("check_runs"))
-        if (check.path("name").asText().equals(expected.asText())
+        if ((expected.asText().equals("*")
+                || check.path("name").asText().equals(expected.asText()))
             && check.path("conclusion").asText().equals("success")) found = true;
       if (!found)
         throw new IllegalArgumentException("Required CI not successful: " + expected.asText());

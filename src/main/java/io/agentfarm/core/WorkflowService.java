@@ -14,7 +14,25 @@ public class WorkflowService {
   private final Store db;
   private final Clock clock;
 
+  private final int maxParallel;
+  private final int maxPerRepository;
+
   public WorkflowService(Store db, Clock clock) {
+    this(db, clock, 1, 1);
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired
+  public WorkflowService(
+      Store db,
+      Clock clock,
+      @org.springframework.beans.factory.annotation.Value("${agentfarm.max-parallel:2}")
+          int maxParallel,
+      @org.springframework.beans.factory.annotation.Value("${agentfarm.max-per-repository:1}")
+          int maxPerRepository) {
+    if (maxParallel < 1 || maxParallel > 16 || maxPerRepository < 1 || maxPerRepository > maxParallel)
+      throw new IllegalArgumentException("Invalid parallelism limits");
+    this.maxParallel = maxParallel;
+    this.maxPerRepository = maxPerRepository;
     this.db = db;
     this.clock = clock;
     db.tx(
@@ -323,16 +341,37 @@ public class WorkflowService {
               c,
               "UPDATE work_commands SET state='interrupted' WHERE state='claimed' AND updated<?",
               now - 120);
-          if (one(c, "SELECT id FROM work_commands WHERE state='claimed'") != null) return Map.of();
+          // One command per executor; development work shares a global and a per-repository
+          // limit, so several executors (slots) can progress different repositories at once.
+          if (one(c, "SELECT id FROM work_commands WHERE state='claimed' AND claimed_by=?", agent)
+              != null) return Map.of();
+          long busy =
+              num(
+                  one(
+                      c,
+                      "SELECT COUNT(*) n FROM work_commands WHERE state='claimed' AND kind!='merge'"),
+                  "n");
+          var busyRepos = new HashMap<String, Long>();
+          for (var r :
+              rows(
+                  c,
+                  "SELECT i.repo, COUNT(*) n FROM work_commands w JOIN work_items i ON i.id=w.item"
+                      + " WHERE w.state='claimed' AND w.kind!='merge' GROUP BY i.repo"))
+            busyRepos.put(r.get("repo").toString(), num(r, "n"));
           Map<String, Object> cmd = null;
           for (var candidate :
               rows(
                   c,
-                  "SELECT * FROM work_commands WHERE state='queued' "
+                  "SELECT w.*, i.repo FROM work_commands w JOIN work_items i ON i.id=w.item"
+                      + " WHERE w.state='queued' "
                       + (onlyIntegration
-                          ? "AND kind='merge' "
-                          : integration ? "" : "AND kind!='merge' ")
-                      + "ORDER BY updated,rowid")) {
+                          ? "AND w.kind='merge' "
+                          : integration ? "" : "AND w.kind!='merge' ")
+                      + "ORDER BY w.updated,w.rowid")) {
+            if (!candidate.get("kind").equals("merge")
+                && (busy >= maxParallel
+                    || busyRepos.getOrDefault(candidate.get("repo").toString(), 0L)
+                        >= maxPerRepository)) continue;
             if (InitiativeService.blockers(
                     c, candidate.get("item").toString(), candidate.get("kind").toString())
                 .isEmpty()) {

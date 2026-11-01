@@ -17,7 +17,10 @@ public class WorkflowApi {
   }
 
   private void checkAgent(JsonNode n, Principal p) {
-    if (p.getName().startsWith("node:") && !p.getName().substring(5).equals(Json.text(n, "agent")))
+    // A node may run several executor slots, claiming as <node>-s<N>.
+    if (p.getName().startsWith("node:")
+        && !Json.text(n, "agent")
+            .matches(java.util.regex.Pattern.quote(p.getName().substring(5)) + "(-s[0-9]{1,2})?"))
       throw new org.springframework.security.access.AccessDeniedException(
           "Executor identity mismatch");
   }

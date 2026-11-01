@@ -4,7 +4,17 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — fase 1.1: pruebas en contenedor
+## Sin publicar — fase 1: paralelo, CI del proyecto, prompts y migraciones
+
+- Varias tareas a la vez: límite global (`agentfarm.max-parallel`) y por
+  repositorio; ranuras de ejecutor `<nodo>-s<N>` con estado propio y señal propia.
+- El ejecutor respeta el CI existente del repositorio y exige que todas sus
+  comprobaciones pasen; solo añade su workflow a repositorios sin CI.
+- Prompts como plantillas versionadas con hash registrado en propuesta y evidencia.
+- `schema_migrations`: migraciones ordenadas, transaccionales y protección
+  frente a bases de datos de versiones más recientes; índices para reclamaciones y auditoría.
+
+## Fase 1.1: pruebas en contenedor (#18)
 
 - `setup` y pruebas se ejecutan en un contenedor Docker desechable con una copia
   del árbol del commit: sin `.git`, sin credenciales de GitHub ni Codex, sin red
