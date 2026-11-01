@@ -36,3 +36,17 @@ actor `trigger:<tipo>`.
   texto abre una propuesta para registrar la lección en la memoria del proyecto.
 
 No existe nivel de autointegración.
+
+## Bandeja, resultados y avisos
+- **Bandeja:** en Panorama, lo que espera tu decisión aparece primero. En tareas
+  en revisión, **Ver cambios del candidato** muestra el diff `base...sha` leído
+  de GitHub (requiere el token del panel), sin salir del panel.
+- **Resultados (8 semanas):** propuestas, tasa de aprobación (incluidas las de
+  política), correcciones pedidas, PR integradas, ciclo mediano y consumo por
+  cuenta Clover. `GET /api/work/metrics?weeks=N`. Solo cuenta eventos registrados.
+- **Avisos:**
+  - Navegador: botón *Avisarme en este navegador* (mientras el panel esté abierto).
+  - Webhook: `AGENTFARM_NOTIFY_URL` (https, o http en localhost) con
+    `AGENTFARM_NOTIFY_FORMAT=json|slack|ntfy` y `AGENTFARM_PANEL_URL` para el enlace.
+    Se envía cuando una tarea pasa a *propuesta*, *revisión* o *bloqueada*: solo
+    título y estado, nunca propuesta, código ni registros. Hasta 5 intentos.
