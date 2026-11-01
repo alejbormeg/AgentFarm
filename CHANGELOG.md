@@ -4,7 +4,20 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — primer piloto real (forja)
+## Sin publicar — segundo tramo del piloto real (forja PR #4)
+
+- El sandbox descarga la imagen si falta, con reintentos ante fallos de red y
+  descarga anónima si el ayudante de credenciales configurado no existe
+  (p. ej. `docker-credential-desktop.exe` heredado de Docker Desktop).
+- La plantilla de CI ejecuta las jobs dentro de la misma imagen del sandbox: en
+  el piloto, el `apt-get` del setup funcionaba como root en el contenedor y fallaba
+  sin root en GitHub Actions.
+- `implement.v2`: AgentFarm hace el commit y ejecuta las pruebas; el implementador
+  no debe declarar lo contrario en `limitations`.
+- `review.v2`: el workflow de la plantilla es política de la plataforma, no
+  alcance del implementador; la evidencia válida es la del contenedor.
+
+## Primer piloto real (forja) (#27)
 
 - Prompt de investigación `research.v2` con la forma exacta de `checks`; el
   ejecutor normaliza variantes inofensivas (objeto o texto) antes de enviar la
