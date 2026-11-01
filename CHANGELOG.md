@@ -4,6 +4,15 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — copia y recuperación con Docker Compose
+
+- `./agentfarm backup [destino]` funciona con el panel en Compose: crea la copia en
+  el contenedor, la extrae y verifica SHA-256 e `integrity_check`. Sin el servicio en
+  marcha, usa el JAR. Antes solo llamaba al JAR y, en el piloto, ejecutarlo a mano
+  dentro del contenedor dejó un archivo vacío.
+- `./agentfarm restore <copia>` valida con el panel en marcha, conserva la base
+  anterior en el volumen y la recupera si el panel no arranca con la copia.
+
 ## Sin publicar — reentrega de reclamaciones perdidas
 
 - Si la respuesta a `claim` se pierde (el panel tardó más de 10 s durante el piloto),

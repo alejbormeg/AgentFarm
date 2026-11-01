@@ -104,14 +104,45 @@ Límite: Docker con el uid del ejecutor equivale a privilegios de root en el hos
 el contenedor protege frente al código del candidato, no frente al operador.
 
 ## Copia y recuperación
+
+### Con Docker Compose
+```bash
+./agentfarm backup                       # ~/agentfarm-backups/agentfarm-<fecha UTC>.db
+./agentfarm backup /backups/farm.db      # también admite un directorio existente
+./agentfarm restore /backups/farm.db     # pide confirmación; sin terminal, --yes
+```
+Con el servicio en marcha, `backup` crea la copia dentro del contenedor, la extrae
+por un flujo (`/tmp` es un tmpfs que `docker compose cp` no puede leer) y comprueba
+SHA-256 e `integrity_check` antes de darle su nombre final, con permisos 0600 y sin
+sobrescribir nada. Si el host no tiene `sqlite3` ni `python3`, vale la comprobación
+del contenedor junto con el SHA-256, y la salida lo indica. El tmpfs admite 128 MB:
+con una base mayor la copia falla sin efectos, sin dejar nada a medias.
+
+`restore` valida la copia junto al panel en marcha: una copia dañada se rechaza sin
+interrumpirlo. Después detiene el panel, deja la base actual en el volumen como
+`/data/agentfarm.db.pre-restore-<fecha>` y lo arranca con la copia. Si no arranca
+(p. ej. la copia es de una versión más reciente), recupera la base anterior y
+termina con error. Funciona también con el servicio detenido, y lo deja en marcha.
+En una instalación nueva, ejecuta antes `./agentfarm up`. La contraseña inicial
+está en el volumen y `restore` no la cambia. Detén el ejecutor antes de restaurar.
+Borra la base anterior cuando ya no la necesites:
+`docker compose exec agentfarm rm /data/agentfarm.db.pre-restore-<fecha>`.
+
+### Con el JAR
+Sin el servicio en marcha, `./agentfarm backup [destino]` usa el JAR sobre
+`AGENTFARM_DB` (por defecto `./data/agentfarm.db`) y avisa de ello. Si usas Compose
+y lo tienes detenido, arráncalo primero: esa base no es la del volumen. Con opciones
+explícitas, `./agentfarm backup|restore` siempre llama al JAR:
 ```bash
 java -jar agentfarm.jar backup --db /data/agentfarm.db --output /backups/farm-2026-10-31.db
 java -jar agentfarm.jar restore --snapshot /backups/farm-2026-10-31.db --db /data/restored.db
 ```
+La restauración con el JAR exige un destino nuevo. Detén el panel antes de cambiar
+AGENTFARM_DB al archivo restaurado. Conserva el original.
+
+### En ambos casos
 Backup usa VACUUM INTO e integrity_check; incluye transacciones confirmadas del
-WAL sin copiarlo en bruto. La restauración exige un destino nuevo. Detén el panel
-antes de cambiar AGENTFARM_DB al archivo restaurado. Conserva el original.
-La base contiene historial y hashes de credenciales: protege también el backup.
+WAL sin copiarlo en bruto. La base contiene historial y hashes de credenciales: protege también el backup.
 No incluye credenciales externas, checkouts, recibos ni artefactos locales.
 Copia esos directorios por separado, con el ejecutor detenido, y conserva las
 mismas ubicaciones durante la recuperación. La retención automática no está

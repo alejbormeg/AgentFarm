@@ -60,6 +60,8 @@ git clone https://github.com/alejbormeg/AgentFarm.git && cd AgentFarm
    Revisa la propuesta y pulsa **Implementar propuesta**; cuando la PR esté lista, **Aprobar e integrar**.
 
 Otros comandos: `./agentfarm status`, `./agentfarm logs`, `./agentfarm stop`.
+Copia y recuperación de la base del volumen: `./agentfarm backup [destino]` y
+`./agentfarm restore <copia>`. [Detalles](docs/INSTALLATION.md#copia-y-recuperación)
 El volumen `farm-data` conserva base de datos y contraseña; no uses
 `docker compose down -v` salvo que quieras borrarlos.
 
@@ -95,6 +97,7 @@ versiones anteriores: [migración](docs/MIGRATION.md).
 ./mvnw verify
 ./mvnw spring-boot:run
 E2E_SANDBOX=host bash tests/e2e/run.sh   # tarea completa con Codex y GitHub simulados
+bash tests/compose_backup.sh             # backup/restore con Compose, en un proyecto aparte
 ```
 
 Reglas para agentes y colaboradores en [AGENTS.md](AGENTS.md). Arquitectura y
