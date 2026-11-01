@@ -76,7 +76,8 @@ E2E_GH_STATE="$work/gh.json" E2E_REMOTE="$work/remote.git" \
   -Dagentfarm.codex="$e2e/fake-codex" -Dagentfarm.gh="$e2e/fake_gh.py" \
   -Dagentfarm.sandbox="$sandbox" -Dagentfarm.sandbox-image=bash:5.2 \
   FarmDaemon > "$work/executor.log" 2>&1 &
-pids+=($!)
+executor=$!
+pids+=($executor)
 
 state() {
   curl -fs -u "admin:$password" "$panel/api/work" \
@@ -88,6 +89,7 @@ wait_for() {
     s=$(state)
     [[ "$s" == "$want"* ]] && return 0
     [[ "$s" == blocked* ]] && fail "blocked while waiting for $want: $s"
+    kill -0 "$executor" 2>/dev/null || fail "executor exited while waiting for $want"
     sleep 2
   done
   fail "timeout waiting for $want (last: $s)"
