@@ -18,6 +18,7 @@ public record ProjectProfile(
     String review,
     Map<String, String> secretRefs,
     TestSandbox.Policy container,
+    List<String> mcp,
     String hash) {
   public static ProjectProfile load(Path file) throws Exception {
     if (Files.size(file) > 65536) throw new IllegalArgumentException("Profile exceeds 64 KiB");
@@ -49,7 +50,8 @@ public record ProjectProfile(
               "environment",
               "review",
               "secret_refs",
-              "container")
+              "container",
+              "mcp")
           .contains(k.getKey()))
         throw new IllegalArgumentException("Unknown profile field: " + k.getKey());
     if (!n.path("version").isIntegralNumber() || n.path("version").asInt() != 1)
@@ -107,6 +109,17 @@ public record ProjectProfile(
     }
     if (container != null && !environment.equals("container"))
       throw new IllegalArgumentException("Container settings require environment: container");
+    // MCP servers are referenced by name only; the executor's operator defines their commands.
+    var mcp = new ArrayList<String>();
+    if (n.has("mcp")) {
+      if (!n.path("mcp").isArray() || n.path("mcp").size() > 8)
+        throw new IllegalArgumentException("mcp must be a list of at most 8 server names");
+      for (var m : n.path("mcp")) {
+        if (!m.isTextual() || !m.asText().matches("[a-z0-9][a-z0-9-]{0,39}") || mcp.contains(m.asText()))
+          throw new IllegalArgumentException("Invalid MCP server name");
+        mcp.add(m.asText());
+      }
+    }
     var refs = new LinkedHashMap<String, String>();
     if (n.has("secret_refs")) {
       if (!n.path("secret_refs").isObject())
@@ -127,6 +140,7 @@ public record ProjectProfile(
         review,
         Map.copyOf(refs),
         container,
+        List.copyOf(mcp),
         sha256(canonical(n)));
   }
 
@@ -160,6 +174,8 @@ public record ProjectProfile(
         secretRefs,
         "container",
         container == null ? Map.of() : container.summary(),
+        "mcp",
+        mcp,
         "hash",
         hash);
   }

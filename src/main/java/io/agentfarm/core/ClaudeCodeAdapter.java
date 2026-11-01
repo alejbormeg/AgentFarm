@@ -77,8 +77,19 @@ public final class ClaudeCodeAdapter implements AgentAdapter {
   }
 
   public static List<String> command(String binary, String role, String model) {
+    return command(binary, role, model, List.of(), null);
+  }
+
+  /** With MCP servers (research and review only): their tools are allowed by server prefix. */
+  public static List<String> command(
+      String binary, String role, String model, List<String> mcp, String mcpConfig) {
     String tools = TOOLS.get(role);
     if (tools == null) throw new IllegalArgumentException("Unknown Claude Code role");
+    if (!mcp.isEmpty()) {
+      if (role.equals("implement"))
+        throw new IllegalArgumentException("MCP tools are limited to research and review");
+      for (String m : mcp) tools += ",mcp__" + m;
+    }
     var argv =
         new ArrayList<>(
             List.of(
@@ -94,6 +105,7 @@ public final class ClaudeCodeAdapter implements AgentAdapter {
                 "Bash",
                 "--max-turns",
                 "80"));
+    if (!mcp.isEmpty()) argv.addAll(List.of("--mcp-config", mcpConfig, "--strict-mcp-config"));
     if (model != null && !model.isBlank()) {
       if (!model.matches("[a-z0-9.-]{1,64}")) throw new IllegalArgumentException("Invalid model");
       argv.addAll(List.of("--model", model));

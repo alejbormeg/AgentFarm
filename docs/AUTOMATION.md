@@ -50,3 +50,17 @@ No existe nivel de autointegración.
     `AGENTFARM_NOTIFY_FORMAT=json|slack|ntfy` y `AGENTFARM_PANEL_URL` para el enlace.
     Se envía cuando una tarea pasa a *propuesta*, *revisión* o *bloqueada*: solo
     título y estado, nunca propuesta, código ni registros. Hasta 5 intentos.
+
+## Señales de producción (fase 7)
+- **Sentry** (`sentry`): con `AGENTFARM_SENTRY_TOKEN_FILE` (token de solo lectura;
+  `AGENTFARM_SENTRY_URL` para instancias propias, solo https), cada error nuevo sin
+  resolver de las últimas 24 h del proyecto configurado abre una propuesta
+  `bugfix` con el enlace, una sola vez por issue de Sentry. Configuración:
+  `{"repository","kinds":["sentry"],"sentry":{"organization","project"}}`.
+- **Herramientas MCP por proyecto**: `agentfarm.yaml` puede declarar
+  `mcp: [sentry, postgres-test]`, **solo nombres**. Los comandos los define el
+  operador del ejecutor en `STATE/mcp-servers.json`:
+  `{"sentry": {"command": "npx", "args": ["-y", "@sentry/mcp-server"], "env": ["SENTRY_TOKEN"]}}`
+  (`env` lista nombres de variables del ejecutor, nunca valores). Se habilitan en
+  investigación y revisión, no en implementación; un nombre no definido bloquea
+  la tarea. La propuesta muestra qué servidores se usarán.

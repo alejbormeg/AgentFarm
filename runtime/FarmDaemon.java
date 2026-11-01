@@ -236,8 +236,22 @@ public class FarmDaemon extends CodexRunner {
     return p;
   }
 
+  // MCP servers requested by the approved project profile, resolved against STATE/mcp-servers.json.
+  static volatile List<io.agentfarm.core.McpCatalog.Server> mcpServers = List.of();
+  static volatile boolean mcpTurn = false;
+
+  static void useMcp(JsonNode names) throws Exception {
+    var list = new ArrayList<String>();
+    names.forEach(n -> list.add(n.asText()));
+    mcpServers =
+        list.isEmpty()
+            ? List.of()
+            : io.agentfarm.core.McpCatalog.load(STATE.resolve("mcp-servers.json")).resolve(list);
+  }
+
   static String agentTurn(String role, String prompt) throws Exception {
     provider = providerFor(role);
+    mcpTurn = !role.equals("implement") && !mcpServers.isEmpty();
     try {
       return provider.equals("claude-code")
           ? claudeTurn(role, prompt)
@@ -265,8 +279,20 @@ public class FarmDaemon extends CodexRunner {
     event("lifecycle", "Claude Code · " + role + " · reserva " + CLAUDE_TURN_MICROS / 1e6 + " USD");
     Object actual = null;
     try {
+      Path mcpConfig = null;
+      var names = new ArrayList<String>();
+      if (mcpTurn) {
+        mcpConfig = Files.createTempFile(STATE, "mcp-", ".json");
+        Files.writeString(
+            mcpConfig,
+            JSON.writeValueAsString(
+                io.agentfarm.core.McpCatalog.claudeConfig(mcpServers, System.getenv())));
+        mcpServers.forEach(m -> names.add(m.name()));
+      }
       var b =
-          new ProcessBuilder(io.agentfarm.core.ClaudeCodeAdapter.command(CLAUDE, role, CLAUDE_MODEL))
+          new ProcessBuilder(
+                  io.agentfarm.core.ClaudeCodeAdapter.command(
+                      CLAUDE, role, CLAUDE_MODEL, names, mcpConfig == null ? null : mcpConfig.toString()))
               .directory(checkout.toFile())
               .redirectErrorStream(false);
       for (String k : List.of("OPENAI_API_KEY", "CODEX_API_KEY", "GH_TOKEN", "GITHUB_TOKEN"))
@@ -299,6 +325,7 @@ public class FarmDaemon extends CodexRunner {
         return result.text();
       } finally {
         Files.deleteIfExists(out);
+        if (mcpConfig != null) Files.deleteIfExists(mcpConfig);
       }
     } finally {
       // Unknown cost (crash, timeout) leaves the run "unknown": Clover blocks more work until
@@ -326,7 +353,13 @@ public class FarmDaemon extends CodexRunner {
                 "sandbox",
                 write ? "workspace-write" : "read-only",
                 "config",
-                obj("web_search", "live")));
+                mcpTurn
+                    ? obj(
+                        "web_search",
+                        "live",
+                        "mcp_servers",
+                        io.agentfarm.core.McpCatalog.codexConfig(mcpServers, System.getenv()))
+                    : obj("web_search", "live")));
     thread = t.path("thread").path("id").asText();
     session = thread;
     model = t.path("model").asText();
@@ -551,6 +584,7 @@ public class FarmDaemon extends CodexRunner {
         profile == null
             ? io.agentfarm.core.TestSandbox.Policy.defaults(SANDBOX_IMAGE)
             : profile.sandbox(SANDBOX_IMAGE);
+    useMcp(JSON.valueToTree(profile == null ? List.of() : profile.mcp()));
     var rendered =
         io.agentfarm.core.Prompts.render(
             "research",
@@ -573,6 +607,8 @@ public class FarmDaemon extends CodexRunner {
     ((com.fasterxml.jackson.databind.node.ObjectNode) p)
         .set("prompt", JSON.valueToTree(rendered.reference()));
     ((com.fasterxml.jackson.databind.node.ObjectNode) p).put("provider", providerFor("research"));
+    ((com.fasterxml.jackson.databind.node.ObjectNode) p)
+        .set("mcp", JSON.valueToTree(profile == null ? List.of() : profile.mcp()));
     ((com.fasterxml.jackson.databind.node.ObjectNode) p).set("project_memory", memory);
     if (!p.path("criteria").isArray() || p.path("criteria").isEmpty())
       throw new IOException("Research must supply identifiable acceptance criteria");
@@ -811,6 +847,7 @@ public class FarmDaemon extends CodexRunner {
   static void validateAndPublish(
       JsonNode item, int issue, JsonNode p, JsonNode change, String baseSha, String sha)
       throws Exception {
+    useMcp(p.path("mcp"));
     var previous = JSON.readTree(item.path("evidence").asText("{}"));
     if (previous.path("sha").asText().equals(sha) && previous.has("review")) {
       publish(item, issue, p, previous, sha, previous);
@@ -1211,6 +1248,7 @@ public class FarmDaemon extends CodexRunner {
       }
     } finally {
       reservedReset = 0;
+      mcpServers = List.of();
       current = null;
       phase = "idle";
       active = "";

@@ -1395,14 +1395,17 @@ class FarmConsole extends HTMLElement {
     section.append(E("h3", "Disparadores por repositorio"));
     if (!a.github_configured)
       section.append(
-        E("p", "Configura AGENTFARM_GITHUB_TOKEN_FILE en el panel para leer GitHub.", "error"),
+        E("p", "Configura una GitHub App o AGENTFARM_GITHUB_TOKEN_FILE en el panel para leer GitHub.", "error"),
       );
+    if (!a.sentry_configured)
+      section.append(E("p", "Sentry: configura AGENTFARM_SENTRY_TOKEN_FILE para usar su disparador.", "muted"));
     const kinds = {
       labeled_issue: "Issues con etiqueta agentfarm",
       failing_ci: "CI roto en la rama principal",
       dependabot: "Alertas Dependabot",
       weekly: "Revisión semanal",
       pr_feedback: "Comentarios y checks de sus PR",
+      sentry: "Errores nuevos en Sentry",
     };
     for (const t of a.triggers || [])
       section.append(
@@ -1434,6 +1437,11 @@ class FarmConsole extends HTMLElement {
       l.append(box, document.createTextNode(" " + label));
       form.append(l);
     }
+    const sentryOrg = E("input"),
+      sentryProject = E("input");
+    sentryOrg.placeholder = "organización de Sentry";
+    sentryProject.placeholder = "proyecto de Sentry";
+    form.append(sentryOrg, sentryProject);
     form.append(
       button("Guardar", () =>
         this.action("/automation/triggers", {
@@ -1441,6 +1449,10 @@ class FarmConsole extends HTMLElement {
           kinds: Object.keys(boxes).filter((k) => boxes[k].checked),
           max_new: 2,
           enabled: true,
+          sentry: {
+            organization: sentryOrg.value.trim(),
+            project: sentryProject.value.trim(),
+          },
         }),
       ),
       button("Revisar ahora", () => this.action("/automation/triggers/run", {})),
@@ -1693,6 +1705,10 @@ class FarmConsole extends HTMLElement {
         );
         detail.append(proposed);
       }
+      if (p.mcp?.length)
+        detail.append(
+          E("p", "Herramientas MCP para investigar y revisar: " + p.mcp.join(", "), "muted"),
+        );
       if (p.sandbox)
         detail.append(
           E(

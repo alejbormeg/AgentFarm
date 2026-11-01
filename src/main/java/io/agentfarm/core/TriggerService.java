@@ -18,18 +18,26 @@ import org.springframework.stereotype.Service;
 @Service
 public class TriggerService {
   public static final Set<String> KINDS =
-      Set.of("labeled_issue", "failing_ci", "dependabot", "weekly", "pr_feedback");
+      Set.of("labeled_issue", "failing_ci", "dependabot", "weekly", "pr_feedback", "sentry");
 
   private final Store db;
   private final Clock clock;
   private final WorkflowService work;
   private final GitHubReader github;
+  private final SentryReader sentry;
 
   public TriggerService(Store db, Clock clock, WorkflowService work, GitHubReader github) {
+    this(db, clock, work, github, new SentryReader("", "https://sentry.io"));
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired
+  public TriggerService(
+      Store db, Clock clock, WorkflowService work, GitHubReader github, SentryReader sentry) {
     this.db = db;
     this.clock = clock;
     this.work = work;
     this.github = github;
+    this.sentry = sentry;
     db.tx(
         c -> {
           statement(
@@ -41,6 +49,7 @@ public class TriggerService {
               c,
               "CREATE TABLE IF NOT EXISTS trigger_events(key TEXT PRIMARY KEY,repo TEXT NOT"
                   + " NULL,kind TEXT NOT NULL,item TEXT NOT NULL,at INTEGER NOT NULL)");
+          Store.ensureColumn(c, "trigger_policies", "options", "TEXT");
           return null;
         });
   }
@@ -49,7 +58,10 @@ public class TriggerService {
     return db.tx(
         c -> {
           var rows = rows(c, "SELECT * FROM trigger_policies ORDER BY repo");
-          for (var r : rows) r.put("kinds", parse(r.get("kinds").toString()));
+          for (var r : rows) {
+            r.put("kinds", parse(r.get("kinds").toString()));
+            r.put("options", parse(r.get("options") == null ? "{}" : r.get("options").toString()));
+          }
           return rows;
         });
   }
@@ -66,17 +78,26 @@ public class TriggerService {
     long max = n.path("max_new").asLong(2);
     if (max < 1 || max > 10) throw new IllegalArgumentException("max_new must be 1-10");
     boolean enabled = n.path("enabled").asBoolean(true);
+    var options = new LinkedHashMap<String, Object>();
+    if (kinds.contains("sentry")) {
+      String org = n.path("sentry").path("organization").asText(),
+          project = n.path("sentry").path("project").asText();
+      if (!org.matches("[a-z0-9][a-z0-9_-]{0,63}") || !project.matches("[a-z0-9][a-z0-9_-]{0,63}"))
+        throw new IllegalArgumentException("Sentry trigger needs organization and project slugs");
+      options.put("sentry", obj("organization", org, "project", project));
+    }
     return db.tx(
         c -> {
           exec(
               c,
-              "INSERT INTO trigger_policies(repo,kinds,max_new,enabled) VALUES(?,?,?,?) ON"
-                  + " CONFLICT(repo) DO UPDATE SET"
-                  + " kinds=excluded.kinds,max_new=excluded.max_new,enabled=excluded.enabled",
+              "INSERT INTO trigger_policies(repo,kinds,max_new,enabled,options) VALUES(?,?,?,?,?)"
+                  + " ON CONFLICT(repo) DO UPDATE SET kinds=excluded.kinds,max_new=excluded.max_new,"
+                  + "enabled=excluded.enabled,options=excluded.options",
               repo,
               encode(kinds),
               max,
-              enabled ? 1 : 0);
+              enabled ? 1 : 0,
+              encode(options));
           audit(c, actor, "trigger.configure", repo + " " + kinds + (enabled ? "" : " disabled"));
           return obj("repository", repo, "kinds", kinds, "max_new", max, "enabled", enabled);
         });
@@ -84,11 +105,15 @@ public class TriggerService {
 
   @Scheduled(fixedDelayString = "${agentfarm.trigger-interval-ms:300000}", initialDelay = 60000)
   public void scheduled() {
-    if (github.configured()) tick(github::get);
+    if (github.configured() || sentry.configured()) tick(github::get, sentry::get);
+  }
+
+  public List<String> tick(GitHubReader.Source source) {
+    return tick(source, path -> { throw new IllegalStateException("Sentry is not configured"); });
   }
 
   /** One pass over every enabled policy. Returns the request ids created or corrected. */
-  public List<String> tick(GitHubReader.Source source) {
+  public List<String> tick(GitHubReader.Source source, SentryReader.Source sentrySource) {
     var touched = new ArrayList<String>();
     if (db.tx(c -> num(one(c, "SELECT paused FROM governance WHERE id=1"), "paused") == 1))
       return touched;
@@ -97,7 +122,14 @@ public class TriggerService {
       String repo = policy.get("repo").toString();
       String error = null;
       try {
-        touched.addAll(run(source, repo, (JsonNode) policy.get("kinds"), (int) num(policy, "max_new")));
+        touched.addAll(
+            run(
+                source,
+                sentrySource,
+                repo,
+                (JsonNode) policy.get("kinds"),
+                (JsonNode) policy.get("options"),
+                (int) num(policy, "max_new")));
       } catch (Exception e) {
         error = TelemetryService.clean(String.valueOf(e.getMessage()));
       }
@@ -116,7 +148,13 @@ public class TriggerService {
 
   private record Signal(String key, String kind, String title, String request, String recipe) {}
 
-  private List<String> run(GitHubReader.Source gh, String repo, JsonNode kinds, int max)
+  private List<String> run(
+      GitHubReader.Source gh,
+      SentryReader.Source sentrySource,
+      String repo,
+      JsonNode kinds,
+      JsonNode options,
+      int max)
       throws Exception {
     var wanted = new HashSet<String>();
     kinds.forEach(k -> wanted.add(k.asText()));
@@ -163,6 +201,34 @@ public class TriggerService {
                     + ". Propón la actualización mínima que la corrige y su impacto.",
                 "dependency-update"));
       }
+    if (wanted.contains("sentry")) {
+      var project = options.path("sentry");
+      for (var issue :
+          sentrySource.get(
+              "/api/0/projects/"
+                  + project.path("organization").asText()
+                  + "/"
+                  + project.path("project").asText()
+                  + "/issues/?query=is%3Aunresolved+firstSeen%3A-24h&sort=new&limit=10"))
+        signals.add(
+            new Signal(
+                "sentry:" + repo + ":" + issue.path("id").asText(),
+                "sentry",
+                "Error en producción: " + issue.path("title").asText(),
+                "Sentry registra un error nuevo sin resolver ("
+                    + issue.path("level").asText()
+                    + ", "
+                    + issue.path("count").asText()
+                    + " eventos): "
+                    + issue.path("title").asText()
+                    + " en "
+                    + issue.path("culprit").asText()
+                    + ". "
+                    + issue.path("permalink").asText()
+                    + "\nReproduce el fallo con una prueba, identifica la causa y propone la"
+                    + " corrección mínima. No uses datos personales del evento en el repositorio.",
+                "bugfix"));
+    }
     if (wanted.contains("weekly")) {
       var date = LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC);
       String week = date.get(IsoFields.WEEK_BASED_YEAR) + "-W" + date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
