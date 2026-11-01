@@ -10,10 +10,49 @@ import org.springframework.web.bind.annotation.*;
 public class WorkflowApi {
   private final WorkflowService work;
   private final IntegrationPublisher publisher;
+  private final GitHubReader github;
+  private final InsightsService insights;
 
-  public WorkflowApi(WorkflowService work, IntegrationPublisher publisher) {
+  public WorkflowApi(
+      WorkflowService work,
+      IntegrationPublisher publisher,
+      GitHubReader github,
+      InsightsService insights) {
     this.work = work;
     this.publisher = publisher;
+    this.github = github;
+    this.insights = insights;
+  }
+
+  @GetMapping("/metrics")
+  public Object metrics(@RequestParam(defaultValue = "8") int weeks) {
+    return insights.metrics(weeks);
+  }
+
+  /** Files changed by the candidate under review (base...sha), read from GitHub. */
+  @GetMapping("/{id}/diff")
+  public Object diff(@PathVariable String id) throws Exception {
+    var item = Json.MAPPER.valueToTree(work.get(id));
+    String sha = item.path("sha").asText(),
+        base = Json.parse(item.path("proposal").asText("{}")).path("base_sha").asText();
+    if (!sha.matches("[a-f0-9]{40}") || !base.matches("[a-f0-9]{40}"))
+      throw new IllegalArgumentException("No candidate to compare yet");
+    if (!github.configured())
+      throw new IllegalArgumentException("Configure AGENTFARM_GITHUB_TOKEN_FILE to view diffs");
+    var compare = github.get(item.path("repo").asText(), "/compare/" + base + "..." + sha);
+    var files = new java.util.ArrayList<Object>();
+    for (var f : compare.path("files")) {
+      if (files.size() >= 100) break;
+      String patch = f.path("patch").asText("");
+      files.add(
+          Json.obj(
+              "file", f.path("filename").asText(),
+              "status", f.path("status").asText(),
+              "additions", f.path("additions").asInt(),
+              "deletions", f.path("deletions").asInt(),
+              "patch", patch.length() > 20000 ? patch.substring(0, 20000) + "\n…" : patch));
+    }
+    return Json.obj("base", base, "sha", sha, "files", files, "truncated", compare.path("files").size() > 100);
   }
 
   private void checkAgent(JsonNode n, Principal p) {

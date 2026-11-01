@@ -43,9 +43,9 @@ Ver [CHANGELOG](../CHANGELOG.md#sin-publicar--auditoría-fase-0).
 
 | # | Entrega | Criterio de salida |
 | --- | --- | --- |
-| 4.1 | Bandeja de decisiones como pantalla principal, con visor de diff y aprobar/corregir/rechazar. | Se puede aprobar una PR sin salir del panel, viendo el diff. |
-| 4.2 | Métricas: propuestas aprobadas, PR integradas sin corrección, cuota por PR integrada, tiempo de ciclo, regresiones posteriores. | Panel con series semanales calculadas desde la auditoría. |
-| 4.3 | Notificaciones (web push, Telegram o correo) cuando algo espera tu decisión. | Aviso en menos de un minuto tras pasar a *proposed* o *review*. |
+| 4.1 ✅ | Bandeja de decisiones como pantalla principal, con visor de diff y aprobar/corregir/rechazar. | Se puede aprobar una PR sin salir del panel, viendo el diff. |
+| 4.2 ✅ | Métricas: propuestas aprobadas, PR integradas sin corrección, cuota por PR integrada, tiempo de ciclo, regresiones posteriores. | Panel con series semanales calculadas desde la auditoría. |
+| 4.3 ✅ | Notificaciones (web push, Telegram o correo) cuando algo espera tu decisión. | Aviso en menos de un minuto tras pasar a *proposed* o *review*. |
 | 4.4 | Herramientas MCP opcionales por proyecto (Sentry, base de datos de pruebas, navegador). | Declaradas en `agentfarm.yaml` y visibles en la propuesta. |
 
 ## Fuera de alcance por ahora

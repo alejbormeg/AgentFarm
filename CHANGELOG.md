@@ -4,7 +4,13 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — fase 3: automatización gobernada
+## Sin publicar — fase 4: bandeja, resultados y avisos
+
+- Visor de diff del candidato en la bandeja (`GET /api/work/{id}/diff`).
+- Resultados por semana desde la auditoría (`GET /api/work/metrics`) en Panorama.
+- Avisos: notificaciones del navegador y webhook (json, Slack o ntfy) con outbox.
+
+## Fase 3: automatización gobernada (#21)
 
 - Disparadores por repositorio (issue etiquetada, CI roto, Dependabot, revisión
   semanal, comentarios y checks de PR) que abren propuestas una sola vez y con límite.

@@ -59,6 +59,11 @@ public class WorkflowService {
                   + " work_items(id),snapshot TEXT NOT NULL)");
           statement(
               c,
+              "CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY,item TEXT NOT"
+                  + " NULL,state TEXT NOT NULL,title TEXT NOT NULL,created INTEGER NOT NULL,sent"
+                  + " INTEGER NOT NULL DEFAULT 0,attempts INTEGER NOT NULL DEFAULT 0)");
+          statement(
+              c,
               "CREATE TABLE IF NOT EXISTS autonomy_policies(recipe TEXT PRIMARY KEY,level TEXT NOT"
                   + " NULL,updated INTEGER NOT NULL)");
           EvidenceService.schema(c);
@@ -556,6 +561,16 @@ public class WorkflowService {
           exec(c, "UPDATE work_commands SET state='done' WHERE id=?", command);
           audit(c, agent, "work." + phase, id);
           if (phase.equals("proposed")) autoApprove(c, id);
+          String now = one(c, "SELECT state FROM work_items WHERE id=?", id).get("state").toString();
+          // Outbox for owner notifications: only states that wait for a person.
+          if (Set.of("proposed", "review", "blocked").contains(now))
+            exec(
+                c,
+                "INSERT INTO notifications(item,state,title,created) VALUES(?,?,?,?)",
+                id,
+                now,
+                one(c, "SELECT title FROM work_items WHERE id=?", id).get("title"),
+                clock.instant().getEpochSecond());
           return Map.of("state", phase);
         });
   }

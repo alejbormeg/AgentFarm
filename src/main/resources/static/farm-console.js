@@ -197,6 +197,8 @@ class FarmConsole extends HTMLElement {
       const providers = route === "budgets" ? await api("/providers") : null;
       const automation =
         route === "governance" ? await api("/automation").catch(() => null) : null;
+      const metrics =
+        route === "overview" ? await api("/work/metrics").catch(() => null) : null;
       const initiatives = ["overview", "tasks"].includes(route)
         ? await api("/initiatives")
         : [];
@@ -209,7 +211,9 @@ class FarmConsole extends HTMLElement {
         providers,
         initiatives,
         automation,
+        metrics,
       };
+      this.notifyAttention(work);
       this.render();
       this.error.textContent = "";
     } catch (e) {
@@ -622,6 +626,15 @@ class FarmConsole extends HTMLElement {
         this.form.scrollIntoView({ block: "start" });
       });
       side.append(E("p", ""), suggest);
+      if ("Notification" in window && Notification.permission === "default")
+        side.append(
+          button("Avisarme en este navegador", async () => {
+            await Notification.requestPermission();
+            this.signature = "";
+            this.render();
+          }),
+        );
+      this.metricsBlock(side, this.data.metrics);
       side.append(
         (() => {
           const h = E("h2", "", "with-icon");
@@ -1218,6 +1231,91 @@ class FarmConsole extends HTMLElement {
       box.append(E("p", "Excepciones aceptadas: " + d.exceptions, "warning"));
     parent.append(box);
   }
+  diffViewer(w) {
+    const d = E("details");
+    d.dataset.key = "diff-" + w.id;
+    d.append(E("summary", "Ver cambios del candidato " + w.sha.slice(0, 12)));
+    const body = E("div", "", "diffs");
+    d.append(body);
+    this.diffs ||= {};
+    const key = w.id + "@" + w.sha;
+    const show = (result) => {
+      body.replaceChildren();
+      if (result.error) return body.append(E("p", result.error, "error"));
+      const total = result.files.reduce((n, f) => n + f.additions + f.deletions, 0);
+      body.append(E("p", result.files.length + " archivos · " + total + " líneas cambiadas", "muted"));
+      for (const f of result.files) {
+        const file = E("details");
+        file.append(E("summary", f.file + " · " + f.status + " · +" + f.additions + " −" + f.deletions));
+        const pre = E("pre", "", "patch");
+        for (const line of (f.patch || "Sin diff textual (binario o demasiado grande)").split("\n"))
+          pre.append(
+            E(
+              "span",
+              line + "\n",
+              line.startsWith("+") ? "add" : line.startsWith("-") ? "del" : line.startsWith("@@") ? "hunk" : "",
+            ),
+          );
+        file.append(pre);
+        body.append(file);
+      }
+      if (result.truncated) body.append(E("p", "Se muestran 100 archivos; el resto, en GitHub.", "muted"));
+    };
+    if (this.diffs[key]) show(this.diffs[key]);
+    d.addEventListener("toggle", async () => {
+      if (!d.open || this.diffs[key]) return;
+      body.replaceChildren(E("p", "Cargando diff…", "muted"));
+      try {
+        this.diffs[key] = await api("/work/" + encodeURIComponent(w.id) + "/diff");
+      } catch (e) {
+        this.diffs[key] = { error: e.message };
+      }
+      show(this.diffs[key]);
+    });
+    return d;
+  }
+  metricsBlock(side, m) {
+    if (!m) return;
+    const t = m.totals;
+    side.append(E("h2", "Resultados · 8 semanas"));
+    const table = E("table");
+    for (const [label, value] of [
+      ["Propuestas", t.proposals],
+      ["Aprobadas", t.approval_rate == null ? "—" : Math.round(t.approval_rate * 100) + " %"],
+      ["Correcciones pedidas", t.corrections],
+      ["PR integradas", t.integrated],
+      ["Ciclo mediano", t.median_cycle_hours == null ? "—" : t.median_cycle_hours.toFixed(1) + " h"],
+    ]) {
+      const tr = E("tr");
+      tr.append(E("th", label), E("td", String(value)));
+      table.append(tr);
+    }
+    for (const [account, c] of Object.entries(m.cost || {})) {
+      const tr = E("tr");
+      tr.append(
+        E("th", "Consumo " + account),
+        E(
+          "td",
+          (c.unit === "usd_micros" ? (c.total / 1e6).toFixed(2) + " USD" : c.total / 100 + " %") +
+            " · " + c.runs + " ejecuciones",
+        ),
+      );
+      table.append(tr);
+    }
+    side.append(table);
+  }
+  notifyAttention(work) {
+    const waiting = work.filter((w) => ["proposed", "review"].includes(w.state));
+    const ids = new Set(waiting.map((w) => w.id + ":" + w.state + ":" + w.version));
+    if (this.attention && "Notification" in window && Notification.permission === "granted")
+      for (const w of waiting)
+        if (!this.attention.has(w.id + ":" + w.state + ":" + w.version))
+          new Notification("AgentFarm", {
+            body: (w.state === "proposed" ? "Propuesta lista: " : "PR lista: ") + w.title,
+            tag: "agentfarm-" + w.id,
+          });
+    this.attention = ids;
+  }
   automation(a) {
     if (!a) return;
     const section = E("section");
@@ -1386,6 +1484,8 @@ class FarmConsole extends HTMLElement {
         );
       }
       task.append(links);
+      if (w.pr && w.sha && ["review", "integrating"].includes(w.state))
+        task.append(this.diffViewer(w));
       const initiative = this.data.initiatives?.find((i) =>
         i.tasks.some((t) => t.id === w.id),
       );

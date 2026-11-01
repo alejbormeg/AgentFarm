@@ -388,3 +388,22 @@ td {
     gap: 10px;
   }
 }
+
+.patch {
+  font-size: 12px;
+  overflow: auto;
+  max-height: 480px;
+  background: var(--paper);
+  padding: 8px;
+}
+.patch .add {
+  color: #1d6b34;
+  background: #e8f5ec;
+}
+.patch .del {
+  color: #9b1c1c;
+  background: #fbeaea;
+}
+.patch .hunk {
+  color: var(--muted);
+}
