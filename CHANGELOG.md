@@ -4,7 +4,14 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — segundo tramo del piloto real (forja PR #4)
+## Sin publicar — reentrega de reclamaciones perdidas
+
+- Si la respuesta a `claim` se pierde (el panel tardó más de 10 s durante el piloto),
+  el ejecutor recibe el mismo comando al volver a reclamar mientras no haya
+  reportado nada; tras el primer reporte nunca se reentrega. Antes, el comando
+  quedaba huérfano y se bloqueaba a los 120 s.
+
+## Segundo tramo del piloto real (forja PR #4) (#28)
 
 - El sandbox descarga la imagen si falta, con reintentos ante fallos de red y
   descarga anónima si el ayudante de credenciales configurado no existe

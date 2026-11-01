@@ -102,6 +102,7 @@ class WorkflowTest {
       parallel.create(n("request_id", r[0], "repository", r[1], "title", "T", "request", "R"), "owner");
     var first = (Map<?, ?>) parallel.claim("node-s1");
     assertEquals("request-a1", ((Map<?, ?>) first.get("item")).get("id"));
+    parallel.report(((Map<?, ?>) first.get("command")).get("id").toString(), n("state", "heartbeat"), "node-s1");
     assertTrue(((Map<?, ?>) parallel.claim("node-s1")).isEmpty(), "one command per executor");
     var second = (Map<?, ?>) parallel.claim("node-s2");
     assertEquals(
@@ -110,6 +111,16 @@ class WorkflowTest {
     assertThrows(IllegalArgumentException.class, () -> new WorkflowService(store, Clock.systemUTC(), 2, 3));
     assertThrows(IllegalArgumentException.class, () -> ControlService.nodeIdentifier("napoleon-s1"));
     assertDoesNotThrow(() -> ControlService.nodeIdentifier("napoleon-sur"));
+  }
+
+  @Test
+  void lostClaimResponseIsRedeliveredUntilTheExecutorReports() {
+    create();
+    String first = command(claim());
+    assertEquals(first, command(claim()), "response lost: same command again");
+    service.report(first, n("state", "heartbeat"), "agent");
+    assertTrue(claim().isEmpty(), "after a report the executor owns it; nothing new");
+    assertTrue(service.claim("other-agent") instanceof Map<?, ?> m && m.isEmpty());
   }
 
   @Test
@@ -124,6 +135,7 @@ class WorkflowTest {
   void onlyOneClaimAndApprovalVersion() {
     create();
     String c = command(claim());
+    service.report(c, n("state", "heartbeat"), "agent");
     assertTrue(claim().isEmpty());
     proposal(c);
     assertThrows(
