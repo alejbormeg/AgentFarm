@@ -62,6 +62,7 @@ public class WorkflowService {
               "CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY,item TEXT NOT"
                   + " NULL,state TEXT NOT NULL,title TEXT NOT NULL,created INTEGER NOT NULL,sent"
                   + " INTEGER NOT NULL DEFAULT 0,attempts INTEGER NOT NULL DEFAULT 0)");
+          ensureColumn(c, "work_commands", "claimed_at", "INTEGER");
           statement(
               c,
               "CREATE TABLE IF NOT EXISTS autonomy_policies(recipe TEXT PRIMARY KEY,level TEXT NOT"
@@ -449,8 +450,25 @@ public class WorkflowService {
               now - 120);
           // One command per executor; development work shares a global and a per-repository
           // limit, so several executors (slots) can progress different repositories at once.
-          if (one(c, "SELECT id FROM work_commands WHERE state='claimed' AND claimed_by=?", agent)
-              != null) return Map.of();
+          var held =
+              one(
+                  c,
+                  "SELECT * FROM work_commands WHERE state='claimed' AND claimed_by=?",
+                  agent);
+          if (held != null) {
+            // A claim whose response was lost (no report since claiming, claimed_at still set) is
+            // delivered again; once the executor reported anything it gets nothing new.
+            if (held.get("claimed_at") == null) return Map.of();
+            exec(c, "UPDATE work_commands SET updated=?,claimed_at=? WHERE id=?", now, now, held.get("id"));
+            held = one(c, "SELECT * FROM work_commands WHERE id=?", held.get("id"));
+            held.remove("claimed_at");
+            audit(c, agent, "work.claim-redelivered", held.get("item").toString());
+            return obj(
+                "command",
+                held,
+                "item",
+                withRecipe(c, one(c, "SELECT * FROM work_items WHERE id=?", held.get("item"))));
+          }
           long busy =
               num(
                   one(
@@ -488,11 +506,14 @@ public class WorkflowService {
           if (cmd == null) return Map.of();
           exec(
               c,
-              "UPDATE work_commands SET state='claimed',claimed_by=?,updated=? WHERE id=?",
+              "UPDATE work_commands SET state='claimed',claimed_by=?,updated=?,claimed_at=? WHERE"
+                  + " id=?",
               agent,
+              now,
               now,
               cmd.get("id"));
           cmd = one(c, "SELECT * FROM work_commands WHERE id=?", cmd.get("id"));
+          cmd.remove("claimed_at");
           var item = one(c, "SELECT * FROM work_items WHERE id=?", cmd.get("item"));
           return obj("command", cmd, "item", withRecipe(c, item));
         });
@@ -507,9 +528,10 @@ public class WorkflowService {
               || !cmd.get("state").equals("claimed"))
             throw new IllegalArgumentException("Command no longer owned");
           String id = cmd.get("item").toString(), phase = text(n, "state");
+          // Any report confirms delivery: the claim is no longer eligible for redelivery.
           exec(
               c,
-              "UPDATE work_commands SET updated=? WHERE id=?",
+              "UPDATE work_commands SET updated=?,claimed_at=NULL WHERE id=?",
               clock.instant().getEpochSecond(),
               command);
           if (phase.equals("heartbeat"))
