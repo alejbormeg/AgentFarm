@@ -13,11 +13,14 @@ public class AutomationApi {
   private final TriggerService triggers;
   private final WorkflowService work;
   private final GitHubReader github;
+  private final SentryReader sentry;
 
-  public AutomationApi(TriggerService triggers, WorkflowService work, GitHubReader github) {
+  public AutomationApi(
+      TriggerService triggers, WorkflowService work, GitHubReader github, SentryReader sentry) {
     this.triggers = triggers;
     this.work = work;
     this.github = github;
+    this.sentry = sentry;
   }
 
   @GetMapping
@@ -28,7 +31,9 @@ public class AutomationApi {
         "autonomy",
         work.autonomy(),
         "github_configured",
-        github.configured());
+        github.configured(),
+        "sentry_configured",
+        sentry.configured());
   }
 
   @PostMapping("/triggers")
@@ -38,9 +43,9 @@ public class AutomationApi {
 
   @PostMapping("/triggers/run")
   public Object run() {
-    if (!github.configured())
-      throw new IllegalArgumentException("Configure AGENTFARM_GITHUB_TOKEN_FILE first");
-    return Map.of("touched", triggers.tick(github::get));
+    if (!github.configured() && !sentry.configured())
+      throw new IllegalArgumentException("Configure GitHub or Sentry credentials first");
+    return Map.of("touched", triggers.tick(github::get, sentry::get));
   }
 
   @PostMapping("/autonomy")

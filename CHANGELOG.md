@@ -4,7 +4,14 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — fase 6: equipo pequeño
+## Sin publicar — fase 7: señales de producción
+
+- Disparador Sentry: errores nuevos sin resolver abren propuestas `bugfix`, una vez cada uno.
+- Herramientas MCP por proyecto: el perfil solo nombra servidores definidos por el
+  operador del ejecutor; disponibles en investigación y revisión (Codex y Claude Code).
+- Mateu 3.0-beta.32.
+
+## Fase 6: equipo pequeño (#25)
 
 - Roles propietario, revisor y observador (`AGENTFARM_USERS_FILE`, `user-hash`);
   los revisores deciden propuestas, solo los propietarios integran y configuran.

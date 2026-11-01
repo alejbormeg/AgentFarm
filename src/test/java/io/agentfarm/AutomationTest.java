@@ -59,6 +59,31 @@ class AutomationTest {
     assertThrows(IllegalArgumentException.class, () -> triggers.configure(n("repository", "o/r", "kinds", List.of("deploy")), "owner"));
   }
 
+  @Test
+  void newSentryErrorsBecomeBugfixProposalsOnce() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> triggers.configure(n("repository", "o/s", "kinds", List.of("sentry")), "owner"),
+        "organization and project are required");
+    triggers.configure(
+        n("repository", "o/s", "kinds", List.of("sentry"), "sentry", obj("organization", "acme", "project", "shop")),
+        "owner");
+    var paths = new ArrayList<String>();
+    SentryReader.Source sentry =
+        path -> {
+          paths.add(path);
+          return parse(
+              "[{\"id\":\"42\",\"title\":\"TypeError: total is undefined\",\"culprit\":\"cart.js\","
+                  + "\"permalink\":\"https://sentry.io/i/42\",\"level\":\"error\",\"count\":\"17\"}]");
+        };
+    assertEquals(1, triggers.tick(this::gh, sentry).size());
+    assertTrue(triggers.tick(this::gh, sentry).isEmpty(), "once per Sentry issue");
+    assertTrue(paths.get(0).startsWith("/api/0/projects/acme/shop/issues/"));
+    var item = MAPPER.valueToTree(work.items().get(0));
+    assertEquals("bugfix", item.path("recipe").path("id").asText());
+    assertTrue(item.path("request").asText().contains("https://sentry.io/i/42"));
+  }
+
   String researched(String id, String recipe, List<Object> criteria) {
     work.create(n("request_id", id, "repository", "o/" + id, "title", "T", "request", "R", "recipe", obj("id", recipe, "version", 1)), "owner");
     var claim = (Map<?, ?>) work.claim("agent-" + id);
