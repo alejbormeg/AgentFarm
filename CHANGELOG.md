@@ -4,7 +4,16 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — fase 5: MCP, salud y segunda auditoría
+## Sin publicar — 5.3: tarea de punta a punta en CI
+
+- `tests/e2e/run.sh`: panel y ejecutor reales con dobles de Codex app-server y
+  `gh` sobre un repositorio Git local; la tarea recorre investigación, aprobación,
+  implementación, pruebas en contenedor, revisión y PR. Job `e2e` en CI.
+- Corrección encontrada por la prueba: el ejecutor publica una lectura de cuota
+  (que abre la ventana Clover) y su señal antes de la primera reclamación; antes,
+  la primera tarea de una cuenta nueva quedaba bloqueada por admisión.
+
+## Fase 5: MCP, salud y segunda auditoría (#23)
 
 - Segunda auditoría crítica ([AUDIT-2026-11](docs/AUDIT-2026-11.md)) y fases 5–7 en la hoja de ruta.
 - `agentfarm.jar mcp`: servidor MCP por stdio para Claude Code y Claude Desktop
