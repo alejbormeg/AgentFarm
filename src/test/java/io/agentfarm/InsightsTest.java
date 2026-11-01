@@ -49,6 +49,28 @@ class InsightsTest {
   }
 
   @Test
+  void expectedCostComesFromSettledRunsPerRecipeAndKind() {
+    work.create(
+        MAPPER.valueToTree(obj("request_id", "cost-0001", "repository", "o/r", "title", "T", "request", "R", "recipe", obj("id", "bugfix", "version", 1))),
+        "owner");
+    store.tx(
+        c -> {
+          String command = Store.one(c, "SELECT id FROM work_commands WHERE item='cost-0001'").get("id").toString();
+          Store.exec(c, "INSERT INTO budget_accounts VALUES('sub','subscription','{}')");
+          Store.exec(c, "INSERT INTO budget_runs VALUES('sub',?,'{}','settled','{\"weekly\":120}')", "work-" + command);
+          Store.exec(c, "INSERT INTO budget_runs VALUES('sub','work-unknown','{}','settled','{\"weekly\":999}')");
+          Store.exec(c, "INSERT INTO budget_runs VALUES('sub','work-x','{}','reserved',NULL)");
+          return null;
+        });
+    var costs = MAPPER.valueToTree(new InsightsService(store, Clock.systemUTC()).costs());
+    var bugfix = costs.path("bugfix/research/subscription");
+    assertEquals(1, bugfix.path("runs").asInt());
+    assertEquals(120, bugfix.path("median").asLong());
+    assertEquals("basis_points", bugfix.path("unit").asText());
+    assertEquals(1, costs.size(), "unknown commands and open reservations are ignored");
+  }
+
+  @Test
   void attentionStatesAreDeliveredOnceWithoutContent() {
     propose("notify-01");
     var sent = new ArrayList<String>();

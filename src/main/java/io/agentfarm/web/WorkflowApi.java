@@ -24,6 +24,11 @@ public class WorkflowApi {
     this.insights = insights;
   }
 
+  @GetMapping("/costs")
+  public Object costs() {
+    return insights.costs();
+  }
+
   @GetMapping("/metrics")
   public Object metrics(@RequestParam(defaultValue = "8") int weeks) {
     return insights.metrics(weeks);

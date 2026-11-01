@@ -4,7 +4,15 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — 5.3: tarea de punta a punta en CI
+## Sin publicar — fase 6: equipo pequeño
+
+- Roles propietario, revisor y observador (`AGENTFARM_USERS_FILE`, `user-hash`);
+  los revisores deciden propuestas, solo los propietarios integran y configuran.
+- GitHub App con token de instalación cacheado como alternativa al token personal.
+- Coste esperado por receta (mediana y p90 observados) junto al botón de aprobar.
+  [Guía](docs/TEAM.md)
+
+## 5.3: tarea de punta a punta en CI (#24)
 
 - `tests/e2e/run.sh`: panel y ejecutor reales con dobles de Codex app-server y
   `gh` sobre un repositorio Git local; la tarea recorre investigación, aprobación,

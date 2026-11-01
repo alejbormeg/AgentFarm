@@ -34,7 +34,10 @@ bajo riesgo verificados por tests. Integrar siempre es tuyo. [Automatización](d
 Consulta la bandeja y crea peticiones desde Claude Code o Claude Desktop con el
 servidor MCP incluido. [MCP](docs/MCP.md)
 
-**Todavía no:** coordinación entre varios nodos y roles de equipo. Ver la [segunda auditoría](docs/AUDIT-2026-11.md).
+Equipos pequeños: roles propietario, revisor y observador, GitHub App y coste
+esperado antes de aprobar. [Equipo](docs/TEAM.md)
+
+**Todavía no:** coordinación entre varios nodos y 2FA. Ver la [segunda auditoría](docs/AUDIT-2026-11.md).
 La hoja de ruta está en [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Empezar en 3 pasos

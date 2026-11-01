@@ -26,9 +26,70 @@ class WebTest {
     }
   }
 
+  static final String TEAM_PASSWORD = "team-password-123";
+
   @DynamicPropertySource
-  static void properties(DynamicPropertyRegistry r) {
+  static void properties(DynamicPropertyRegistry r) throws Exception {
     r.add("agentfarm.db", () -> dir.resolve("farm.db").toString());
+    String hash =
+        "{bcrypt}"
+            + new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
+                .encode(TEAM_PASSWORD);
+    Path users = dir.resolve("users.json");
+    Files.writeString(
+        users,
+        "[{\"username\":\"rita\",\"role\":\"reviewer\",\"password_hash\":\""
+            + hash
+            + "\"},{\"username\":\"oscar\",\"role\":\"observer\",\"password_hash\":\""
+            + hash
+            + "\"}]");
+    r.add("agentfarm.users-file", users::toString);
+  }
+
+  HttpResponse<String> as(String user, String method, String path, String body) throws Exception {
+    var client =
+        HttpClient.newBuilder().cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL)).build();
+    String basic =
+        "Basic "
+            + Base64.getEncoder()
+                .encodeToString((user + ":" + TEAM_PASSWORD).getBytes(StandardCharsets.UTF_8));
+    var csrf =
+        Json.parse(
+            client
+                .send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/csrf"))
+                        .header("Authorization", basic)
+                        .build(),
+                    HttpResponse.BodyHandlers.ofString())
+                .body());
+    var b =
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+            .header("Authorization", basic)
+            .header("Content-Type", "application/json")
+            .header(csrf.path("header").asText(), csrf.path("token").asText());
+    b = method.equals("GET") ? b.GET() : b.POST(HttpRequest.BodyPublishers.ofString(body));
+    return client.send(b.build(), HttpResponse.BodyHandlers.ofString());
+  }
+
+  @Test
+  void reviewersDecideProposalsButOnlyOwnersIntegrateOrConfigure() throws Exception {
+    assertEquals("reviewer", Json.parse(as("rita", "GET", "/api/me", null).body()).path("role").asText());
+    assertEquals(200, as("oscar", "GET", "/api/work", null).statusCode());
+    String request =
+        "{\"request_id\":\"team-request-01\",\"repository\":\"o/r\",\"title\":\"T\",\"request\":\"R\"}";
+    assertEquals(403, as("oscar", "POST", "/api/work", request).statusCode());
+    assertEquals(200, as("rita", "POST", "/api/work", request).statusCode());
+    assertTrue(get("/api/audit", true).body().contains("rita"), "audited with the person's name");
+    assertNotEquals(403, as("rita", "POST", "/api/work/team-request-01/actions/implement", "{\"version\":1}").statusCode(), "allowed, but no proposal yet");
+    for (String owned :
+        List.of(
+            "/api/work/team-request-01/actions/merge",
+            "/api/automation/autonomy",
+            "/api/executors",
+            "/api/governance/paused/true",
+            "/api/budget/configure"))
+      assertEquals(403, as("rita", "POST", owned, "{}").statusCode(), owned);
+    assertEquals("{\"status\":\"UP\"}", as("rita", "GET", "/api/health", null).body(), "details for owners only");
   }
 
   @LocalServerPort int port;
