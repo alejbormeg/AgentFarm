@@ -1,7 +1,7 @@
 # Review commands before approving a proposal. No command runs on profile load.
 version: 1
 repository: alejbormeg/AgentFarm
-setup: ""
+setup: ./mvnw -B -ntp -q verify -DskipTests && ./mvnw -B -ntp -q test -Dtest=NONE -Dsurefire.failIfNoSpecifiedTests=false
 tests:
   unit: ./mvnw -B -ntp test
   integration: ./mvnw -B -ntp verify && bash runtime/verify.sh
@@ -12,6 +12,14 @@ allowed_paths:
   - examples/
   - pom.xml
   - .github/workflows/
-environment: local
+environment: container
+# Tests run in a disposable container with an exported copy of the commit (no .git,
+# no host credentials). Setup has network; tests run offline unless network: always.
+container:
+  image: maven:3.9.11-eclipse-temurin-21
+  network: setup
+  cpus: 2
+  memory_mb: 4096
+  timeout_minutes: 20
 review: human-and-independent
 secret_refs: {}

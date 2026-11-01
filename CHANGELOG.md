@@ -4,7 +4,18 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — auditoría, fase 0
+## Sin publicar — fase 1.1: pruebas en contenedor
+
+- `setup` y pruebas se ejecutan en un contenedor Docker desechable con una copia
+  del árbol del commit: sin `.git`, sin credenciales de GitHub ni Codex, sin red
+  durante las pruebas por defecto, con límites de CPU, memoria y tiempo.
+- El perfil admite `environment: container` y el bloque `container`
+  (imagen, red, CPU, memoria, tiempo). `local` exige `-Dagentfarm.sandbox=host`.
+- La política del sandbox se guarda en la propuesta, se muestra antes de aprobar
+  y se registra en la evidencia de cada prueba.
+- El perfil de ejemplo de AgentFarm usa `maven:3.9.11-eclipse-temurin-21`.
+
+## Auditoría, fase 0 (#17)
 
 - Panel: pictogramas SVG para Boxer, Clover y Snowball (sin depender de fuentes emoji).
 - Panel: las tareas que esperan tu decisión aparecen primero.

@@ -33,6 +33,30 @@ secret_refs: {}
     assertFalse(profile.permits(".github/workflows/ci.yml"));
     assertEquals(profile.hash(), ProjectProfile.parse("# comment\n" + PROFILE).hash());
     assertDoesNotThrow(profile::requireSupportedExecution);
+    assertNull(profile.sandbox("img:1"));
+  }
+
+  @Test
+  void shippedExampleProfileRunsInAContainer() throws Exception {
+    var example = ProjectProfile.load(Path.of("examples/agentfarm.yaml"));
+    assertDoesNotThrow(example::requireSupportedExecution);
+    assertEquals("setup", example.sandbox(TestSandbox.DEFAULT_IMAGE).network());
+  }
+
+  @Test
+  void containerProfileDeclaresSandboxPolicy() {
+    var defaults = ProjectProfile.parse(PROFILE.replace("local", "container"));
+    assertDoesNotThrow(defaults::requireSupportedExecution);
+    assertEquals(TestSandbox.Policy.defaults("img:1"), defaults.sandbox("img:1"));
+    var custom =
+        ProjectProfile.parse(
+            PROFILE.replace("local", "container")
+                + "container: {image: 'maven:3.9-eclipse-temurin-21', network: none, cpus: 4,"
+                + " memory_mb: 8192, timeout_minutes: 20}\n");
+    assertEquals(
+        new TestSandbox.Policy("maven:3.9-eclipse-temurin-21", "none", 4, 8192, 20),
+        custom.sandbox("ignored"));
+    assertNotEquals(defaults.hash(), custom.hash());
   }
 
   @Test
@@ -49,9 +73,19 @@ secret_refs: {}
         }) assertThrows(Exception.class, () -> ProjectProfile.parse(bad), bad);
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            ProjectProfile.parse(PROFILE.replace("local", "container"))
-                .requireSupportedExecution());
+        () -> ProjectProfile.parse(PROFILE + "container: {image: node:22}\n"));
+    for (String container :
+        new String[] {
+          "container: {image: '-v /:/host'}\n",
+          "container: {image: node:22, network: host}\n",
+          "container: {image: node:22, cpus: 64}\n",
+          "container: {image: node:22, privileged: true}\n",
+          "container: {image: node:22, memory_mb: '4g'}\n"
+        })
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> ProjectProfile.parse(PROFILE.replace("local", "container") + container),
+          container);
     assertThrows(
         IllegalArgumentException.class,
         () ->

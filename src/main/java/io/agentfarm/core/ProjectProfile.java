@@ -17,6 +17,7 @@ public record ProjectProfile(
     String environment,
     String review,
     Map<String, String> secretRefs,
+    TestSandbox.Policy container,
     String hash) {
   public static ProjectProfile load(Path file) throws Exception {
     if (Files.size(file) > 65536) throw new IllegalArgumentException("Profile exceeds 64 KiB");
@@ -47,7 +48,8 @@ public record ProjectProfile(
               "allowed_paths",
               "environment",
               "review",
-              "secret_refs")
+              "secret_refs",
+              "container")
           .contains(k.getKey()))
         throw new IllegalArgumentException("Unknown profile field: " + k.getKey());
     if (!n.path("version").isIntegralNumber() || n.path("version").asInt() != 1)
@@ -83,6 +85,28 @@ public record ProjectProfile(
     if (!Set.of("local", "container").contains(environment)
         || !Set.of("independent", "human-and-independent").contains(review))
       throw new IllegalArgumentException("Unsupported environment or review policy");
+    TestSandbox.Policy container = null;
+    if (n.has("container")) {
+      var c = n.path("container");
+      if (!c.isObject()) throw new IllegalArgumentException("Container must be a mapping");
+      for (var k : c.properties())
+        if (!Set.of("image", "network", "cpus", "memory_mb", "timeout_minutes")
+            .contains(k.getKey()))
+          throw new IllegalArgumentException("Unknown container field: " + k.getKey());
+      for (String k : List.of("cpus", "memory_mb", "timeout_minutes"))
+        if (c.has(k) && !c.path(k).isIntegralNumber())
+          throw new IllegalArgumentException("Container " + k + " must be an integer");
+      var d = TestSandbox.Policy.defaults(TestSandbox.DEFAULT_IMAGE);
+      container =
+          new TestSandbox.Policy(
+              c.path("image").asText(d.image()),
+              c.path("network").asText(d.network()),
+              c.path("cpus").asInt(d.cpus()),
+              c.path("memory_mb").asInt(d.memoryMb()),
+              c.path("timeout_minutes").asInt(d.timeoutMinutes()));
+    }
+    if (container != null && !environment.equals("container"))
+      throw new IllegalArgumentException("Container settings require environment: container");
     var refs = new LinkedHashMap<String, String>();
     if (n.has("secret_refs")) {
       if (!n.path("secret_refs").isObject())
@@ -102,16 +126,20 @@ public record ProjectProfile(
         environment,
         review,
         Map.copyOf(refs),
+        container,
         sha256(canonical(n)));
   }
 
   public void requireSupportedExecution() {
-    if (!environment.equals("local"))
-      throw new IllegalArgumentException(
-          "Container execution is not implemented; profile cannot run locally");
     if (!secretRefs.isEmpty())
       throw new IllegalArgumentException(
           "Secret injection is not implemented; remove references or wait for an isolated adapter");
+  }
+
+  /** Sandbox for this project's tests; {@code null} means the profile asks for the host. */
+  public TestSandbox.Policy sandbox(String defaultImage) {
+    if (environment.equals("local")) return null;
+    return container != null ? container : TestSandbox.Policy.defaults(defaultImage);
   }
 
   public Map<String, Object> summary() {
@@ -130,6 +158,8 @@ public record ProjectProfile(
         review,
         "secret_refs",
         secretRefs,
+        "container",
+        container == null ? Map.of() : container.summary(),
         "hash",
         hash);
   }
