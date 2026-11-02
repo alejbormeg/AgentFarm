@@ -212,6 +212,8 @@ public class FarmDaemon extends CodexRunner {
     // Admission is for new work. An active run already owns the reserved margin.
     // Rechecking free balance here would reject the run's own reservation.
     if (reservedReset == 0) {
+      // The panel judges by the last snapshot it received, not by the reading just taken here.
+      telemetry();
       var admission =
           post(
               "/providers/admission",
@@ -1436,7 +1438,7 @@ public class FarmDaemon extends CodexRunner {
     }
   }
 
-  static void telemetry() throws Exception {
+  static synchronized void telemetry() throws Exception {
     if (current != null && commandId != null)
       try {
         if (report("heartbeat").path("paused").asBoolean()) cancelled = true;
