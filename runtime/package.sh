@@ -9,10 +9,17 @@ mkdir -p "$out/lib" target/runtime
 cp target/dependency/*.jar "$out/lib/"
 javac --release 21 -cp "target/classes:$out/lib/*" -d target/runtime runtime/CodexRunner.java runtime/FarmDaemon.java
 jar --create --file "$out/executor.jar" -C target/runtime CodexRunner.class -C target/runtime FarmDaemon.class -C target/classes io/agentfarm/core/Json.class -C target/classes io/agentfarm/core/ProjectProfile.class
-for name in ProjectMemory AgentAdapter AgentAdapters CodexAdapter UnavailableAdapter TestSandbox TestSandbox\$Policy TestSandbox\$Output TestSandbox\$Runner Prompts Prompts\$Rendered ClaudeCodeAdapter ClaudeCodeAdapter\$Result McpCatalog McpCatalog\$Server ProposalShape; do
+for name in TestPolicy ProjectMemory AgentAdapter AgentAdapters CodexAdapter UnavailableAdapter TestSandbox TestSandbox\$Policy TestSandbox\$Output TestSandbox\$Runner Prompts Prompts\$Rendered ClaudeCodeAdapter ClaudeCodeAdapter\$Result McpCatalog McpCatalog\$Server ProposalShape; do
   jar --update --file "$out/executor.jar" -C target/classes "io/agentfarm/core/$name.class"
 done
 jar --update --file "$out/executor.jar" -C target/classes prompts
+# The class list above is by hand: a missing one would only fail on a real executor.
+missing=$(jdeps -verbose:class -cp "$out/lib/*" "$out/executor.jar" 2>/dev/null | grep -E 'io\.agentfarm\.[^ ]+ +not found' || true)
+if [[ -n "$missing" ]]; then
+  echo "Executor jar is missing classes:" >&2
+  echo "$missing" >&2
+  exit 1
+fi
 cp runtime/executor runtime/install-executor.sh "$out/"
 cp LICENSE NOTICE "$out/"
 cp docs/INSTALLATION.md "$out/README.md"
