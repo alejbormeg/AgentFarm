@@ -98,5 +98,26 @@
       "Una afirmación del agente no acredita una comprobación. Cada criterio requiere evidencia o excepción visible.",
       "Publicar una PR forma parte de la implementación aprobada; fusionar requiere una acción humana por SHA."
     ]
+  },
+  {
+    "id": "adopt-repo",
+    "version": 1,
+    "title": "Adoptar un repositorio",
+    "purpose": "Dejar un repositorio listo para que los agentes lo mantengan con reglas verificables.",
+    "research_steps": [
+      "Leer el README, la CI y la estructura para identificar tecnología y cómo se instala y se prueba hoy.",
+      "Comprobar qué comandos de prueba unitaria y de integración existen; si falta alguno, proponer el mínimo que lo cubra.",
+      "Elegir comprobaciones de calidad que el proyecto ya use (formateador, linter, tipos, auditoría) y una métrica que no deba empeorar.",
+      "Resumir en summary el estado de salud y hasta tres mejoras prioritarias con evidencia del repositorio."
+    ],
+    "required_evidence": [
+      "agentfarm.yaml válido con setup, tests, allowed_paths, environment, review y quality, cuyos comandos pasan en el contenedor.",
+      "Pruebas unitarias y de integración reales; si el repositorio no las tiene, añadir las mínimas para que los comandos no estén vacíos."
+    ],
+    "restrictions": [
+      "Añadir agentfarm.yaml solo si no existe; no modificar uno existente.",
+      "No refactorizar ni corregir nada más: las mejoras se proponen como tareas aparte.",
+      "Una afirmación del agente no acredita una comprobación. Cada criterio requiere evidencia o excepción visible."
+    ]
   }
 ]

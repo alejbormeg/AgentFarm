@@ -630,3 +630,24 @@ td {
   display: block;
   margin-top: var(--lumo-space-xs);
 }
+
+.batch {
+  border: 1px solid var(--lumo-contrast-10pct);
+  border-radius: var(--lumo-border-radius-l);
+  padding: var(--lumo-space-m);
+  margin-top: var(--lumo-space-m);
+}
+.batch h3 {
+  margin: 0;
+}
+.batch-row {
+  display: block;
+  font-weight: 400;
+  margin-bottom: var(--lumo-space-s);
+}
+.batch-row input {
+  display: inline-block;
+  width: auto;
+  margin: 0 var(--lumo-space-xs) 0 0;
+  vertical-align: middle;
+}

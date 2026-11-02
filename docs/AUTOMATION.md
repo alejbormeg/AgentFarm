@@ -37,6 +37,25 @@ actor `trigger:<tipo>`.
 
 No existe nivel de autointegración.
 
+## Adoptar un repositorio
+**Adoptar repositorio** crea una tarea con la receta `adopt-repo` y activa los disparadores de
+issues etiquetadas, CI roto, Dependabot, revisión semanal y comentarios de PR. Napoleon analiza
+el repositorio y propone `agentfarm.yaml` con sus comandos de prueba y sus reglas de calidad, además
+de hasta tres mejoras. Es una tarea normal: la propuesta espera tu aprobación y la PR, tu integración.
+Es la única receta que puede añadir `agentfarm.yaml`; ninguna puede modificarlo.
+
+## Aprobar por lotes y resumen semanal
+**Esta semana**, en la Bandeja, resume lo integrado, lo que está en curso, lo que espera y lo
+bloqueado. **Listas para integrar** agrupa los cambios de bajo riesgo: recetas `dependency-update`,
+`test-improvement` y `project-memory` con todas las comprobaciones superadas y sin excepciones.
+
+El propietario las integra de una vez. Cada una se aprueba por su commit exacto y pasa las
+mismas puertas que una fusión individual. Si una ya no cumple, se rechaza esa y siguen las demás.
+Una tarea con cualquier otra receta, o sin receta, se integra una a una.
+
+Con un webhook configurado llega también un mensaje semanal, excepto si la semana no tuvo actividad.
+`GET /api/work/digest` · `POST /api/work/batch/merge` (solo propietario, hasta 20 tareas).
+
 ## Bandeja, resultados y avisos
 - **Bandeja:** lo que espera tu decisión aparece primero. En tareas
   en revisión, **Ver cambios del candidato** muestra el diff `base...sha` leído

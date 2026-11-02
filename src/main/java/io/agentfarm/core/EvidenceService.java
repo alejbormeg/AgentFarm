@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class EvidenceService {
+  /** Recipes whose candidates may be approved in a batch once every gate has passed. */
+  static final Set<String> LOW_RISK = Set.of("dependency-update", "test-improvement", "project-memory");
+
   private final Store db;
   private final Clock clock;
 
@@ -439,6 +442,12 @@ public class EvidenceService {
     result.put("criteria", criteria);
     result.put("blockers", blockers);
     result.put("ready", blockers.isEmpty());
+    result.put(
+        "low_risk",
+        blockers.isEmpty()
+            && exceptions == 0
+            && LOW_RISK.contains(
+                recipe == null ? "" : parse(recipe.get("snapshot").toString()).path("id").asText()));
     result.put("exceptions", exceptions);
     result.put(
         "acceptance_state",

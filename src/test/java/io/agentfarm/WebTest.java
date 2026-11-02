@@ -464,7 +464,7 @@ class WebTest {
   void recipesAreAuthenticatedAndCreateAResearchTaskWithCsrf() throws Exception {
     assertTrue(Set.of(401, 302).contains(get("/api/recipes", false).statusCode()));
     var recipes = Json.parse(get("/api/recipes", true).body());
-    assertEquals(5, recipes.size());
+    assertEquals(6, recipes.size());
     var selected = recipes.get(0);
     var body =
         Json.obj(
@@ -566,6 +566,16 @@ class WebTest {
     for (var w : work) if (id.equals(w.path("id").asText())) item = w;
     assertNotNull(item);
     assertEquals(item.path("created").asLong(), item.path("state_since").asLong());
+  }
+
+  @Test
+  void onlyTheOwnerApprovesInBatches() throws Exception {
+    String body = "{\"items\":[{\"id\":\"x\",\"sha\":\"y\"}]}";
+    assertEquals(403, as("rita", "POST", "/api/work/batch/merge", body).statusCode());
+    assertEquals(403, as("oscar", "POST", "/api/work/batch/merge", body).statusCode());
+    assertEquals(200, as("oscar", "GET", "/api/work/digest", null).statusCode());
+    assertEquals(200, as("oscar", "GET", "/api/skills", null).statusCode());
+    assertEquals(200, as("oscar", "GET", "/api/evidence/commandments", null).statusCode());
   }
 
   @Test
