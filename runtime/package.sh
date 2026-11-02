@@ -14,7 +14,8 @@ for name in TestPolicy ProjectMemory AgentAdapter AgentAdapters CodexAdapter Una
 done
 jar --update --file "$out/executor.jar" -C target/classes prompts
 # The class list above is by hand: a missing one would only fail on a real executor.
-missing=$(jdeps -verbose:class -cp "$out/lib/*" "$out/executor.jar" 2>/dev/null | grep -E 'io\.agentfarm\.[^ ]+ +not found' || true)
+deps=$(jdeps --multi-release 21 -verbose:class -cp "$out/lib/*" "$out/executor.jar")
+missing=$(grep -E 'io\.agentfarm\.[^ ]+ +not found' <<<"$deps" || true)
 if [[ -n "$missing" ]]; then
   echo "Executor jar is missing classes:" >&2
   echo "$missing" >&2
