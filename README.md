@@ -1,8 +1,28 @@
 # AgentFarm
 
-Plano de control local para un equipo de agentes de desarrollo. Tú describes
-una mejora; los agentes investigan, proponen, implementan, prueban, revisan y
-abren una PR. **Nada se integra sin tu aprobación del commit exacto.**
+**Deja de mantener tus repos.** Conecta una granja de agentes de código: vigilan la CI y las
+dependencias, proponen arreglos y te traen cada cambio con sus pruebas. **Nada se integra sin tu
+aprobación del commit exacto.**
+
+![La Bandeja: la cosecha de la semana, lo listo para integrar y lo que espera tu decisión](docs/img/bandeja.png)
+
+[English](README.en.md)
+
+## Pruébalo en un minuto
+
+```bash
+git clone https://github.com/alejbormeg/AgentFarm.git && cd AgentFarm
+./agentfarm demo
+```
+
+Los agentes y GitHub son simulados: nada sale de tu equipo. Necesitas JDK 21, git y python3.
+
+## Cómo funciona
+
+1. **Adoptas un repositorio.** Los agentes lo estudian y proponen sus comandos de prueba, sus reglas de calidad y las primeras mejoras.
+2. **Ellos vigilan.** CI rota, Dependabot, Sentry, comentarios de PR y una revisión semanal llegan como propuestas.
+3. **Ellos trabajan.** Uno implementa, las pruebas corren en un contenedor sin credenciales y otro revisa sin poder tocar nada.
+4. **Tú decides.** Apruebas cada commit, o varios a la vez si son de bajo riesgo. Cada cambio cumple los [Siete Mandamientos](docs/COMMANDMENTS.md) o no entra.
 
 Java 21, Spring Boot 4 y Mateu. Un solo proceso, SQLite, sin Node ni servidor SQL.
 
@@ -100,6 +120,7 @@ versiones anteriores: [migración](docs/MIGRATION.md).
 ```bash
 ./mvnw verify
 ./mvnw spring-boot:run
+./agentfarm demo                         # la granja completa con agentes simulados
 E2E_SANDBOX=host bash tests/e2e/run.sh   # tarea completa con Codex y GitHub simulados
                                          # con E2E_CHROME=<chrome> y Node 22, también en navegador
 bash tests/compose_backup.sh             # backup/restore con Compose, en un proyecto aparte

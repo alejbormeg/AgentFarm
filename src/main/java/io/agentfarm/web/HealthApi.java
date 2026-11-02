@@ -13,10 +13,15 @@ import org.springframework.web.bind.annotation.*;
 public class HealthApi {
   private final Store store;
   private final TelemetryService telemetry;
+  private final boolean demo;
 
-  public HealthApi(Store store, TelemetryService telemetry) {
+  public HealthApi(
+      Store store,
+      TelemetryService telemetry,
+      @org.springframework.beans.factory.annotation.Value("${agentfarm.demo:false}") boolean demo) {
     this.store = store;
     this.telemetry = telemetry;
+    this.demo = demo;
   }
 
   /** Who is signed in and with which role, so the panel can hide actions it cannot perform. */
@@ -29,7 +34,7 @@ public class HealthApi {
             .map(g -> g.substring(5).toLowerCase(java.util.Locale.ROOT))
             .findFirst()
             .orElse("observer");
-    return Map.of("user", auth.getName(), "role", role);
+    return Map.of("user", auth.getName(), "role", role, "demo", demo);
   }
 
   @GetMapping("/api/health")

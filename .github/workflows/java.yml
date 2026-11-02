@@ -53,6 +53,10 @@ jobs:
         run: bash tests/e2e/run.sh
         env:
           E2E_CHROME: google-chrome
+      - name: The demo reaches its promised state
+        run: bash runtime/demo.sh
+        env:
+          AGENTFARM_DEMO_ONCE: '1'
   container:
     runs-on: ubuntu-24.04
     steps:

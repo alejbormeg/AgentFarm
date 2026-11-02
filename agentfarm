@@ -2,7 +2,7 @@
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 command="${1:-up}"
-usage="Uso: ./agentfarm {up|password|stop|logs|status|doctor|profile|backup [destino]|restore [--yes] <copia>}"
+usage="Uso: ./agentfarm {up|demo|password|stop|logs|status|doctor|profile|backup [destino]|restore [--yes] <copia>}"
 java_in_image=(java -Dorg.sqlite.lib.path=/app/native -jar /app/agentfarm.jar)
 
 run_jar() {
@@ -193,6 +193,7 @@ restore_command() {
 
 case "$command" in
   doctor|profile) run_jar "$@"; exit ;;
+  demo) exec bash "$root/runtime/demo.sh" ;;
   backup) shift; backup_command "$@"; exit ;;
   restore) shift; restore_command "$@"; exit ;;
 esac
