@@ -909,6 +909,15 @@ public class FarmDaemon extends CodexRunner {
         integration.get("status").equals("passed")
             || integration.get("status").equals("not_applicable");
     pass &= review.path("passed").asBoolean(false);
+    boolean untested =
+        io.agentfarm.core.TestPolicy.untestedCode(
+            gitAt("diff", "--name-only", baseSha, sha).lines().filter(f -> !f.isBlank()).toList(),
+            String.valueOf(unit.get("status")),
+            String.valueOf(integration.get("status")));
+    if (untested) {
+      pass = false;
+      event("error", "El candidato cambia código con pruebas marcadas N/A");
+    }
     if (!Files.isDirectory(checkout.resolve(".github/workflows"))) pass = false;
     // A candidate that edits the project's own CI could weaken the gate it is judged by.
     var workflowChanges =
@@ -952,6 +961,8 @@ public class FarmDaemon extends CodexRunner {
             review,
             "workflow_changes",
             workflowChanges,
+            "untested_code",
+            untested,
             "ci_checks",
             p.has("ci_checks") ? p.path("ci_checks") : ciChecks(sha),
             "passed",

@@ -1,4 +1,4 @@
-const style = "/farm-console.css?v=5";
+const style = "/farm-console.css?v=6";
 const names = {
   queued: "En cola",
   approved: "Lista para implementar",
@@ -1306,14 +1306,24 @@ class FarmConsole extends HTMLElement {
   acceptance(parent, w, d) {
     const box = E("section", "", "acceptance");
     const covered = d.criteria.filter((c) =>
-      ["manual", "exception", "test"].includes(c.status),
+      ["manual", "exception", "verified"].includes(c.status),
     ).length;
     box.append(
       E(
         "h4",
         d.ready
           ? "Aceptación completa"
-          : "Decisiones pendientes · " + covered + "/" + d.criteria.length,
+          : "Criterios cubiertos · " + covered + " de " + d.criteria.length,
+      ),
+    );
+    const ci = d.verification?.state;
+    box.append(
+      E(
+        "p",
+        ci === "missing" || !ci
+          ? "CI sin leer: el panel la comprueba con su credencial de GitHub cada 30 segundos."
+          : d.verification.reason,
+        ci === "failed" || ci === "unavailable" ? "warning" : "muted",
       ),
     );
     if (d.scope_missing) {
@@ -1345,11 +1355,11 @@ class FarmConsole extends HTMLElement {
               : c.description) +
             " · " +
             ({
-              missing: "Sin evidencia",
+              missing: c.method === "test" ? "Sin comprobar" : "Falta tu validación",
               manual: "Validado manualmente",
               exception: "Excepción justificada",
               reject: "Rechazado",
-              test: "Pruebas independientes",
+              verified: "Comprobado",
             }[c.status] || c.status),
         ),
       );
@@ -1362,6 +1372,13 @@ class FarmConsole extends HTMLElement {
             : "Validación manual prevista.",
         ),
       );
+      if (c.status === "verified")
+        detail.append(
+          E(
+            "p",
+            "Los comandos aprobados pasaron en un contenedor limpio y en la CI de este commit. Esto no mide si las pruebas son buenas.",
+          ),
+        );
       if (c.decision)
         detail.append(
           E(
@@ -1382,7 +1399,7 @@ class FarmConsole extends HTMLElement {
         ...(c.method === "manual"
           ? [["manual", "Registrar validación manual"]]
           : []),
-        ["exception", "Justificar una excepción"],
+        ...(c.status === "verified" ? [] : [["exception", "Justificar una excepción"]]),
         ["reject", "Rechazar criterio"],
       ]) {
         const option = E("option", label);
@@ -1427,7 +1444,7 @@ class FarmConsole extends HTMLElement {
     box.append(
       E(
         "small",
-        "Los informes de Boxer son declaraciones. Este incremento permite validaciones humanas y excepciones; el verificador automático separado sigue pendiente.",
+        "Los informes del agente son declaraciones. Un criterio de prueba se cierra solo cuando sus comandos aprobados pasan en el contenedor y en la CI del commit; si no, necesita tu excepción justificada.",
       ),
     );
     if (d.exceptions)

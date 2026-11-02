@@ -40,6 +40,11 @@ public class EvidenceService {
             + " NULL,sha TEXT NOT NULL,basis TEXT NOT NULL,criterion TEXT NOT NULL,kind TEXT NOT"
             + " NULL,reason TEXT NOT NULL,environment TEXT NOT NULL,actor TEXT NOT NULL,at INTEGER"
             + " NOT NULL,request_hash TEXT NOT NULL)");
+    statement(
+        c,
+        "CREATE TABLE IF NOT EXISTS evidence_verifications(item TEXT PRIMARY KEY REFERENCES"
+            + " work_items(id),basis TEXT NOT NULL,sha TEXT NOT NULL,state TEXT NOT NULL,reason"
+            + " TEXT NOT NULL,detail TEXT NOT NULL,at INTEGER NOT NULL)");
   }
 
   public static JsonNode criteria(JsonNode proposal) {
@@ -71,6 +76,10 @@ public class EvidenceService {
               || !Set.of("unit", "integration").contains(check.asText())
               || !seen.add(check.asText()))
             throw new IllegalArgumentException("Invalid criterion check");
+        for (var check : checks)
+          if (proposal.path(check.asText() + "_test").asText().startsWith("N/A:"))
+            throw new IllegalArgumentException(
+                "A test criterion cannot rely on a command marked N/A: " + id);
       }
     }
     return entries;
@@ -332,6 +341,25 @@ public class EvidenceService {
     }
     String basis = basis(item, scope);
     result.put("basis", basis);
+    var verification =
+        one(c, "SELECT * FROM evidence_verifications WHERE item=? AND basis=?", item.get("id"), basis);
+    result.put("independent_verifier_available", verification != null);
+    result.put(
+        "verification",
+        verification == null
+            ? obj("state", "missing")
+            : obj(
+                "state",
+                verification.get("state"),
+                "reason",
+                verification.get("reason"),
+                "at",
+                verification.get("at"),
+                "detail",
+                parse(verification.get("detail").toString())));
+    var approved = parse(scope.get("proposal").toString());
+    boolean ciPassed =
+        sameSha && verification != null && "success".equals(verification.get("state"));
     result.put("scope_hash", scope.get("hash"));
     result.put("base_sha", scope.get("base_sha"));
     result.put("approved_proposal", sanitize(parse(scope.get("proposal").toString())));
@@ -339,17 +367,26 @@ public class EvidenceService {
         scope.get("hash").equals(sha256(canonical(parse(item.get("proposal").toString()))));
     var criteria = new ArrayList<Map<String, Object>>();
     var blockers = new ArrayList<String>();
-    int exceptions = 0;
+    int exceptions = 0, verified = 0;
+    int total = parse(scope.get("criteria").toString()).size();
     for (var entry : parse(scope.get("criteria").toString())) {
       Map<String, Object> latest = null;
       for (var decision : history)
         if (decision.get("basis").equals(basis)
             && decision.get("criterion").equals(entry.path("id").asText())) latest = decision;
       String status = latest == null ? "missing" : latest.get("kind").toString();
+      // A human rejection outranks the machines; a passing check needs no human sign-off.
+      if (!status.equals("reject") && ciPassed && commandsPassed(entry, approved, reports)) {
+        status = "verified";
+        latest = null;
+        verified++;
+      }
       if (status.equals("exception")) exceptions++;
-      if (latest == null || status.equals("reject"))
+      if (status.equals("missing") || status.equals("reject"))
         blockers.add(
-            entry.path("id").asText() + ": " + (latest == null ? "evidence missing" : "rejected"));
+            entry.path("id").asText()
+                + ": "
+                + (status.equals("missing") ? "evidence missing" : "rejected"));
       criteria.add(
           obj(
               "id",
@@ -366,6 +403,8 @@ public class EvidenceService {
               latest));
     }
     if (!scopeMatches) blockers.add("Approved scope changed");
+    if (reports.path("untested_code").asBoolean())
+      blockers.add("Code changed without unit and integration tests");
     if (item.get("sha") == null || !item.get("sha").toString().matches("[a-f0-9]{40}"))
       blockers.add("Candidate SHA missing");
     result.put("criteria", criteria);
@@ -376,7 +415,22 @@ public class EvidenceService {
         "acceptance_state",
         !blockers.isEmpty()
             ? "needs_decision"
-            : exceptions > 0 ? "accepted_with_exceptions" : "manually_validated");
+            : exceptions > 0
+                ? "accepted_with_exceptions"
+                : verified == total ? "verified" : "manually_validated");
     return result;
+  }
+
+  /** The executor ran each approved command, unaltered, in the disposable container. */
+  private static boolean commandsPassed(JsonNode entry, JsonNode proposal, JsonNode reports) {
+    if (!entry.path("method").asText().equals("test")) return false;
+    for (var check : entry.path("checks")) {
+      var report = reports.path(check.asText());
+      if (!report.path("status").asText().equals("passed")
+          || !report.path("sandbox").path("mode").asText().equals("container")
+          || !report.path("command").asText().equals(proposal.path(check.asText() + "_test").asText()))
+        return false;
+    }
+    return !entry.path("checks").isEmpty();
   }
 }

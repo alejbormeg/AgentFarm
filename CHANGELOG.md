@@ -4,6 +4,13 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — verificador automático de criterios
+
+- Las pruebas superadas cierran sus criterios sin excepción manual: el panel lee la CI del
+  commit con su propia credencial y exige que los comandos aprobados pasaran en el contenedor.
+- `N/A:` ya no cuenta como superado cuando el candidato cambia código, ni puede sostener un
+  criterio de test. El prompt de investigación pasa a `research.v3`.
+
 ## Sin publicar — Bandeja en blanco y prueba de navegador
 
 - Corregido: la Bandeja salía en blanco por un icono borrado en la PR #31. Si una vista
