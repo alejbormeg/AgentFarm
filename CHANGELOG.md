@@ -4,6 +4,13 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — skills de los agentes
+
+- Cada turno recibe las skills de su rol y de la tecnología del repositorio, escritas en el prompt.
+  La evidencia guarda versión y hash, y el panel las muestra. Ver [Skills](docs/SKILLS.md).
+- `skills` en `agentfarm.yaml` nombra skills del catálogo o instaladas por el operador.
+- `tests/eval/` compara tareas de referencia con y sin skills; aún sin ejecutar con agente real.
+
 ## Sin publicar — Los Siete Mandamientos
 
 - Cada candidato se juzga contra siete reglas visibles en Gobierno y en la tarea; una incumplida

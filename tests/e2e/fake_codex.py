@@ -41,6 +41,7 @@ BUGFIX = dict(
 
 
 def answer(thread, prompt):
+    assert "Skills de AgentFarm" in prompt, "every turn receives its skills"
     if "Corrige el saludo" in prompt and thread["sandbox"] == "workspace-write":
         os.makedirs(os.path.join(thread["cwd"], "tests"), exist_ok=True)
         with open(os.path.join(thread["cwd"], "fixed.txt"), "w") as f:

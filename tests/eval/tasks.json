@@ -1,0 +1,8 @@
+[
+  {"id": "eval-bugfix-0001", "title": "Corregir un cupón inválido", "recipe": {"id": "bugfix", "version": 1},
+   "request": "parse_coupon lanza ValueError sin explicación con un texto sin dos puntos, y acepta porcentajes negativos o mayores que 100. Debe rechazar esos casos con un mensaje claro."},
+  {"id": "eval-feature-0002", "title": "Impuestos en el total del pedido",
+   "request": "Añade a order_total un parámetro opcional con el porcentaje de impuestos y redondea el resultado a dos decimales. Debe seguir funcionando igual sin el parámetro."},
+  {"id": "eval-tests-0003", "title": "Mejorar las pruebas de la tienda", "recipe": {"id": "test-improvement", "version": 1},
+   "request": "Las pruebas apenas cubren shop.py. Añade las que detecten errores reales en discount, order_total y parse_coupon."}
+]

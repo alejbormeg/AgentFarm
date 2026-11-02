@@ -9,3 +9,4 @@ report.json
 *.iml
 __pycache__/
 *.pyc
+tests/eval/results/

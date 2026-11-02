@@ -1,0 +1,12 @@
+[
+  {"id": "change-discipline", "version": 1, "title": "Cambios pequeños que encajan", "roles": ["implement"], "stacks": ["any"]},
+  {"id": "test-design", "version": 1, "title": "Pruebas que detectan fallos", "roles": ["research", "implement", "review"], "stacks": ["any"]},
+  {"id": "software-design", "version": 1, "title": "Diseño proporcionado", "roles": ["research"], "stacks": ["any"]},
+  {"id": "code-review", "version": 1, "title": "Revisión de código con criterio", "roles": ["review"], "stacks": ["any"]},
+  {"id": "secure-coding", "version": 1, "title": "Código seguro", "roles": ["implement", "review"], "stacks": ["any"]},
+  {"id": "java-spring", "version": 1, "title": "Java y Spring", "roles": ["implement", "review"], "stacks": ["java"]},
+  {"id": "python", "version": 1, "title": "Python", "roles": ["implement", "review"], "stacks": ["python"]},
+  {"id": "node-typescript", "version": 1, "title": "Node y TypeScript", "roles": ["implement", "review"], "stacks": ["node"]},
+  {"id": "go", "version": 1, "title": "Go", "roles": ["implement", "review"], "stacks": ["go"]},
+  {"id": "web-ui", "version": 1, "title": "Interfaces web usables", "roles": ["implement", "review"], "stacks": ["ui"]}
+]

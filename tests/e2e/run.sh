@@ -159,6 +159,9 @@ first, fix = (json.loads(work["e2e-request-000%d" % i]["evidence"]) for i in (1,
 assert first["regression"]["status"] == "not_required", first
 assert first["untested_code"] is False, first
 assert fix["quality"]["checks"][0]["status"] == "passed", fix["quality"]
+assert fix["skills"]["enabled"] is True and {"change-discipline", "test-design"} <= {s["id"] for s in fix["skills"]["implement"]}, fix["skills"]
+assert {"code-review", "test-design"} <= {s["id"] for s in fix["skills"]["review"]}, fix["skills"]
+assert any(s["id"] == "software-design" for s in fix["skills"]["research"]), fix["skills"]
 if sandbox == "host":
     assert fix["regression"]["status"] == "not_evaluated", fix["regression"]
 else:

@@ -1,4 +1,4 @@
-const style = "/farm-console.css?v=7";
+const style = "/farm-console.css?v=8";
 const names = {
   queued: "En cola",
   approved: "Lista para implementar",
@@ -354,7 +354,10 @@ class FarmConsole extends HTMLElement {
         this.layout();
       }
       const extra = route === "governance" ? await api("/audit") : null;
-      if (route === "governance") this.commandmentList ||= await api("/evidence/commandments");
+      if (route === "governance") {
+        this.commandmentList ||= await api("/evidence/commandments");
+        this.skillList ||= await api("/skills");
+      }
       const dossiers = ["overview", "tasks", "governance"].includes(route)
         ? await api("/evidence")
         : [];
@@ -915,6 +918,19 @@ class FarmConsole extends HTMLElement {
       for (const c of this.commandmentList || []) rules.append(E("li", c.text));
       wall.append(rules);
       this.live.append(wall);
+      const skills = E("section", "", "panel");
+      skills.append(
+        E("h2", "Skills de los agentes"),
+        E(
+          "p",
+          "Cada turno recibe las que corresponden a su rol y a la tecnología del repositorio, y la evidencia registra su versión.",
+          "muted",
+        ),
+      );
+      const catalog = E("ul", "", "skills");
+      for (const c of this.skillList || []) catalog.append(E("li", c.title + " · " + c.id + " v" + c.version));
+      skills.append(catalog);
+      this.live.append(skills);
       this.automation(this.data.automation);
       const audit = E("section", "", "panel");
       this.live.append(audit);
@@ -1463,6 +1479,22 @@ class FarmConsole extends HTMLElement {
       }),
     );
   }
+  usedSkills(parent, w, used) {
+    const roles = [
+      ["research", "Napoleon"],
+      ["implement", "Boxer"],
+      ["review", "Revisor"],
+    ].filter(([role]) => used[role]?.length);
+    if (!roles.length) return;
+    const details = E("details");
+    details.dataset.key = "skills-" + w.id;
+    details.append(E("summary", "Skills usadas"));
+    for (const [role, name] of roles)
+      details.append(
+        E("p", name + ": " + used[role].map((s) => s.id + (s.version ? " v" + s.version : "")).join(", ")),
+      );
+    parent.append(details);
+  }
   commandments(parent, w, d) {
     if (!d.commandments?.length) return;
     const count = (status) => d.commandments.filter((c) => c.status === status).length;
@@ -1793,6 +1825,7 @@ class FarmConsole extends HTMLElement {
       this.commandments(task, w, dossier);
       this.acceptance(task, w, dossier);
     }
+    this.usedSkills(task, w, json(w.evidence).skills || { research: json(w.proposal).skills });
     if (w.sha)
       links.append(
         link("Expediente JSON", "/api/evidence/" + encodeURIComponent(w.id)),
