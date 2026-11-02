@@ -1,4 +1,4 @@
-const style = "/farm-console.css?v=4";
+const style = "/farm-console.css?v=5";
 const names = {
   queued: "En cola",
   approved: "Lista para implementar",
@@ -29,6 +29,11 @@ const svgIcon = (label, body) => {
   return e;
 };
 // Animal Farm's cast, also served from /icons for the shell's logo and favicon.
+const hat = () =>
+  svgIcon(
+    "Napoleon, un cerdo con bicornio",
+    '<path d="M15 27 8 19l13 3zM49 27l7-8-13 3z" fill="#e5909f"/><ellipse cx="32" cy="42" rx="21" ry="19" fill="#f4b3bd"/><ellipse cx="32" cy="49" rx="10" ry="7.5" fill="#e5909f"/><ellipse cx="28" cy="49" rx="2" ry="3" fill="#7c3a48"/><ellipse cx="36" cy="49" rx="2" ry="3" fill="#7c3a48"/><circle cx="22.5" cy="37" r="3" fill="#142d4e"/><circle cx="41.5" cy="37" r="3" fill="#142d4e"/><path d="M2 25C11 23 19 7 32 5c13 2 21 18 30 20-9 7-51 7-60 0z" fill="#142d4e"/><path d="M4 25c12 6 44 6 56 0" fill="none" stroke="#e3ab3e" stroke-width="3" stroke-linecap="round"/><circle cx="32" cy="17" r="6.5" fill="#fff"/><circle cx="32" cy="17" r="4.2" fill="#285bc5"/><circle cx="32" cy="17" r="2" fill="#d23c3c"/>',
+  );
 const horse = () =>
   svgIcon(
     "Boxer, un caballo de tiro",
@@ -376,7 +381,13 @@ class FarmConsole extends HTMLElement {
         me: this.me,
       };
       this.notifyAttention(work);
-      this.render();
+      try {
+        this.render();
+      } catch (e) {
+        // Render again next poll: a matching signature would blank the view and clear this error.
+        this.signature = "";
+        throw Error("No se pudo mostrar esta vista: " + e.message + ".");
+      }
       if (this.pendingTask) {
         const id = this.pendingTask;
         this.pendingTask = null;

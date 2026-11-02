@@ -45,8 +45,12 @@ git -C "$work/seed" add -A
 git -C "$work/seed" -c user.name=e2e -c user.email=e2e@localhost commit -q -m readme
 git clone -q --bare "$work/seed" "$work/remote.git"
 
-# Panel.
+# Panel, with an observer for the browser checks. The hash is of this test-only password.
+observer_password=e2e-observer-password
+printf '[{"username":"oscar","role":"observer","password_hash":"{bcrypt}%s"}]' \
+  '$2b$10$1MgguADStmenKvMf9iRFiO0xWOluuogO3fCgW2i0mzVITaw6kMlty' > "$work/users.json"
 AGENTFARM_PASSWORD="$password" AGENTFARM_DB="$work/panel/agentfarm.db" PORT="$port" \
+  AGENTFARM_USERS_FILE="$work/users.json" \
   java -jar "$root/target/agentfarm.jar" > "$work/panel.log" 2>&1 &
 pids+=($!)
 for _ in $(seq 1 60); do curl -fs -o /dev/null "$panel/api/health" && break; sleep 1; done
@@ -131,3 +135,11 @@ for name, job in jobs.items():
         assert job["container"]["image"] == "bash:5.2", job
 print("CI template runs in the sandbox image:", mode != "host")
 ' "$sandbox"
+
+# The panel with a task in review and a live executor, seen through a browser.
+if [[ -n "${E2E_CHROME:-}" ]]; then
+  CHROME="$E2E_CHROME" node "$root/tests/ui/smoke.mjs" "$panel" "$password" "$observer_password" \
+    || fail "browser smoke test"
+else
+  echo "Browser smoke test skipped: set E2E_CHROME to a Chrome binary"
+fi
