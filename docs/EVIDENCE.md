@@ -17,8 +17,8 @@ array se representan como una validación manual AC-1 con el texto original.
 
 El expediente exportable conserva repositorio, issue/PR/rama, base, candidato,
 versión de propuesta, hash de alcance, informes del ejecutor y decisiones humanas.
-Los informes se etiquetan como declarados; un passed de Boxer no verifica
-automáticamente ningún criterio. Los campos de credenciales conocidos se ocultan
+Los informes se etiquetan como declarados; un passed de Boxer no verifica por sí
+solo ningún criterio. Los campos de credenciales conocidos se ocultan
 en la exportación; no debe enviarse ningún secreto como evidencia.
 
 Al abrir la tarea se ve qué criterio está pendiente, validado manualmente,
@@ -27,10 +27,28 @@ caracteres y el entorno utilizado. Registrar validación manual significa que
 el operador declara haber realizado esa comprobación; no certifica una prueba
 automática ni una observación independiente del servidor.
 
-Para un criterio definido como test, este incremento **no permite** sustituirlo
-silenciosamente por una validación manual. Mientras no exista el verificador
-separado, solo puede permanecer pendiente o tener una excepción explícita,
-justificada y visible. El estado resultante será aceptado con excepciones.
+Un criterio definido como test no se puede sustituir por una validación manual.
+Se cierra solo cuando el verificador lo comprueba (ver abajo). Si no lo consigue,
+queda pendiente o necesita una excepción explícita, justificada y visible, y el
+estado resultante es aceptado con excepciones. Un rechazo humano siempre prevalece.
+
+## Verificador
+`EvidenceVerifier` corre en el panel cada 30 segundos, con la credencial de GitHub
+del panel y sin depender del ejecutor. Para cada tarea en revisión lee del commit
+exacto los check-runs, los estados y los archivos cambiados, y guarda el resultado
+ligado al `basis`: si cambia el SHA, la versión o el informe, deja de valer.
+
+Un criterio de test queda **comprobado** si la CI pasó entera y, además, el informe
+muestra para cada comprobación que el comando aprobado, sin alterar, pasó en el
+contenedor desechable. Las pruebas en el host no cuentan. La CI no pasa si el
+candidato cambia otro workflow distinto de `.github/workflows/agentfarm.yml`.
+
+**N/A:** un criterio de test no puede remitir a un comando `N/A:`, y un candidato que
+cambia código con un tipo de prueba en `N/A:` no pasa. Solo se admite N/A cuando los
+cambios son documentación (`docs/`, `.md`, `.txt`, licencias, memoria del proyecto).
+
+Comprueba que los comandos aprobados pasaron, no que las pruebas sean buenas. Sin
+credencial de GitHub en el panel, los criterios de test quedan sin comprobar.
 
 Una nueva decisión de rechazo revoca la aceptación anterior del mismo criterio.
 El historial se conserva. Reintentar la misma petición no duplica decisiones.
@@ -60,8 +78,7 @@ El expediente conserva la propuesta original y el informe del candidato. Estos
 diagramas siguen necesitando comprobación; no son una prueba de arquitectura.
 
 ## Pendientes de la fase 2
-Verificador automático en entorno separado con credenciales acotadas; herramientas
-y dependencias registradas automáticamente; reproducción del bug en base/candidato;
+Herramientas y dependencias registradas automáticamente; reproducción del bug en base/candidato;
 artefactos durables con integridad y enlaces desde la PR; vistas previas y capturas;
 construcción y contraste del As-is desde el commit integrado y To-be comprobado;
 validación visual escritorio/móvil. No se declara terminada la fase 2.
