@@ -497,6 +497,100 @@ class WebTest {
   }
 
   @Test
+  void signInPageIsSpanishAndCarriesItsCsrfToken() throws Exception {
+    var page = client.send(
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/login")).build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, page.statusCode());
+    assertTrue(page.body().contains("Contraseña"));
+    assertFalse(page.body().contains("Please sign in"));
+    assertTrue(page.body().matches("(?s).*name=\"_csrf\" value=\"[^\"]+\".*"));
+  }
+
+  @Test
+  void onlyTheOwnerCanToggleAgentsFromTheMateuList() throws Exception {
+    String node = "toggle-node";
+    var csrf = Json.parse(get("/api/csrf", true).body());
+    client.send(
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/nodes"))
+            .header("Authorization", auth())
+            .header(csrf.get("header").asText(), csrf.get("token").asText())
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString("{\"id\":\"" + node + "\",\"role\":\"napoleon\"}"))
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, toggle("oscar", TEAM_PASSWORD, node).statusCode());
+    assertTrue(enabled(node), "an observer's toggle changes nothing");
+    assertEquals(200, toggle("rita", TEAM_PASSWORD, node).statusCode());
+    assertTrue(enabled(node), "a reviewer's toggle changes nothing");
+    String password = Files.readString(dir.resolve("admin-password.txt")).trim();
+    assertEquals(200, toggle("admin", password, node).statusCode());
+    assertFalse(enabled(node), "the owner's toggle applies");
+    assertTrue(get("/api/audit", true).body().contains("node.disable"));
+  }
+
+  private boolean enabled(String node) throws Exception {
+    for (var n : Json.parse(get("/api/nodes", true).body()))
+      if (node.equals(n.path("id").asText())) return n.path("enabled").asInt() == 1;
+    throw new AssertionError("Unknown node " + node);
+  }
+
+  private HttpResponse<String> toggle(String user, String secret, String node) throws Exception {
+    String basic =
+        "Basic "
+            + Base64.getEncoder().encodeToString((user + ":" + secret).getBytes(StandardCharsets.UTF_8));
+    return client.send(
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/mateu/v3/sync/agent-status"))
+            .header("Authorization", basic)
+            .header("Origin", "http://localhost:" + port)
+            .header("Content-Type", "application/json")
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    "{\"serverSideType\":\"io.agentfarm.ui.AgentStatus\",\"appState\":{},"
+                        + "\"componentState\":{},\"parameters\":{\"_item\":\"node:"
+                        + node
+                        + ":false\"},\"consumedRoute\":\"\",\"route\":\"/agent-status\","
+                        + "\"actionId\":\"toggle\"}"))
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
+  }
+
+  @Test
+  void workItemsRecordWhenTheyEnteredTheirState() throws Exception {
+    String id = "stage-time-01";
+    String body =
+        "{\"request_id\":\"" + id + "\",\"repository\":\"o/r\",\"title\":\"T\",\"request\":\"R\"}";
+    assertEquals(200, as("rita", "POST", "/api/work", body).statusCode());
+    var work = Json.parse(get("/api/work", true).body());
+    com.fasterxml.jackson.databind.JsonNode item = null;
+    for (var w : work) if (id.equals(w.path("id").asText())) item = w;
+    assertNotNull(item);
+    assertEquals(item.path("created").asLong(), item.path("state_since").asLong());
+  }
+
+  @Test
+  void mergeWithoutPublisherExplainsWhy() throws Exception {
+    var csrf = Json.parse(get("/api/csrf", true).body());
+    var refused =
+        client.send(
+            HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/work/any/actions/merge"))
+                .header("Authorization", auth())
+                .header(csrf.get("header").asText(), csrf.get("token").asText())
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"sha\":\"abc\"}"))
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertEquals(409, refused.statusCode());
+    assertTrue(refused.body().contains("publicador de integración"), refused.body());
+  }
+
+  @Test
+  void mergedAgentViewsRedirectToAgents() throws Exception {
+    assertEquals(302, get("/nodes", true).statusCode());
+    assertEquals("/agents", get("/workers", true).headers().firstValue("location").orElse(""));
+  }
+
+  @Test
   void concurrentSessionPollingKeepsDatabaseEndpointsResponsive() throws Exception {
     var csrf = Json.parse(get("/api/csrf", true).body());
     String password = Files.readString(dir.resolve("admin-password.txt")).trim();

@@ -56,7 +56,7 @@ git clone https://github.com/alejbormeg/AgentFarm.git && cd AgentFarm
 1. Abre **http://localhost:8080** con el usuario **admin** y la contraseña anterior.
 2. Conecta el ejecutor WSL (Codex CLI y GitHub CLI autenticados): **Gobierno → Conectar ejecutor**
    o sigue [la guía del ejecutor](docs/OPERATIONS.md#instalación-del-ejecutor-local).
-3. En **Panorama**, abre **Nueva idea o tarea**, indica `owner/repositorio` y describe el objetivo.
+3. Pulsa **Nueva tarea**, indica `owner/repositorio` y describe el objetivo.
    Revisa la propuesta y pulsa **Implementar propuesta**; cuando la PR esté lista, **Aprobar e integrar**.
 
 Otros comandos: `./agentfarm status`, `./agentfarm logs`, `./agentfarm stop`.
@@ -71,11 +71,11 @@ Más detalles en [instalación](docs/INSTALL.md).
 
 ## El panel
 
-- **Panorama:** lo que espera tu decisión primero, estado del ejecutor y cuota.
-- **Tareas:** del objetivo a la PR, iniciativas y evidencias.
-- **Nodos / Boxer:** agentes registrados, heartbeat y habilitación.
-- **Clover:** cuota del proveedor, reservas y conciliación.
-- **Gobierno:** pausa de la granja y auditoría.
+- **Bandeja:** lo que espera tu decisión primero, trabajo en curso, resultados y cuota.
+- **Tareas:** tablero por etapas, búsqueda e iniciativas. Cada tarjeta abre la tarea con sus evidencias.
+- **Agentes:** nodos dirigentes y trabajadores Boxer, heartbeat y habilitación.
+- **Presupuesto:** cuota del proveedor, reservas Clover y conciliación.
+- **Gobierno:** pausa de la granja, automatización y auditoría.
 
 El progreso que informa un agente se muestra como *declarado*; una señal sin
 heartbeat en 12 segundos pasa a desconocida. Ver [roles Animal Farm](docs/ANIMAL_FARM.md).

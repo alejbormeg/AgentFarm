@@ -4,6 +4,23 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — lavado de cara del panel (Vaadin)
+
+- Navegación por tareas: Bandeja, Tareas, Agentes (une Nodos y Boxer; las direcciones
+  antiguas redirigen), Presupuesto y Gobierno.
+- Tablero por etapas con búsqueda; la tarea y **Nueva tarea** se abren en un panel
+  lateral. Las tarjetas no se arrastran: las etapas cambian por evidencia y aprobación.
+- Bandeja con lo que espera tu decisión y por qué; los avisos dicen cómo resolverse.
+- Página de acceso propia en español; códigos de presupuesto traducidos; fechas en
+  señales que no son de hoy; confirmación al permitir autonomía.
+- Corregido: el error de una acción desaparecía en el siguiente refresco (2 s).
+- Agentes y Presupuesto usan componentes nativos de Mateu (`StatusList` y `Meter`) que se
+  refrescan cada 5 s. Deshabilitar un agente desde Mateu exige ser propietario en el servidor.
+- Las tarjetas muestran cuánto llevan en su etapa (migración 4, `work_items.state_since`; las
+  tareas anteriores no tienen ese dato). «Cerradas» enseña las 5 últimas y puede desplegarse.
+- Revisores y observadores ya no ven controles que el servidor les rechazaría.
+- Corregido: fusionar sin publicador de integración mostraba solo «Conflict».
+
 ## Sin publicar — copia y recuperación con Docker Compose
 
 - `./agentfarm backup [destino]` funciona con el panel en Compose: crea la copia en

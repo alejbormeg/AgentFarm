@@ -123,7 +123,7 @@ public class SecurityConfig {
             new NodeTokenFilter(nodes),
             org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
                 .class)
-        .formLogin(Customizer.withDefaults())
+        .formLogin(f -> f.loginPage("/login"))
         .httpBasic(Customizer.withDefaults())
         .csrf(c -> c.ignoringRequestMatchers("/mateu/**"))
         .addFilterBefore(new MateuOriginFilter(), CsrfFilter.class);

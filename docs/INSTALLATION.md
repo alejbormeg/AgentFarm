@@ -12,8 +12,8 @@ Alternativa: Java 21+ y `java -jar target/agentfarm.jar` después de
 Nunca publiques el panel en Internet sin TLS y una política de acceso.
 
 En Gobierno → Conectar ejecutor se seleccionan un nodo y una cuenta registrados.
-Registra antes el nodo y sus dos trabajadores en Nodos/Boxer, y configura en
-Clover el presupuesto de suscripción con parada al 2 % semanal restante.
+Registra antes el nodo y sus dos trabajadores en Agentes, y configura en
+Presupuesto (Clover) el presupuesto de suscripción con parada al 2 % semanal restante.
 La conexión comprueba después heartbeats y autenticación declarada por el ejecutor;
 no inicia inferencia ni equivale a verificar aislamiento.
 

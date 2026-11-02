@@ -27,7 +27,19 @@ public class SchemaMigrations {
           new Migration(
               3,
               "optional metered API account per node credential",
-              List.of("ALTER TABLE node_credentials ADD COLUMN api_account TEXT")));
+              List.of("ALTER TABLE node_credentials ADD COLUMN api_account TEXT")),
+          // Triggers, so no transition site can forget it. Older rows stay NULL: when they entered
+          // their stage was never recorded.
+          new Migration(
+              4,
+              "when each work item entered its current state",
+              List.of(
+                  "ALTER TABLE work_items ADD COLUMN state_since INTEGER",
+                  "CREATE TRIGGER IF NOT EXISTS work_state_entered AFTER INSERT ON work_items BEGIN"
+                      + " UPDATE work_items SET state_since=NEW.created WHERE id=NEW.id; END",
+                  "CREATE TRIGGER IF NOT EXISTS work_state_changed AFTER UPDATE OF state ON"
+                      + " work_items WHEN OLD.state<>NEW.state BEGIN UPDATE work_items SET"
+                      + " state_since=CAST(strftime('%s','now') AS INTEGER) WHERE id=NEW.id; END")));
 
   // Services create their baseline tables in their constructors; depending on them orders this.
   public SchemaMigrations(
