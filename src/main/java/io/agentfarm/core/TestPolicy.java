@@ -22,6 +22,23 @@ public final class TestPolicy {
         || DOCUMENTS.contains(p);
   }
 
+  /** By the conventions of common test runners; used to find a bug fix's new tests. */
+  public static boolean isTest(String path) {
+    String p = path.toLowerCase(Locale.ROOT);
+    String name = p.substring(p.lastIndexOf('/') + 1);
+    return p.startsWith("test/")
+        || p.startsWith("tests/")
+        || p.contains("/test/")
+        || p.contains("/tests/")
+        || p.contains("/__tests__/")
+        || name.startsWith("test_")
+        || name.contains("_test.")
+        || name.contains(".test.")
+        || name.contains(".spec.")
+        || name.contains("test.java")
+        || name.contains("tests.java");
+  }
+
   /** True when code changed and a test kind did not run: N/A is never a pass for code. */
   public static boolean untestedCode(Collection<String> changed, String unit, String integration) {
     boolean ran = "passed".equals(unit) && "passed".equals(integration);

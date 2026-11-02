@@ -20,6 +20,11 @@ public class EvidenceApi {
     return evidence.inbox();
   }
 
+  @GetMapping("/commandments")
+  public Object commandments() {
+    return Commandments.list();
+  }
+
   @GetMapping("/{id}")
   public ResponseEntity<Object> dossier(@PathVariable String id) {
     return ResponseEntity.ok()

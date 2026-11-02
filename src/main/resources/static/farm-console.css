@@ -609,3 +609,24 @@ td {
   color: var(--lumo-tertiary-text-color);
   font-size: var(--lumo-font-size-xs);
 }
+
+.commandments {
+  margin: 0;
+  padding-left: 1.4rem;
+  display: grid;
+  gap: var(--lumo-space-s);
+}
+.commandment > * {
+  margin-right: var(--lumo-space-s);
+}
+.commandment small {
+  display: block;
+  color: var(--lumo-secondary-text-color);
+  margin-top: 2px;
+}
+.commandment select,
+.commandment textarea,
+.commandment input {
+  display: block;
+  margin-top: var(--lumo-space-xs);
+}

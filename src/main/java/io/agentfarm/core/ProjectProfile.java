@@ -19,6 +19,7 @@ public record ProjectProfile(
     Map<String, String> secretRefs,
     TestSandbox.Policy container,
     List<String> mcp,
+    Map<String, Object> quality,
     String hash) {
   public static ProjectProfile load(Path file) throws Exception {
     if (Files.size(file) > 65536) throw new IllegalArgumentException("Profile exceeds 64 KiB");
@@ -51,7 +52,8 @@ public record ProjectProfile(
               "review",
               "secret_refs",
               "container",
-              "mcp")
+              "mcp",
+              "quality")
           .contains(k.getKey()))
         throw new IllegalArgumentException("Unknown profile field: " + k.getKey());
     if (!n.path("version").isIntegralNumber() || n.path("version").asInt() != 1)
@@ -120,6 +122,7 @@ public record ProjectProfile(
         mcp.add(m.asText());
       }
     }
+    var quality = quality(n.path("quality"));
     var refs = new LinkedHashMap<String, String>();
     if (n.has("secret_refs")) {
       if (!n.path("secret_refs").isObject())
@@ -141,7 +144,43 @@ public record ProjectProfile(
         Map.copyOf(refs),
         container,
         List.copyOf(mcp),
+        quality,
         sha256(canonical(n)));
+  }
+
+  /**
+   * Extra gates: {@code checks} must exit 0; {@code metrics} print a number that may not get worse
+   * than on the base commit. Higher is better unless a metric says {@code better: lower}.
+   */
+  private static Map<String, Object> quality(com.fasterxml.jackson.databind.JsonNode q) {
+    if (q.isMissingNode()) return Map.of();
+    if (!q.isObject()) throw new IllegalArgumentException("quality must be a mapping");
+    for (var k : q.properties())
+      if (!Set.of("checks", "metrics").contains(k.getKey()))
+        throw new IllegalArgumentException("Unknown quality field: " + k.getKey());
+    var checks = new LinkedHashMap<String, String>();
+    for (var c : q.path("checks").properties()) {
+      qualityName(c.getKey());
+      checks.put(c.getKey(), text(q.path("checks"), c.getKey()));
+    }
+    var metrics = new LinkedHashMap<String, Object>();
+    for (var m : q.path("metrics").properties()) {
+      qualityName(m.getKey());
+      var value = m.getValue();
+      String command = value.isTextual() ? value.asText() : text(value, "command");
+      String better = value.path("better").asText("higher");
+      if (!Set.of("higher", "lower").contains(better))
+        throw new IllegalArgumentException("Metric better must be higher or lower");
+      metrics.put(m.getKey(), obj("command", command, "better", better));
+    }
+    if (checks.size() + metrics.size() > 8)
+      throw new IllegalArgumentException("At most 8 quality gates");
+    return obj("checks", checks, "metrics", metrics);
+  }
+
+  private static void qualityName(String name) {
+    if (!name.matches("[a-z0-9][a-z0-9-]{0,39}"))
+      throw new IllegalArgumentException("Invalid quality gate name");
   }
 
   public void requireSupportedExecution() {
@@ -176,12 +215,17 @@ public record ProjectProfile(
         container == null ? Map.of() : container.summary(),
         "mcp",
         mcp,
+        "quality",
+        quality,
         "hash",
         hash);
   }
 
   public boolean permits(String path) {
-    return allowedPaths.stream()
-        .anyMatch(p -> p.endsWith("/") ? path.startsWith(p) : path.equals(p));
+    return permitted(allowedPaths, path);
+  }
+
+  public static boolean permitted(Collection<String> allowed, String path) {
+    return allowed.stream().anyMatch(p -> p.endsWith("/") ? path.startsWith(p) : path.equals(p));
   }
 }

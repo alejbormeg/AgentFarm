@@ -124,7 +124,17 @@ public class EvidenceVerifier {
                         r.path("status").asText(),
                         "conclusion",
                         r.path("conclusion").asText())));
-    var detail = obj("checks", runs, "files", files);
+    var added = new ArrayList<String>();
+    var secrets = new ArrayList<String>();
+    compare
+        .path("files")
+        .forEach(
+            f -> {
+              if (f.path("status").asText().equals("added")) added.add(f.path("filename").asText());
+              secrets.addAll(
+                  SecretScan.findings(f.path("filename").asText(), f.path("patch").asText()));
+            });
+    var detail = obj("checks", runs, "files", files, "added", added, "secrets", secrets);
     var required = evidence.path("ci_checks");
     if (!required.isArray() || required.isEmpty())
       return new Assessment("failed", "El informe no vincula ninguna comprobación de CI.", detail);
@@ -166,6 +176,8 @@ public class EvidenceVerifier {
     if (!workflows.isEmpty())
       return new Assessment(
           "failed", "El candidato cambia la propia CI: " + String.join(", ", workflows) + ".", detail);
+    if (!secrets.isEmpty())
+      return new Assessment("failed", "Posible secreto en el diff.", detail);
     if (TestPolicy.untestedCode(
         files,
         evidence.path("unit").path("status").asText(),

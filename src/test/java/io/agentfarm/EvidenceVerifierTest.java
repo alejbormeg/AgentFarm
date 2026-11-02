@@ -250,6 +250,67 @@ class EvidenceVerifierTest {
     assertEquals("missing", dossier().path("verification").path("state").asText());
   }
 
+  @Test
+  void aBrokenCommandmentBlocksUntilItsExceptionIsSigned() {
+    candidate(report("unit", "mvn test", true));
+    store.tx(
+        c -> {
+          var evidence = (com.fasterxml.jackson.databind.node.ObjectNode)
+              parse(Store.one(c, "SELECT evidence FROM work_items WHERE id='verify-task'").get("evidence").toString());
+          evidence.set("regression", n("status", "not_proved", "reason", "Ya pasaban"));
+          Store.exec(c, "UPDATE work_items SET evidence=? WHERE id='verify-task'", encode(evidence));
+          return null;
+        });
+    verifier.verify("verify-task");
+    var d = dossier();
+    assertFalse(d.path("ready").asBoolean());
+    assertTrue(d.path("blockers").toString().contains("CM-2"), d.path("blockers").toString());
+    var request =
+        n(
+            "request_id",
+            UUID.randomUUID().toString(),
+            "version",
+            d.path("version").asInt(),
+            "sha",
+            sha,
+            "basis",
+            d.path("basis").asText(),
+            "criterion",
+            "CM-2",
+            "kind",
+            "exception",
+            "reason",
+            "Este fallo depende de una carrera que no se reproduce en una prueba",
+            "environment",
+            "Revisión del diff");
+    evidence.decide("verify-task", request, "owner");
+    d = dossier();
+    assertTrue(d.path("ready").asBoolean(), d.path("blockers").toString());
+    assertEquals("accepted_with_exceptions", d.path("acceptance_state").asText());
+    assertEquals("exception", d.path("commandments").get(1).path("status").asText());
+    var reject = ((com.fasterxml.jackson.databind.node.ObjectNode) request.deepCopy());
+    reject.put("request_id", UUID.randomUUID().toString()).put("kind", "reject");
+    assertThrows(IllegalArgumentException.class, () -> evidence.decide("verify-task", reject, "owner"));
+    var other = ((com.fasterxml.jackson.databind.node.ObjectNode) request.deepCopy());
+    other.put("request_id", UUID.randomUUID().toString()).put("criterion", "CM-6");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> evidence.decide("verify-task", other, "owner"),
+        "no exception can excuse a secret");
+  }
+
+  @Test
+  void aSecretInTheDiffFailsTheVerification() {
+    var compare =
+        n(
+            "files",
+            List.of(
+                obj("filename", "app.env", "patch", "+KEY=ghp_" + "a".repeat(36))));
+    var result = EvidenceVerifier.assess(reportWith("passed"), runs(), github("/status"), compare);
+    assertEquals("failed", result.state());
+    assertFalse(Json.encode(result.detail()).contains("a".repeat(36)));
+  }
+
   JsonNode reportWith(String unitStatus) {
     return n(
         "ci_checks",
