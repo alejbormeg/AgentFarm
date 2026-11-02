@@ -97,6 +97,7 @@ versiones anteriores: [migración](docs/MIGRATION.md).
 ./mvnw verify
 ./mvnw spring-boot:run
 E2E_SANDBOX=host bash tests/e2e/run.sh   # tarea completa con Codex y GitHub simulados
+                                         # con E2E_CHROME=<chrome> y Node 22, también en navegador
 bash tests/compose_backup.sh             # backup/restore con Compose, en un proyecto aparte
 ```
 

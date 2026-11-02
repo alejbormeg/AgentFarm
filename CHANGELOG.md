@@ -4,6 +4,13 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — Bandeja en blanco y prueba de navegador
+
+- Corregido: la Bandeja salía en blanco por un icono borrado en la PR #31. Si una vista
+  falla al dibujarse, ahora lo dice y lo reintenta en vez de quedarse vacía.
+- `tests/ui/smoke.mjs` recorre el panel en Chrome dentro del e2e de la CI: las cinco vistas,
+  una tarea por enlace directo, el refresco de Agentes y el rol de observador.
+
 ## Sin publicar — lavado de cara del panel (Vaadin)
 
 - Navegación por tareas: Bandeja, Tareas, Agentes (une Nodos y Boxer; las direcciones
