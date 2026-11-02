@@ -4,6 +4,14 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — adoptar repositorios y aprobar por lotes
+
+- **Adoptar repositorio:** una tarea analiza el repo, propone `agentfarm.yaml` y deja activa la vigilancia.
+- **Esta semana** y **Listas para integrar** en la Bandeja: integrar a la vez los cambios de bajo
+  riesgo, cada uno por su commit exacto. Mensaje semanal por webhook.
+- Primera vez: la Bandeja indica los pasos y **Preparar este equipo** crea nodo, trabajadores y cuenta
+  sin escribir JSON.
+
 ## Sin publicar — skills de los agentes
 
 - Cada turno recibe las skills de su rol y de la tecnología del repositorio, escritas en el prompt.

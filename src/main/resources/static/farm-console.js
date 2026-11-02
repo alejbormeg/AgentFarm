@@ -1,4 +1,4 @@
-const style = "/farm-console.css?v=8";
+const style = "/farm-console.css?v=10";
 const names = {
   queued: "En cola",
   approved: "Lista para implementar",
@@ -365,6 +365,7 @@ class FarmConsole extends HTMLElement {
         route === "governance" ? await api("/automation").catch(() => null) : null;
       const metrics =
         route === "overview" ? await api("/work/metrics").catch(() => null) : null;
+      const digest = route === "overview" ? await api("/work/digest").catch(() => null) : null;
       const costs = ["overview", "tasks"].includes(route)
         ? await api("/work/costs").catch(() => ({}))
         : {};
@@ -381,6 +382,7 @@ class FarmConsole extends HTMLElement {
         initiatives,
         automation,
         metrics,
+        digest,
         costs,
         me: this.me,
       };
@@ -454,13 +456,17 @@ class FarmConsole extends HTMLElement {
     this.pending = E("a");
     this.pending.href = "/overview";
     this.newTask = button("Nueva tarea", () => this.newDrawer.showModal(), true);
-    header.append(E("span", "", "spacer"), this.pending, this.newTask);
+    this.adopt = button("Adoptar repositorio", () => this.adoptDrawer.showModal(), "quiet");
+    header.append(E("span", "", "spacer"), this.pending, this.adopt, this.newTask);
     this.live = E("div");
     this.body.append(this.live);
     this.form = this.requestForm();
     const fresh = this.drawer("Nueva tarea");
     this.newDrawer = fresh.dialog;
     fresh.body.append(this.form);
+    const adoption = this.drawer("Adoptar repositorio");
+    this.adoptDrawer = adoption.dialog;
+    adoption.body.append(this.adoptionForm());
     const task = this.drawer("Tarea");
     this.taskDrawer = task.dialog;
     this.taskTitle = task.title;
@@ -478,7 +484,7 @@ class FarmConsole extends HTMLElement {
     });
     const linked = new URLSearchParams(location.search).get("tarea");
     if (linked) this.pendingTask = linked;
-    this.content.append(this.newDrawer, this.taskDrawer);
+    this.content.append(this.newDrawer, this.adoptDrawer, this.taskDrawer);
   }
   drawer(name) {
     const dialog = E("dialog", "", "drawer"),
@@ -512,6 +518,146 @@ class FarmConsole extends HTMLElement {
     } catch (e) {
       this.error.textContent = e.message;
     }
+  }
+  // Adopting is an ordinary task: its proposal, with agentfarm.yaml, waits for approval as any other.
+  adoptionForm() {
+    const section = E("section");
+    const problem = E("p", "", "error");
+    problem.setAttribute("role", "alert");
+    const repo = E("input");
+    repo.placeholder = "owner/repositorio";
+    const label = E("label", "Repositorio");
+    label.append(repo);
+    section.append(
+      E(
+        "p",
+        "Napoleon analizará el repositorio y te propondrá sus comandos de prueba, sus reglas de calidad y hasta tres mejoras. Desde entonces, AgentFarm vigilará su CI, sus alertas de Dependabot, los comentarios de sus PR y hará una revisión semanal: todo llega como propuesta para que decidas.",
+      ),
+      problem,
+      label,
+      button(
+        "Analizar repositorio",
+        async () => {
+          const repository = repo.value.trim();
+          if (!/^[\w.-]+\/[\w.-]+$/.test(repository)) {
+            problem.textContent = "Indica el repositorio como owner/repositorio.";
+            return;
+          }
+          try {
+            await api("/work", {
+              request_id: crypto.randomUUID(),
+              repository,
+              title: "Adoptar " + repository,
+              request: "Adopta este repositorio para que los agentes lo mantengan.",
+              recipe: { id: "adopt-repo", version: 1 },
+            });
+            await api("/automation/triggers", {
+              repository,
+              kinds: ["labeled_issue", "failing_ci", "dependabot", "weekly", "pr_feedback"],
+              max_new: 2,
+              enabled: true,
+            });
+            problem.textContent = "";
+            repo.value = "";
+            this.adoptDrawer.close();
+            this.signature = "";
+            await this.poll();
+          } catch (e) {
+            problem.textContent = e.message;
+          }
+        },
+        true,
+      ),
+    );
+    return section;
+  }
+  // The week at a glance and what can be approved together. Each entry names its exact commit.
+  weekBlock(main) {
+    const d = this.data.digest;
+    if (!d) return;
+    main.append(E("h2", "Esta semana"));
+    const pills = E("div", "", "pills");
+    pills.append(
+      pill(d.integrated.length + " integradas", d.integrated.length ? "ok" : ""),
+      pill(d.in_progress + " en curso"),
+      pill(d.waiting + " esperan tu decisión"),
+    );
+    if (d.blocked.length) pills.append(pill(d.blocked.length + " bloqueadas", "bad"));
+    main.append(pills);
+    if (!d.ready.length || this.data.me?.role !== "owner") return;
+    const box = E("div", "", "batch");
+    box.append(
+      E("h3", "Listas para integrar"),
+      E("p", "Cambios de bajo riesgo con todas las comprobaciones superadas.", "muted"),
+    );
+    this.batch ||= new Set();
+    for (const w of d.ready) {
+      const row = E("label", "", "batch-row"),
+        check = E("input");
+      check.type = "checkbox";
+      check.checked = this.batch.has(w.id) || !this.batchTouched;
+      if (check.checked) this.batch.add(w.id);
+      check.onchange = () => {
+        this.batchTouched = true;
+        check.checked ? this.batch.add(w.id) : this.batch.delete(w.id);
+      };
+      row.append(
+        check,
+        document.createTextNode(" " + w.title + " · " + w.repo + " · " + w.sha.slice(0, 8)),
+      );
+      box.append(row);
+    }
+    box.append(
+      button(
+        "Integrar las seleccionadas",
+        async () => {
+          const items = d.ready
+            .filter((w) => this.batch.has(w.id))
+            .map((w) => ({ id: w.id, sha: w.sha }));
+          if (!items.length) {
+            this.error.textContent = "Selecciona al menos una tarea.";
+            return;
+          }
+          if (!confirm("Se integrarán " + items.length + " cambios, cada uno con el commit indicado. ¿Continuar?"))
+            return;
+          try {
+            const { results } = await api("/work/batch/merge", { items });
+            const refused = results.filter((r) => r.state === "refused");
+            this.error.textContent = refused.length
+              ? refused.length + " no se integraron: " + refused[0].error
+              : "";
+            this.batch.clear();
+            this.signature = "";
+            await this.poll();
+          } catch (e) {
+            this.error.textContent = e.message;
+          }
+        },
+        true,
+      ),
+    );
+    main.append(box);
+  }
+  // First run: what to do, in order, instead of an empty page.
+  firstSteps(main, r, allWork) {
+    if (allWork.length || this.data.me?.role !== "owner") return false;
+    const box = E("section", "", "panel");
+    box.append(E("h2", "Empieza por aquí"));
+    const steps = E("ol", "", "commandments");
+    const executor = E("li", "");
+    executor.append(
+      r.fresh
+        ? document.createTextNode("Ejecutor conectado.")
+        : link("Conecta un ejecutor", "/setup.html"),
+    );
+    const adopt = E("li", "");
+    adopt.append(
+      button("Adopta tu primer repositorio", () => this.adoptDrawer.showModal(), true),
+    );
+    steps.append(executor, adopt);
+    box.append(steps);
+    main.append(box);
+    return true;
   }
   requestForm() {
     const section = E("section");
@@ -662,6 +808,7 @@ class FarmConsole extends HTMLElement {
     }
     const me = this.data.me;
     this.newTask.hidden = me?.role === "observer";
+    this.adopt.hidden = me?.role !== "owner";
     const decisions = allWork.filter(waiting).length;
     this.pending.textContent =
       this.view !== "overview" && decisions
@@ -684,6 +831,7 @@ class FarmConsole extends HTMLElement {
       o.paused,
       this.data.extra,
       this.data.dossiers,
+      this.data.digest,
       this.data.initiatives,
       (r.events || []).at(-1)?.id,
       this.openTask,
@@ -752,6 +900,8 @@ class FarmConsole extends HTMLElement {
       const split = E("div", "", "split"),
         main = E("section"),
         side = E("aside");
+      this.firstSteps(main, r, allWork);
+      this.weekBlock(main);
       const yours = work.filter(waiting).sort(byAttention);
       main.append(E("h2", "Espera tu decisión"));
       if (!yours.length)

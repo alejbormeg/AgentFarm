@@ -58,6 +58,7 @@ class RecipeTest {
     assertEquals(
         Set.of(
             "bugfix@1",
+            "adopt-repo@1",
             "dependency-update@1",
             "test-improvement@1",
             "migration@1",

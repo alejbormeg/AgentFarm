@@ -56,10 +56,12 @@ git clone https://github.com/alejbormeg/AgentFarm.git && cd AgentFarm
 ```
 
 1. Abre **http://localhost:8080** con el usuario **admin** y la contraseña anterior.
-2. Conecta el ejecutor WSL (Codex CLI y GitHub CLI autenticados): **Gobierno → Conectar ejecutor**
+2. Conecta el ejecutor WSL (Codex CLI y GitHub CLI autenticados): en **Conectar ejecutor**,
+   **Preparar este equipo** crea el nodo, sus trabajadores y la cuenta. Después, genera la credencial
    o sigue [la guía del ejecutor](docs/OPERATIONS.md#instalación-del-ejecutor-local).
-3. Pulsa **Nueva tarea**, indica `owner/repositorio` y describe el objetivo.
-   Revisa la propuesta y pulsa **Implementar propuesta**; cuando la PR esté lista, **Aprobar e integrar**.
+3. Pulsa **Adoptar repositorio** e indica `owner/repositorio`. Revisa la propuesta de configuración
+   y pulsa **Implementar propuesta**. Desde entonces puedes pedir tareas con **Nueva tarea**, y los
+   agentes te traerán propuestas cuando falle la CI, haya alertas de dependencias o cada semana.
 
 Otros comandos: `./agentfarm status`, `./agentfarm logs`, `./agentfarm stop`.
 Copia y recuperación de la base del volumen: `./agentfarm backup [destino]` y

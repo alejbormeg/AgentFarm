@@ -131,6 +131,9 @@ try {
   check(await until(() => visible("CI sin leer")), "the task says CI has not been read");
 
   // Agentes re-fetches itself; each render must not add another poll.
+  await go("/overview");
+  check(await until(() => visible("Esta semana")), "the inbox shows the week");
+  check(await visible("Adoptar repositorio"), "an owner can adopt a repository");
   await go("/agents");
   await until(() => visible("Nodos dirigentes"));
   await sleep(11000);
@@ -151,6 +154,7 @@ try {
     check(await until(() => visible("Los Siete Mandamientos")), "an observer can read governance");
     check(!(await visible("Pausar agentes")), "an observer sees no pause button");
     check(!(await visible("Nueva tarea")), "an observer cannot start a task");
+    check(!(await visible("Adoptar repositorio")), "an observer cannot adopt a repository");
     check(exceptions.length === 0, "observer view throws nothing");
   }
 } finally {

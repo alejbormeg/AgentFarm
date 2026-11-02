@@ -12,16 +12,18 @@ public class WorkflowApi {
   private final IntegrationPublisher publisher;
   private final GitHubReader github;
   private final InsightsService insights;
+  private final DigestService digest;
 
   public WorkflowApi(
       WorkflowService work,
       IntegrationPublisher publisher,
       GitHubReader github,
-      InsightsService insights) {
+      InsightsService insights, DigestService digest) {
     this.work = work;
     this.publisher = publisher;
     this.github = github;
     this.insights = insights;
+    this.digest = digest;
   }
 
   @GetMapping("/costs")
@@ -82,6 +84,19 @@ public class WorkflowApi {
   @PostMapping
   public Object create(@RequestBody JsonNode n, Principal p) {
     return work.create(n, p.getName());
+  }
+
+  @GetMapping("/digest")
+  public Object digest() {
+    return digest.digest();
+  }
+
+  @PostMapping("/batch/merge")
+  public Object approveBatch(@RequestBody JsonNode n, Principal p) {
+    if (!publisher.configured())
+      throw new IllegalArgumentException(
+          "Falta configurar el publicador de integración del panel; sin él no se puede fusionar.");
+    return digest.approve(n.path("items"), p.getName());
   }
 
   @PostMapping("/{id}/actions/{action}")

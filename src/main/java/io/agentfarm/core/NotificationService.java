@@ -65,6 +65,7 @@ public class NotificationService {
     return switch (state) {
           case "proposed" -> "Propuesta lista para aprobar: ";
           case "review" -> "PR lista para revisar e integrar: ";
+          case "digest" -> "Tu semana en AgentFarm: ";
           default -> "Tarea bloqueada: ";
         }
         + title;

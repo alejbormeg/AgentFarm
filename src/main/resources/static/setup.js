@@ -29,14 +29,31 @@ $("enroll").onsubmit=async e=>{
  try{const result=await api("/executors",{node:$("node").value,account:$("account").value});$("token").value=result.token;$("secret").hidden=false;await credentials();status("Credencial creada. Descárgala antes de salir; no se almacena en el navegador.");}
  catch(e){status(e.message);}finally{$("create").disabled=false;}
 };
+$("prepare").onclick=async()=>{
+ $("prepare").disabled=true;
+ try{
+  const overview=await api("/overview");
+  if(!overview.nodes.length){
+   await api("/nodes",{id:"napoleon-local",role:"napoleon"});
+   await api("/workers",{id:"napoleon-local-boxer",node:"napoleon-local"});
+   await api("/workers",{id:"napoleon-local-reviewer",node:"napoleon-local"});
+  }
+  if(!overview.budget_accounts.length)await api("/budget/configure",{account:"codex-subscription",mode:"subscription",shares:{weekly:9800}});
+  await load();
+ }catch(e){status(e.message);$("prepare").disabled=false;}
+};
 $("download").onclick=()=>{const token=$("token").value;if(!token)return;const url=URL.createObjectURL(new Blob([token+"\n"],{type:"application/octet-stream"}));const a=document.createElement("a");a.href=url;a.download="node-token";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 $("hide").onclick=hideSecret;
 $("check").onclick=async()=>{try{await check();status("Comprobación actualizada.");}catch(e){status(e.message);}};
 window.addEventListener("pagehide",hideSecret);
-try{
+async function load(){
  const overview=await api("/overview");
+ $("node").replaceChildren();$("account").replaceChildren();
  for(const node of overview.nodes)option($("node"),node.id);
  for(const account of overview.budget_accounts)option($("account"),account.account);
  $("create").disabled=!$("node").value||!$("account").value;
- await Promise.all([credentials(),check()]);status("Selecciona el nodo y su cuenta.");
-}catch(e){status(e.message);}
+ $("prepare-box").hidden=!$("create").disabled;
+ await Promise.all([credentials(),check()]);
+ status($("create").disabled?"Prepara este equipo para continuar.":"Selecciona el nodo y su cuenta.");
+}
+try{await load();}catch(e){status(e.message);}

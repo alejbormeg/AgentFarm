@@ -13,7 +13,7 @@
 <section><h2>2. Credencial del nodo</h2>
 <form id="enroll"><label for="node">Nodo registrado</label><select id="node" required></select>
 <label for="account">Cuenta Clover</label><select id="account" required></select>
-<small>Si no aparecen opciones, registra el nodo en Nodos y configura la cuenta en Clover.</small>
+<div id="prepare-box" hidden><p>Este panel aún no tiene nodo o cuenta. AgentFarm puede crear un nodo con sus dos trabajadores y una cuenta de suscripción Codex que para al 98 % de uso semanal.</p><button id="prepare" type="button">Preparar este equipo</button></div>
 <button id="create" type="submit">Crear credencial</button></form>
 <div id="secret" hidden><label for="token">Credencial · se muestra una sola vez</label><textarea id="token" readonly autocomplete="off" spellcheck="false"></textarea>
 <p>Guárdala en <code>AGENTFARM_STATE/node-token</code> con permiso 600. No la pegues en comandos con historial ni en Git.</p>
