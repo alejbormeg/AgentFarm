@@ -40,6 +40,8 @@ public class FarmDaemon extends CodexRunner {
   }
 
   static void event(String kind, String message) {
+    // The panel rejects a blank event, and one rejected batch would stop all later telemetry.
+    if (message == null || message.isBlank()) return;
     activity.add(
         obj(
             "external_id",
@@ -213,7 +215,11 @@ public class FarmDaemon extends CodexRunner {
     // Rechecking free balance here would reject the run's own reservation.
     if (reservedReset == 0) {
       // The panel judges by the last snapshot it received, not by the reading just taken here.
-      telemetry();
+      try {
+        telemetry();
+      } catch (Exception e) {
+        event("error", "No se pudo publicar la cuota: " + e.getMessage());
+      }
       var admission =
           post(
               "/providers/admission",
