@@ -41,7 +41,7 @@ en Git. La protección de origen del panel solo admite el host local.
 
 ## Actualizar
 
-Detén el servicio y realiza copia consistente del volumen. Actualiza el código
+Haz una copia con ./agentfarm backup y detén el servicio. Actualiza el código
 y ejecuta ./agentfarm up. No borres el volumen para actualizar. El arranque
 crea tablas que faltan y conserva las existentes.
 

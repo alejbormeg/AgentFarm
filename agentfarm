@@ -2,12 +2,199 @@
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 command="${1:-up}"
+usage="Uso: ./agentfarm {up|password|stop|logs|status|doctor|profile|backup [destino]|restore [--yes] <copia>}"
+java_in_image=(java -Dorg.sqlite.lib.path=/app/native -jar /app/agentfarm.jar)
+
+run_jar() {
+  jar="${AGENTFARM_JAR:-$root/target/agentfarm.jar}"
+  [[ -f "$jar" ]] || { echo "No se encuentra el JAR. Configura AGENTFARM_JAR o ejecuta ./mvnw package." >&2; exit 2; }
+  java -jar "$jar" "$@"
+}
+
+# compose_service_listed [ps flags]: whether this project's panel service matches the flags.
+compose_service_listed() {
+  local services
+  command -v docker >/dev/null || return 1
+  services="$(cd "$root" && docker compose ps "$@" --services 2>/dev/null)" || return 1
+  grep -qx agentfarm <<<"$services"
+}
+
+absolute_path() {
+  if [[ "$1" == /* ]]; then printf '%s\n' "$1"; else printf '%s\n' "$PWD/$1"; fi
+}
+
+sha256_of() {
+  if command -v sha256sum >/dev/null; then sha256sum "$1" | cut -d' ' -f1
+  else shasum -a 256 "$1" | cut -d' ' -f1
+  fi
+}
+
+# Prints the result of PRAGMA integrity_check; fails with status 3 if the host has no SQLite tool.
+host_integrity() {
+  if command -v sqlite3 >/dev/null; then
+    sqlite3 -readonly "$1" 'PRAGMA integrity_check'
+  elif command -v python3 >/dev/null; then
+    python3 -I -c 'import pathlib, sqlite3, sys
+uri = pathlib.Path(sys.argv[1]).resolve().as_uri() + "?mode=ro"
+print(sqlite3.connect(uri, uri=True).execute("PRAGMA integrity_check").fetchone()[0])' "$1"
+  else
+    return 3
+  fi
+}
+
+backup_cleanup() {
+  [[ -z "${backup_partial:-}" ]] || rm -f "$backup_partial"
+  if [[ -n "${backup_remote:-}" ]]; then
+    docker compose exec -T agentfarm rm -f "$backup_remote" </dev/null >/dev/null 2>&1 ||
+      echo "Aviso: no se pudo borrar $backup_remote del contenedor." >&2
+  fi
+}
+
+# The image has a read-only root and a tmpfs /tmp that `docker compose cp` cannot read, so the
+# snapshot is taken in /tmp, streamed out and verified before it appears under its final name.
+backup_compose() {
+  local dest="$1" report expected actual integrity
+  mkdir -p "$(dirname "$dest")"
+  backup_partial="$(mktemp "$dest.partial.XXXXXX")"
+  cd "$root"
+  backup_remote="/tmp/agentfarm-backup-$(date -u +%Y%m%dT%H%M%SZ)-$$.db"
+  trap backup_cleanup EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  report="$(docker compose exec -T agentfarm sh -c 'exec "$@" --db "$AGENTFARM_DB"' sh \
+    "${java_in_image[@]}" backup --output "$backup_remote" </dev/null)" ||
+    { echo "Falló la copia en el contenedor: $report" >&2; exit 1; }
+  expected="$(grep -oE '"sha256" *: *"[0-9a-f]{64}"' <<<"$report" | grep -oE '[0-9a-f]{64}')" ||
+    { echo "El contenedor no informó del SHA-256 de la copia: $report" >&2; exit 1; }
+  docker compose exec -T agentfarm cat "$backup_remote" </dev/null >"$backup_partial"
+  actual="$(sha256_of "$backup_partial")"
+  [[ "$actual" == "$expected" ]] ||
+    { echo "SHA-256 distinto tras extraer la copia: esperado $expected, obtenido $actual." >&2; exit 1; }
+  if integrity="$(host_integrity "$backup_partial")"; then
+    [[ "$integrity" == ok ]] || { echo "integrity_check falló en el host: $integrity" >&2; exit 1; }
+  else
+    [[ $? -eq 3 ]] || { echo "No se pudo ejecutar integrity_check en el host." >&2; exit 1; }
+    integrity="ok en el contenedor (sin sqlite3 ni python3 en el host; mismo SHA-256)"
+  fi
+  mv -n "$backup_partial" "$dest"
+  [[ ! -e "$backup_partial" ]] || { echo "Ya existe $dest; no se sobrescribe." >&2; exit 1; }
+  printf 'Copia: %s\nSHA-256: %s\nIntegridad: %s\n' "$dest" "$actual" "$integrity"
+}
+
+backup_command() {
+  # Explicit flags keep the JAR contract, whatever is running.
+  if [[ "${1:-}" == -* ]]; then run_jar backup "$@"; return; fi
+  (($# <= 1)) || { echo "$usage" >&2; exit 2; }
+  umask 077
+  local stamp dest
+  stamp="agentfarm-$(date -u +%Y%m%dT%H%M%SZ).db"
+  dest="$(absolute_path "${1:-$HOME/agentfarm-backups/}")"
+  if [[ "$dest" == */ || -d "$dest" ]]; then dest="${dest%/}/$stamp"; fi
+  [[ ! -e "$dest" ]] || { echo "Ya existe $dest; no se sobrescribe." >&2; exit 2; }
+  if compose_service_listed --status running; then
+    backup_compose "$dest"
+    return
+  fi
+  local db="${AGENTFARM_DB:-./data/agentfarm.db}"
+  echo "El servicio Compose no está en marcha: copia con el JAR desde $db." >&2
+  run_jar backup --db "$db" --output "$dest" || { local status=$?; rm -f "$dest"; exit "$status"; }
+}
+
+# Runs a script in a one-shot container on the panel's volume; args: script, then its "$@".
+compose_oneshot() {
+  local script="$1"; shift
+  docker compose run --rm --no-deps -T --entrypoint sh agentfarm -c "$script" sh "$@"
+}
+
+# Puts back the database set aside by the swap, if any, and removes the prepared copy.
+restore_undo='set -eu
+db=$AGENTFARM_DB
+rm -f "$(dirname "$db")/restore-$1.db"
+if [ -e "$db.pre-restore-$1" ]; then
+  rm -f "$db" "$db-wal" "$db-shm"
+  for suffix in "" -wal -shm; do
+    [ ! -e "$db.pre-restore-$1$suffix" ] || mv "$db.pre-restore-$1$suffix" "$db$suffix"
+  done
+fi'
+
+restore_cleanup() {
+  local status=$?
+  set +e
+  case "${restore_phase:-}" in
+    prepared) compose_oneshot "$restore_undo" "$restore_stamp" </dev/null ;;
+    stopped)
+      echo "La restauración falló: se recupera la base anterior." >&2
+      docker compose stop agentfarm
+      compose_oneshot "$restore_undo" "$restore_stamp" </dev/null
+      docker compose up -d --wait --wait-timeout 180 --no-build agentfarm ||
+        echo "El panel no arrancó tras recuperar la base anterior; revisa ./agentfarm logs." >&2
+      ;;
+  esac
+  exit "$status"
+}
+
+# Validation happens beside the running panel; it only stops once the snapshot is known good.
+restore_compose() {
+  local snapshot="$1" sha
+  sha="$(sha256_of "$snapshot")"
+  cd "$root"
+  restore_stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+  trap restore_cleanup EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  restore_phase=prepared
+  compose_oneshot 'set -eu
+umask 077
+stamp=$1; expected=$2; shift 2
+dir=$(dirname "$AGENTFARM_DB")
+incoming="$dir/restore-$stamp.incoming"
+trap '\''rm -f "$incoming" "$incoming-wal" "$incoming-shm"'\'' EXIT
+cat >"$incoming"
+actual=$(sha256sum "$incoming")
+[ "${actual%% *}" = "$expected" ] || { echo "SHA-256 distinto al recibir la copia." >&2; exit 1; }
+report=$("$@" restore --snapshot "$incoming" --db "$dir/restore-$stamp.db") ||
+  { echo "Copia rechazada: $report" >&2; exit 1; }' \
+    "$restore_stamp" "$sha" "${java_in_image[@]}" <"$snapshot"
+  docker compose stop agentfarm
+  restore_phase=stopped
+  compose_oneshot 'set -eu
+db=$AGENTFARM_DB
+for suffix in "" -wal -shm; do
+  [ ! -e "$db$suffix" ] || mv "$db$suffix" "$db.pre-restore-$1$suffix"
+done
+mv "$(dirname "$db")/restore-$1.db" "$db"' "$restore_stamp" </dev/null
+  docker compose up -d --wait --wait-timeout 180 --no-build agentfarm
+  restore_phase=done
+  printf 'Restaurada: %s\nBase anterior en el volumen: /data/agentfarm.db.pre-restore-%s\n' "$snapshot" "$restore_stamp"
+}
+
+restore_command() {
+  local assume_yes=0
+  case "${1:-}" in
+    --yes) assume_yes=1; shift ;;
+    -*) run_jar restore "$@"; return ;;
+  esac
+  [[ $# -eq 1 ]] || { echo "$usage" >&2; exit 2; }
+  local snapshot answer
+  snapshot="$(absolute_path "$1")"
+  [[ -f "$snapshot" && -r "$snapshot" && -s "$snapshot" ]] ||
+    { echo "La copia $snapshot no existe, no se puede leer o está vacía." >&2; exit 2; }
+  if ! compose_service_listed --all; then
+    echo "No hay servicio Compose. Sin Docker, usa: ./agentfarm restore --snapshot <copia> --db <destino-nuevo>" >&2
+    exit 2
+  fi
+  if ((assume_yes == 0)); then
+    [[ -t 0 ]] || { echo "Sin terminal, confirma con: ./agentfarm restore --yes <copia>" >&2; exit 2; }
+    read -r -p "Se detendrá el panel y se reemplazará su base por $snapshot (la actual se conserva). Detén antes el ejecutor. ¿Continuar? [s/N] " answer
+    [[ "$answer" == [sS] ]] || { echo "Cancelado." >&2; exit 1; }
+  fi
+  restore_compose "$snapshot"
+}
+
 case "$command" in
-  doctor|profile|backup|restore)
-    jar="${AGENTFARM_JAR:-$root/target/agentfarm.jar}"
-    [[ -f "$jar" ]] || { echo "No se encuentra el JAR. Configura AGENTFARM_JAR o ejecuta ./mvnw package." >&2; exit 2; }
-    exec java -jar "$jar" "$@"
-    ;;
+  doctor|profile) run_jar "$@"; exit ;;
+  backup) shift; backup_command "$@"; exit ;;
+  restore) shift; restore_command "$@"; exit ;;
 esac
 cd "$root"
 if ! command -v docker >/dev/null || ! docker compose version >/dev/null 2>&1; then
@@ -23,5 +210,5 @@ case "$command" in
   stop) docker compose stop ;;
   logs) docker compose logs --tail 100 agentfarm ;;
   status) docker compose ps ;;
-  *) echo "Uso: ./agentfarm {up|password|stop|logs|status|doctor|profile|backup|restore}" >&2; exit 2 ;;
+  *) echo "$usage" >&2; exit 2 ;;
 esac
