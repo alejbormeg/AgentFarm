@@ -635,6 +635,8 @@ public class FarmDaemon extends CodexRunner {
       object.put("unit_test", profile.tests().get("unit"));
       object.put("integration_test", profile.tests().get("integration"));
       object.put("setup", profile.setup());
+      object.set("allowed_paths", JSON.valueToTree(profile.allowedPaths()));
+      object.set("quality", JSON.valueToTree(profile.quality()));
     }
     ((com.fasterxml.jackson.databind.node.ObjectNode) p)
         .set("sandbox", JSON.valueToTree(policy == null ? Map.of("mode", "host") : policy.summary()));
@@ -696,6 +698,91 @@ public class FarmDaemon extends CodexRunner {
     var tests = new LinkedHashMap<String, String>();
     tests.put("unit", p.path("unit_test").asText());
     tests.put("integration", p.path("integration_test").asText());
+    return runCommands(p, sha, tests);
+  }
+
+  static boolean onHost(JsonNode p) {
+    return p.path("sandbox").path("mode").asText("container").equals("host");
+  }
+
+  /** Project-declared gates. On the host commands see the checkout, so base can't be measured. */
+  static Map<String, Object> runQuality(JsonNode p, String baseSha, String sha) throws Exception {
+    var checks = new LinkedHashMap<String, String>();
+    p.path("quality").path("checks").properties().forEach(c -> checks.put(c.getKey(), c.getValue().asText()));
+    var metrics = new LinkedHashMap<String, String>();
+    p.path("quality").path("metrics").properties().forEach(m -> metrics.put(m.getKey(), m.getValue().path("command").asText()));
+    var measured = new ArrayList<Map<String, Object>>();
+    if (!metrics.isEmpty() && !onHost(p)) {
+      var base = runCommands(p, baseSha, metrics);
+      var candidate = runCommands(p, sha, metrics);
+      int i = 0;
+      for (String name : metrics.keySet()) {
+        measured.add(
+            io.agentfarm.core.QualityGate.compare(
+                name,
+                p.path("quality").path("metrics").path(name).path("better").asText("higher"),
+                String.valueOf(base.get(i).get("output")),
+                String.valueOf(candidate.get(i).get("output"))));
+        i++;
+      }
+    }
+    return obj("checks", checks.isEmpty() ? List.of() : runCommands(p, sha, checks), "metrics", measured);
+  }
+
+  /** A bug fix must bring a test that fails without it: the new tests run against the base. */
+  static Map<String, Object> proveRegression(
+      JsonNode item, JsonNode p, String baseSha, String sha, Map<String, Object> unit, Map<String, Object> integration)
+      throws Exception {
+    if (!item.path("recipe").path("id").asText().equals("bugfix")) return obj("status", "not_required");
+    if (onHost(p))
+      return obj("status", "not_evaluated", "reason", "Las pruebas corren en el host: no se puede aislar la base.");
+    if (!"passed".equals(unit.get("status")) || !"passed".equals(integration.get("status")))
+      return obj("status", "not_evaluated", "reason", "Las pruebas del candidato no pasan.");
+    var tests =
+        gitAt("diff", "--diff-filter=d", "--name-only", baseSha, sha)
+            .lines()
+            .filter(io.agentfarm.core.TestPolicy::isTest)
+            .toList();
+    if (tests.isEmpty()) return obj("status", "not_proved", "reason", "El cambio no añade ni modifica ninguna prueba.");
+    Path tree = Files.createTempDirectory(STATE, "regression-");
+    String probe;
+    try {
+      gitAt("worktree", "add", "--force", "--detach", tree.toString(), baseSha);
+      var checkoutTests = new ArrayList<>(List.of("git", "-C", tree.toString(), "checkout", sha, "--"));
+      checkoutTests.addAll(tests);
+      process(STATE, 120, checkoutTests.toArray(String[]::new));
+      process(
+          STATE,
+          120,
+          "git",
+          "-C",
+          tree.toString(),
+          "-c",
+          "user.name=AgentFarm",
+          "-c",
+          "user.email=agentfarm@localhost",
+          "commit",
+          "-q",
+          "-m",
+          "probe");
+      probe = process(STATE, 30, "git", "-C", tree.toString(), "rev-parse", "HEAD").trim();
+    } finally {
+      gitAt("worktree", "remove", "--force", tree.toString());
+    }
+    event("command", "Comprobando que las pruebas nuevas fallan sin el cambio");
+    var results = runTests(p, probe);
+    boolean failed =
+        results.stream()
+            .anyMatch(
+                r ->
+                    "failed".equals(r.get("status"))
+                        && !String.valueOf(r.get("output")).startsWith("setup failed"));
+    return failed
+        ? obj("status", "proved", "reason", "Las pruebas nuevas fallan sobre la base y pasan con el cambio.", "tests", tests)
+        : obj("status", "not_proved", "reason", "Las pruebas nuevas ya pasaban sin el cambio.", "tests", tests);
+  }
+
+  static List<Map<String, Object>> runCommands(JsonNode p, String sha, Map<String, String> tests) throws Exception {
     var declared = p.path("sandbox");
     if (declared.path("mode").asText("container").equals("host")) {
       if (!SANDBOX.equals("host"))
@@ -884,6 +971,8 @@ public class FarmDaemon extends CodexRunner {
     var integration = results.get(1);
     if (!gitAt("status", "--porcelain").isBlank())
       throw new IOException("Las pruebas han cambiado el checkout; revisar antes de publicar");
+    var quality = runQuality(p, baseSha, sha);
+    var regression = proveRegression(item, p, baseSha, sha, unit, integration);
     active = REVIEWER;
     phase = "reviewing";
     JsonNode review =
@@ -929,6 +1018,16 @@ public class FarmDaemon extends CodexRunner {
       pass = false;
       event("error", "El candidato modifica el CI del proyecto: " + workflowChanges);
     }
+    var addedFiles = gitAt("diff", "--diff-filter=A", "--name-only", baseSha, sha).lines().toList();
+    var protectedFiles =
+        io.agentfarm.core.Commandments.protectedChanges(
+            gitAt("diff", "--name-only", baseSha, sha).lines().filter(f -> f.equals("agentfarm.yaml")).toList(),
+            addedFiles,
+            item.path("recipe").path("id").asText());
+    if (!protectedFiles.isEmpty()) {
+      pass = false;
+      event("error", "El candidato cambia las reglas del proyecto: " + protectedFiles);
+    }
     if (!gitAt("rev-parse", "HEAD").equals(sha) || !gitAt("status", "--porcelain").isBlank())
       throw new IOException("El candidato cambió durante la revisión");
     var evidence =
@@ -963,6 +1062,10 @@ public class FarmDaemon extends CodexRunner {
             workflowChanges,
             "untested_code",
             untested,
+            "quality",
+            quality,
+            "regression",
+            regression,
             "ci_checks",
             p.has("ci_checks") ? p.path("ci_checks") : ciChecks(sha),
             "passed",
@@ -996,6 +1099,12 @@ public class FarmDaemon extends CodexRunner {
         if (!changed.isBlank() && !profile.permits(changed))
           throw new IOException("Out of approved profile scope: " + changed);
     }
+    // Once pushed a secret is exposed for good, so this check comes before the panel's own.
+    var secrets =
+        io.agentfarm.core.SecretScan.findings(
+            "", gitAt("diff", p.path("base_sha").asText(), sha));
+    if (!secrets.isEmpty())
+      throw new IOException("Posible secreto en el candidato: " + String.join(", ", secrets));
     String branch = gitAt("branch", "--show-current");
     guard();
     gitAt("push", "-u", "origin", branch);

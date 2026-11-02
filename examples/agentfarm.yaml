@@ -22,4 +22,13 @@ container:
   memory_mb: 4096
   timeout_minutes: 20
 review: human-and-independent
+# Extra gates (see docs/COMMANDMENTS.md). checks must exit 0; a metric prints a number that may
+# not get worse than on the base commit. Higher is better unless it says "better: lower".
+# quality:
+#   checks:
+#     lint: ./mvnw -B -ntp -q spotless:check
+#     audit: ./mvnw -B -ntp -q org.owasp:dependency-check-maven:check
+#   metrics:
+#     coverage: ./mvnw -B -ntp -q verify && python3 tools/coverage.py
+#     warnings: {command: ./mvnw -B -ntp -q compile | grep -c WARNING, better: lower}
 secret_refs: {}

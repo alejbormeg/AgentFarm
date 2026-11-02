@@ -4,6 +4,15 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — Los Siete Mandamientos
+
+- Cada candidato se juzga contra siete reglas visibles en Gobierno y en la tarea; una incumplida
+  bloquea la integración. Ver [Mandamientos](docs/COMMANDMENTS.md).
+- Con la receta `bugfix`, las pruebas nuevas deben fallar sobre el commit base.
+- `quality` en `agentfarm.yaml`: comprobaciones y métricas que no pueden empeorar.
+- Búsqueda de credenciales antes del push y, de nuevo, desde el panel.
+- Cambiar `agentfarm.yaml` o la CI del proyecto bloquea el candidato.
+
 ## Sin publicar — verificador automático de criterios
 
 - Las pruebas superadas cierran sus criterios sin excepción manual: el panel lee la CI del

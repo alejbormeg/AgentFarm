@@ -29,7 +29,27 @@ PROPOSAL = {
 }
 
 
+# A bug fix with its regression test: tests/test_fix.sh fails on the base commit.
+BUGFIX = dict(
+    PROPOSAL,
+    summary="Corregir el saludo",
+    acceptance="fixed.txt contiene arreglado",
+    unit_test="bash tests/test_fix.sh",
+    integration_test="bash tests/test_fix.sh",
+    criteria=[{"id": "AC-1", "description": "fixed.txt contiene arreglado", "method": "test", "checks": ["unit", "integration"]}],
+)
+
+
 def answer(thread, prompt):
+    if "Corrige el saludo" in prompt and thread["sandbox"] == "workspace-write":
+        os.makedirs(os.path.join(thread["cwd"], "tests"), exist_ok=True)
+        with open(os.path.join(thread["cwd"], "fixed.txt"), "w") as f:
+            f.write("arreglado\n")
+        with open(os.path.join(thread["cwd"], "tests", "test_fix.sh"), "w") as f:
+            f.write("grep -q arreglado fixed.txt\n")
+        return {"summary": "Corregido", "as_is": BUGFIX["as_is"], "to_be": BUGFIX["to_be"], "limitations": "Ninguna"}
+    if "Corrige el saludo" in prompt and not prompt.startswith("Revisión independiente"):
+        return BUGFIX
     if thread["sandbox"] == "workspace-write":
         with open(os.path.join(thread["cwd"], "greeting.txt"), "w") as f:
             f.write("hola desde AgentFarm\n")

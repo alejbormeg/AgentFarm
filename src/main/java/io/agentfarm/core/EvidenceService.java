@@ -205,6 +205,11 @@ public class EvidenceService {
           JsonNode match = null;
           for (var entry : parse(scope.get("criteria").toString()))
             if (entry.path("id").asText().equals(criterion)) match = entry;
+          if (Commandments.EXCEPTABLE.contains(criterion)) {
+            if (!kind.equals("exception"))
+              throw new IllegalArgumentException("A commandment only admits a signed exception");
+            match = MAPPER.valueToTree(obj("method", "test"));
+          }
           if (match == null) throw new IllegalArgumentException("Unknown criterion");
           if (kind.equals("manual") && !match.path("method").asText().equals("manual"))
             throw new IllegalArgumentException(
@@ -403,6 +408,30 @@ public class EvidenceService {
               latest));
     }
     if (!scopeMatches) blockers.add("Approved scope changed");
+    var recipe = one(c, "SELECT snapshot FROM work_recipes WHERE item=?", item.get("id"));
+    var commandments =
+        Commandments.assess(
+            approved,
+            reports,
+            verification == null ? null : verification.get("state").toString(),
+            verification == null ? null : verification.get("reason").toString(),
+            verification == null
+                ? MAPPER.createObjectNode()
+                : parse(verification.get("detail").toString()),
+            recipe == null ? "" : parse(recipe.get("snapshot").toString()).path("id").asText());
+    for (var commandment : commandments) {
+      if (!"failed".equals(commandment.get("status"))) continue;
+      Map<String, Object> signed = null;
+      for (var decision : history)
+        if (decision.get("basis").equals(basis)
+            && decision.get("criterion").equals(commandment.get("id"))) signed = decision;
+      if (signed != null && Commandments.EXCEPTABLE.contains(commandment.get("id").toString())) {
+        commandment.put("status", "exception");
+        commandment.put("decision", signed);
+        exceptions++;
+      } else blockers.add(commandment.get("id") + ": " + commandment.get("detail"));
+    }
+    result.put("commandments", commandments);
     if (reports.path("untested_code").asBoolean())
       blockers.add("Code changed without unit and integration tests");
     if (item.get("sha") == null || !item.get("sha").toString().matches("[a-f0-9]{40}"))

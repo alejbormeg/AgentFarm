@@ -1,4 +1,4 @@
-const style = "/farm-console.css?v=6";
+const style = "/farm-console.css?v=7";
 const names = {
   queued: "En cola",
   approved: "Lista para implementar",
@@ -354,6 +354,7 @@ class FarmConsole extends HTMLElement {
         this.layout();
       }
       const extra = route === "governance" ? await api("/audit") : null;
+      if (route === "governance") this.commandmentList ||= await api("/evidence/commandments");
       const dossiers = ["overview", "tasks", "governance"].includes(route)
         ? await api("/evidence")
         : [];
@@ -901,6 +902,19 @@ class FarmConsole extends HTMLElement {
         controls,
       );
       this.live.append(control);
+      const wall = E("section", "", "panel");
+      wall.append(
+        E("h2", "Los Siete Mandamientos"),
+        E(
+          "p",
+          "Cada candidato los cumple antes de poder integrarse. Están en el código del panel: ningún agente puede repintarlos.",
+          "muted",
+        ),
+      );
+      const rules = E("ol", "", "commandments");
+      for (const c of this.commandmentList || []) rules.append(E("li", c.text));
+      wall.append(rules);
+      this.live.append(wall);
       this.automation(this.data.automation);
       const audit = E("section", "", "panel");
       this.live.append(audit);
@@ -1392,53 +1406,12 @@ class FarmConsole extends HTMLElement {
               c.decision.environment,
           ),
         );
-      const kind = E("select");
-      kind.setAttribute("aria-label", "Decisión " + c.id);
-      for (const [value, label] of [
-        ["", "Selecciona una decisión"],
-        ...(c.method === "manual"
-          ? [["manual", "Registrar validación manual"]]
-          : []),
-        ...(c.status === "verified" ? [] : [["exception", "Justificar una excepción"]]),
-        ["reject", "Rechazar criterio"],
-      ]) {
-        const option = E("option", label);
-        option.value = value;
-        kind.append(option);
-      }
-      const reason = E("textarea");
-      reason.setAttribute("aria-label", "Evidencia o justificación " + c.id);
-      reason.placeholder =
-        "Qué has comprobado, resultado y referencia de evidencia; o motivo concreto de la excepción.";
-      const environment = E("input");
-      environment.setAttribute("aria-label", "Entorno de comprobación " + c.id);
-      environment.placeholder = "Entorno y versión de herramientas utilizados";
-      if (this.data.me?.role === "owner") detail.append(
-        kind,
-        reason,
-        environment,
-        button("Registrar decisión para " + c.id, () => {
-          if (
-            !kind.value ||
-            reason.value.trim().length < 20 ||
-            !environment.value.trim()
-          ) {
-            this.error.textContent =
-              "Selecciona la decisión e indica evidencia o justificación y entorno.";
-            return;
-          }
-          return this.action("/evidence/" + w.id + "/decisions", {
-            request_id: crypto.randomUUID(),
-            version: d.version,
-            sha: d.sha,
-            basis: d.basis,
-            criterion: c.id,
-            kind: kind.value,
-            reason: reason.value,
-            environment: environment.value,
-          });
-        }),
-      );
+      if (this.data.me?.role === "owner")
+        this.decisionForm(detail, w, d, c.id, [
+          ...(c.method === "manual" ? [["manual", "Registrar validación manual"]] : []),
+          ...(c.status === "verified" ? [] : [["exception", "Justificar una excepción"]]),
+          ["reject", "Rechazar criterio"],
+        ]);
       box.append(detail);
     }
     box.append(
@@ -1450,6 +1423,86 @@ class FarmConsole extends HTMLElement {
     if (d.exceptions)
       box.append(E("p", "Excepciones aceptadas: " + d.exceptions, "warning"));
     parent.append(box);
+  }
+  // The panel's decision form: every signature names its evidence and environment.
+  decisionForm(parent, w, d, id, kinds) {
+    const kind = E("select");
+    kind.setAttribute("aria-label", "Decisión " + id);
+    for (const [value, label] of [["", "Selecciona una decisión"], ...kinds]) {
+      const option = E("option", label);
+      option.value = value;
+      kind.append(option);
+    }
+    const reason = E("textarea");
+    reason.setAttribute("aria-label", "Evidencia o justificación " + id);
+    reason.placeholder =
+      "Qué has comprobado, resultado y referencia de evidencia; o motivo concreto de la excepción.";
+    const environment = E("input");
+    environment.setAttribute("aria-label", "Entorno de comprobación " + id);
+    environment.placeholder = "Entorno y versión de herramientas utilizados";
+    parent.append(
+      kind,
+      reason,
+      environment,
+      button("Registrar decisión para " + id, () => {
+        if (!kind.value || reason.value.trim().length < 20 || !environment.value.trim()) {
+          this.error.textContent =
+            "Selecciona la decisión e indica evidencia o justificación y entorno.";
+          return;
+        }
+        return this.action("/evidence/" + w.id + "/decisions", {
+          request_id: crypto.randomUUID(),
+          version: d.version,
+          sha: d.sha,
+          basis: d.basis,
+          criterion: id,
+          kind: kind.value,
+          reason: reason.value,
+          environment: environment.value,
+        });
+      }),
+    );
+  }
+  commandments(parent, w, d) {
+    if (!d.commandments?.length) return;
+    const count = (status) => d.commandments.filter((c) => c.status === status).length;
+    const details = E("details");
+    details.dataset.key = "commandments-" + w.id;
+    details.open = count("failed") > 0;
+    details.append(
+      E(
+        "summary",
+        "Mandamientos · " +
+          count("ok") +
+          " cumplidos" +
+          (count("failed") ? " · " + count("failed") + " incumplidos" : "") +
+          (count("pending") ? " · " + count("pending") + " pendientes" : ""),
+      ),
+    );
+    const list = E("ol", "", "commandments");
+    for (const c of d.commandments) {
+      const row = E("li", "", "commandment " + c.status);
+      row.append(
+        E("strong", c.text),
+        pill(
+          {
+            ok: "Cumplido",
+            failed: "Incumplido",
+            pending: "Pendiente",
+            not_evaluated: "Sin evaluar",
+            not_applicable: "No aplica",
+            exception: "Excepción firmada",
+          }[c.status] || c.status,
+          c.status === "ok" ? "ok" : c.status === "failed" ? "bad" : "",
+        ),
+        E("small", c.detail || ""),
+      );
+      if (c.status === "failed" && ["CM-2", "CM-5"].includes(c.id) && this.data.me?.role === "owner")
+        this.decisionForm(row, w, d, c.id, [["exception", "Firmar una excepción"]]);
+      list.append(row);
+    }
+    details.append(list);
+    parent.append(details);
   }
   diffViewer(w) {
     const d = E("details");
@@ -1736,7 +1789,10 @@ class FarmConsole extends HTMLElement {
       );
     if (w.error) task.append(E("p", w.error, "error"));
     const dossier = this.data.dossiers?.find((d) => d.item === w.id);
-    if (dossier) this.acceptance(task, w, dossier);
+    if (dossier) {
+      this.commandments(task, w, dossier);
+      this.acceptance(task, w, dossier);
+    }
     if (w.sha)
       links.append(
         link("Expediente JSON", "/api/evidence/" + encodeURIComponent(w.id)),

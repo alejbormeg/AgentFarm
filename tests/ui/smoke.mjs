@@ -102,7 +102,7 @@ const views = {
   tasks: "Investigación",
   agents: "Nodos dirigentes",
   budgets: "Cuota del proveedor",
-  governance: "Control de ejecución",
+  governance: "Los Siete Mandamientos",
 };
 
 try {
@@ -127,6 +127,8 @@ try {
   const link = await js("location.pathname+location.search");
   await go(link);
   check(await until(() => js(`${all}.some(e=>e.tagName==='DIALOG'&&e.open)`)), "the deep link reopens the task");
+  check(await until(() => visible("Mandamientos")), "the task shows its commandments");
+  check(await until(() => visible("CI sin leer")), "the task says CI has not been read");
 
   // Agentes re-fetches itself; each render must not add another poll.
   await go("/agents");
@@ -146,7 +148,7 @@ try {
     await login("oscar", observerPassword);
     exceptions.length = 0;
     await go("/governance");
-    check(await until(() => visible("Control de ejecución")), "an observer can read governance");
+    check(await until(() => visible("Los Siete Mandamientos")), "an observer can read governance");
     check(!(await visible("Pausar agentes")), "an observer sees no pause button");
     check(!(await visible("Nueva tarea")), "an observer cannot start a task");
     check(exceptions.length === 0, "observer view throws nothing");

@@ -27,20 +27,27 @@ fail() {
 git init -q -b main "$work/seed"
 git -C "$work/seed" -c user.name=e2e -c user.email=e2e@localhost commit -q --allow-empty -m init
 echo "# Demo" > "$work/seed/README.md"
-if [[ "$sandbox" == host ]]; then
-  cat > "$work/seed/agentfarm.yaml" <<'YAML'
+if [[ "$sandbox" == host ]]; then environment="environment: local"; else
+  environment="environment: container
+container: {image: 'bash:5.2', network: setup, timeout_minutes: 5}"
+fi
+cat > "$work/seed/agentfarm.yaml" <<YAML
 version: 1
 repository: e2e/demo
 setup: ""
 tests:
-  unit: test -f greeting.txt
-  integration: grep -q hola greeting.txt
-allowed_paths: [greeting.txt, .github/workflows/]
-environment: local
+  unit: test -f greeting.txt || bash tests/test_fix.sh
+  integration: grep -qs hola greeting.txt || bash tests/test_fix.sh
+allowed_paths: [greeting.txt, fixed.txt, tests/, .github/workflows/]
+$environment
 review: independent
 secret_refs: {}
+quality:
+  checks:
+    lint: "true"
+  metrics:
+    files: ls | wc -l
 YAML
-fi
 git -C "$work/seed" add -A
 git -C "$work/seed" -c user.name=e2e -c user.email=e2e@localhost commit -q -m readme
 git clone -q --bare "$work/seed" "$work/remote.git"
@@ -85,8 +92,9 @@ pids+=($executor)
 
 state() {
   curl -fs -u "admin:$password" "$panel/api/work" \
-    | python3 -c 'import json,sys;w=[x for x in json.load(sys.stdin) if x["id"]=="e2e-request-0001"][0];print(w["state"], w.get("error") or "")'
+    | python3 -c 'import json,sys;w=[x for x in json.load(sys.stdin) if x["id"]==sys.argv[1]][0];print(w["state"], w.get("error") or "")' "$item"
 }
+item=e2e-request-0001
 wait_for() {
   local want="$1" limit="$2" s=""
   for _ in $(seq 1 "$limit"); do
@@ -135,6 +143,29 @@ for name, job in jobs.items():
         assert job["container"]["image"] == "bash:5.2", job
 print("CI template runs in the sandbox image:", mode != "host")
 ' "$sandbox"
+
+# A bug fix: the agent's new test must fail on the base commit, and the project's gates must run.
+owner /work '{"request_id":"e2e-request-0002","repository":"e2e/demo","title":"Corrige el saludo","request":"Corrige el saludo.","recipe":{"id":"bugfix","version":1}}' > /dev/null
+item=e2e-request-0002
+wait_for proposed 60
+owner /work/e2e-request-0002/actions/implement '{"version":1}' > /dev/null
+wait_for review 200
+python3 - "$panel" "$password" "$sandbox" <<'PY'
+import base64, json, sys, urllib.request
+panel, password, sandbox = sys.argv[1:]
+req = urllib.request.Request(panel + "/api/work", headers={"Authorization": "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()})
+work = {x["id"]: x for x in json.load(urllib.request.urlopen(req))}
+first, fix = (json.loads(work["e2e-request-000%d" % i]["evidence"]) for i in (1, 2))
+assert first["regression"]["status"] == "not_required", first
+assert first["untested_code"] is False, first
+assert fix["quality"]["checks"][0]["status"] == "passed", fix["quality"]
+if sandbox == "host":
+    assert fix["regression"]["status"] == "not_evaluated", fix["regression"]
+else:
+    assert fix["regression"]["status"] == "proved", fix["regression"]
+    assert fix["quality"]["metrics"][0]["status"] == "passed", fix["quality"]
+print("Gates OK: regression", fix["regression"]["status"], "quality", fix["quality"]["metrics"])
+PY
 
 # The panel with a task in review and a live executor, seen through a browser.
 if [[ -n "${E2E_CHROME:-}" ]]; then
