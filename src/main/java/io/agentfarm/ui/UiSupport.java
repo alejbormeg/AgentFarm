@@ -3,12 +3,57 @@ package io.agentfarm.ui;
 import io.agentfarm.core.*;
 import io.mateu.uidl.data.*;
 import io.mateu.uidl.di.MateuBeanProvider;
+import io.mateu.uidl.fluent.Component;
 import java.util.*;
 import java.util.Map;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 public final class UiSupport {
+  static final int REFRESH_MILLIS = 5000;
+  static final String FULL_WIDTH = "width:100%;box-sizing:border-box";
+
   private UiSupport() {}
+
+  public static TelemetryService telemetry() {
+    return MateuBeanProvider.getBean(TelemetryService.class);
+  }
+
+  public static boolean isOwner() {
+    return SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+        .anyMatch(a -> "ROLE_OWNER".equals(a.getAuthority()));
+  }
+
+  static Component heading(String icon, String text) {
+    Element title = new Element("h2", Map.of("style", "margin:0;font-size:var(--lumo-font-size-l)"), text);
+    if (icon == null)
+      return new Element(
+          "h2", Map.of("style", "margin:var(--lumo-space-m) 0 0;font-size:var(--lumo-font-size-l)"), text);
+    return HorizontalLayout.builder()
+        .content(
+            List.of(
+                new Element("img", Map.of("src", icon, "alt", "", "width", "32", "height", "32"), ""),
+                title))
+        .verticalAlignment(VerticalAlignment.CENTER)
+        .style("gap:var(--lumo-space-s);margin-top:var(--lumo-space-m)")
+        .build();
+  }
+
+  /** Relative, so a server in another time zone can't show the operator a misleading clock. */
+  static String ago(long seconds) {
+    if (seconds < 0) return "con fecha futura";
+    if (seconds < 60) return "hace " + seconds + " s";
+    if (seconds < 3600) return "hace " + seconds / 60 + " min";
+    if (seconds < 86400) return "hace " + seconds / 3600 + " h";
+    return "hace " + seconds / 86400 + " d";
+  }
+
+  static String number(double value) {
+    return String.format(Locale.of("es", "ES"), "%.2f", value).replaceAll(",00$", "");
+  }
+
+  static String period(String period) {
+    return "weekly".equals(period) ? "Semanal" : period;
+  }
 
   public static ControlService control() {
     return MateuBeanProvider.getBean(ControlService.class);
@@ -36,16 +81,16 @@ public final class UiSupport {
     String[] parts = reason.split(":", 2);
     String label =
         switch (parts[0]) {
-          case "missing_active_window" -> "falta una ventana vigente";
-          case "missing_or_stale_usage" -> "falta una lectura vigente";
-          case "budget_exhausted" -> "cuota agotada";
-          case "insufficient_budget" -> "saldo insuficiente";
-          case "unreconciled_usage" -> "hay consumo pendiente de conciliación";
-          case "reservation_crossed_reset" -> "una reserva cruzó un reinicio";
-          case "human_pause" -> "pausa del operador";
+          case "missing_active_window" -> "Falta una ventana vigente";
+          case "missing_or_stale_usage" -> "Falta una lectura vigente";
+          case "budget_exhausted" -> "Cuota agotada";
+          case "insufficient_budget" -> "Saldo insuficiente";
+          case "unreconciled_usage" -> "Hay consumo pendiente de conciliación";
+          case "reservation_crossed_reset" -> "Una reserva cruzó un reinicio";
+          case "human_pause" -> "Pausa del operador";
           default -> parts[0];
         };
-    return label + (parts.length == 2 ? " (" + parts[1] + ")" : "");
+    return label + (parts.length == 2 ? " (" + period(parts[1]).toLowerCase(Locale.ROOT) + ")" : "");
   }
 
   private static Object display(String key, Object value) {

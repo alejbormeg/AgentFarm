@@ -38,7 +38,7 @@ actor `trigger:<tipo>`.
 No existe nivel de autointegración.
 
 ## Bandeja, resultados y avisos
-- **Bandeja:** en Panorama, lo que espera tu decisión aparece primero. En tareas
+- **Bandeja:** lo que espera tu decisión aparece primero. En tareas
   en revisión, **Ver cambios del candidato** muestra el diff `base...sha` leído
   de GitHub (requiere el token del panel), sin salir del panel.
 - **Resultados (8 semanas):** propuestas, tasa de aprobación (incluidas las de

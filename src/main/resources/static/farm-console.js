@@ -1,4 +1,4 @@
-const style = "/farm-console.css?v=1";
+const style = "/farm-console.css?v=4";
 const names = {
   queued: "En cola",
   approved: "Lista para implementar",
@@ -23,32 +23,85 @@ const json = (x) => {
   }
 };
 const pill = (text, cls = "") => E("span", text, "pill " + cls);
-const hat = () => {
+const svgIcon = (label, body) => {
   const e = E("span");
-  e.innerHTML =
-    '<svg class="hat" viewBox="0 0 64 44" role="img" aria-label="Bicornio de Napoleon"><path d="M3 34Q13 20 22 24Q25 5 32 5Q39 5 42 24Q51 20 61 34L54 39H10Z" fill="#203650" stroke="#101e30" stroke-width="2"/><path d="M10 34Q32 28 54 34" fill="none" stroke="#d6ad59" stroke-width="3"/><circle cx="32" cy="23" r="5" fill="#e9d9b7"/><circle cx="32" cy="23" r="3" fill="#3568a5"/></svg>';
+  e.innerHTML = `<svg class="hat" viewBox="0 0 64 64" role="img" aria-label="${label}">${body}</svg>`;
   return e;
 };
-const svgIcon = (label, body, viewBox = "0 0 64 44") => {
-  const e = E("span");
-  e.innerHTML = `<svg class="hat" viewBox="${viewBox}" role="img" aria-label="${label}">${body}</svg>`;
-  return e;
-};
-const horse = (label = "Caballo Boxer") =>
+// Animal Farm's cast, also served from /icons for the shell's logo and favicon.
+const horse = () =>
   svgIcon(
-    label,
-    '<path d="M18 40V27Q14 22 17 14L24 6L27 9L30 4L33 9Q46 11 48 24L56 30L52 36L44 31V40H38V31H26V40Z" fill="#7a5233" stroke="#3d2817" stroke-width="2" stroke-linejoin="round"/><path d="M27 9Q22 16 24 24" fill="none" stroke="#3d2817" stroke-width="3"/><circle cx="36" cy="16" r="2" fill="#f6f7f9"/>',
+    "Boxer, un caballo de tiro",
+    '<path d="M29 12C42 12 54 24 55 44l1 16H40l-3-13-7 1c-2-6-1-12 1-16z" fill="#9a6235"/><path d="M26 4l5 9c13 0 23 12 25 31l1 16h-7l-1-16C48 28 40 18 30 16z" fill="#3a2414"/><path d="M31 13c6 3 6 11 3 18-2 4-6 7-8 12-1 3-4 5-8 5l-7-1c-4-1-6-5-4-9l9-18c2-5 6-8 8-13l1 6z" fill="#9a6235"/><path d="M26 4l-1 7c-3 1-5 3-6 5l9 1 3-4z" fill="#3a2414"/><path d="M20 17c2 7 0 15-6 23l-3-1c4-8 5-15 5-21z" fill="#fff"/><circle cx="25" cy="22" r="2.8" fill="#1b1209"/><ellipse cx="9.5" cy="41" rx="1.8" ry="2.4" fill="#3a2414"/><path d="M8 34l22 1M30 14v21" fill="none" stroke="#e3ab3e" stroke-width="2.6" stroke-linecap="round"/>',
+  );
+const lens = () =>
+  svgIcon(
+    "Lupa del revisor",
+    '<circle cx="26" cy="26" r="19" fill="#e8eef8" stroke="#142d4e" stroke-width="6"/><path d="M41 41l16 16" stroke="#142d4e" stroke-width="8" stroke-linecap="round"/><path d="M17 26l7 7 12-13" fill="none" stroke="#2f8a4e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>',
   );
 const clover = () =>
   svgIcon(
-    "Trébol Clover",
-    '<g fill="#3f8f4f" stroke="#1f5a2c" stroke-width="2"><circle cx="32" cy="13" r="8"/><circle cx="22" cy="23" r="8"/><circle cx="42" cy="23" r="8"/></g><path d="M32 24Q33 34 40 41" fill="none" stroke="#1f5a2c" stroke-width="3" stroke-linecap="round"/>',
+    "Trébol de Clover",
+    '<path d="M32 30c1 13 6 22 15 30" fill="none" stroke="#256b38" stroke-width="4.5" stroke-linecap="round"/><g fill="#3f9b52"><path d="M32 28C22 28 8 24 8 13 8 6 15 3 20 7c-1-5 5-9 10-6 9 5 5 18 2 27z"/><path d="M32 28C22 28 8 24 8 13 8 6 15 3 20 7c-1-5 5-9 10-6 9 5 5 18 2 27z" transform="rotate(90 32 28)"/><path d="M32 28C22 28 8 24 8 13 8 6 15 3 20 7c-1-5 5-9 10-6 9 5 5 18 2 27z" transform="rotate(180 32 28)"/><path d="M32 28C22 28 8 24 8 13 8 6 15 3 20 7c-1-5 5-9 10-6 9 5 5 18 2 27z" transform="rotate(270 32 28)"/></g><g stroke="#c9ebd0" stroke-width="2.2" stroke-linecap="round"><path d="M32 28 18 14M32 28l14-14M32 28 18 42M32 28l14 14"/></g>',
   );
-const snowflake = () =>
-  svgIcon(
-    "Copo Snowball",
-    '<g stroke="#3568a5" stroke-width="3" stroke-linecap="round"><path d="M32 4V40M16 13L48 31M16 31L48 13"/><path d="M27 8L32 12L37 8M27 36L32 32L37 36"/></g>',
-  );
+// Board columns; `you` marks the ones waiting on the owner. Stages only change through evidence
+// and approvals, so cards open the task instead of being dragged.
+const columns = [
+  { title: "Investigación", states: ["queued"] },
+  { title: "Espera tu aprobación", states: ["proposed"], you: true },
+  { title: "Implementación", states: ["approved"] },
+  { title: "Espera tu revisión", states: ["review", "integrating"], you: true },
+  { title: "Bloqueadas", states: ["blocked"], stop: true },
+  { title: "Cerradas", states: ["integrated", "cancelled"] },
+];
+const waiting = (w) => ["proposed", "review", "blocked"].includes(w.state);
+const whyYou = (w) =>
+  w.state === "proposed"
+    ? "Revisa y aprueba el alcance."
+    : w.state === "review"
+      ? "Revisa las pruebas y la PR antes de integrar."
+      : w.error || "Necesita que decidas cómo seguir.";
+const activity = {
+  researching: "Napoleon investigando",
+  implementing: "Boxer implementando",
+  testing: "Ejecutando tests",
+  reviewing: "Revisión independiente",
+  integrating: "Integrando PR",
+};
+const periodNames = { weekly: "semanal" };
+const period = (x) => periodNames[x] || x;
+// Budget admission codes from BudgetService, in the operator's words.
+const reasonLabel = (reason) => {
+  const [code, detail] = reason.split(":");
+  const label =
+    {
+      missing_active_window: "Falta una ventana vigente",
+      missing_or_stale_usage: "Falta una lectura vigente de la cuota",
+      budget_exhausted: "Cuota agotada",
+      insufficient_budget: "Saldo insuficiente",
+      unreconciled_usage: "Hay consumo pendiente de conciliación",
+      reservation_crossed_reset: "Una reserva cruzó un reinicio",
+      human_pause: "Pausa del operador",
+    }[code] || reason;
+  return detail && label !== reason ? label + " (" + period(detail) + ")" : label;
+};
+// A clock time alone would make yesterday's signal look current.
+const when = (date) => {
+  const d = new Date(date);
+  return d.toDateString() === new Date().toDateString()
+    ? d.toLocaleTimeString("es-ES")
+    : d.toLocaleString("es-ES");
+};
+// How long a card has sat in its stage. Tasks older than the column have no recorded start.
+const stageAge = (since) => {
+  const seconds = Math.max(0, Date.now() / 1000 - since);
+  if (seconds < 60) return "Hace menos de 1 min";
+  if (seconds < 3600) return "Hace " + Math.floor(seconds / 60) + " min";
+  if (seconds < 86400) return "Hace " + Math.floor(seconds / 3600) + " h";
+  return "Hace " + Math.floor(seconds / 86400) + " d";
+};
+// Closed work only grows; the board keeps its newest cards in view.
+const closedShown = 5;
 // Items that need the owner first, then work in progress, then the rest.
 const attention = {
   proposed: 0,
@@ -60,6 +113,11 @@ const attention = {
   integrated: 4,
   cancelled: 5,
 };
+const byAttention = (a, b) =>
+  (attention[a.state] ?? 3) - (attention[b.state] ?? 3) ||
+  Number(b.created || 0) - Number(a.created || 0);
+const byRecentlyClosed = (a, b) =>
+  Number(b.state_since || b.created || 0) - Number(a.state_since || a.created || 0);
 // Fresh snapshots from every executor slot; older servers only send one snapshot.
 const liveSnapshots = (r) =>
   r.executors?.length
@@ -155,11 +213,95 @@ function link(label, url) {
   e.rel = "noopener noreferrer";
   return e;
 }
-function button(label, fn, primary = false) {
-  const b = E("button", label, primary ? "primary" : "");
+function button(label, fn, kind = "") {
+  const b = E("button", label, kind === true ? "primary" : kind);
   b.type = "button";
   b.onclick = fn;
   return b;
+}
+function advancedForm(kind) {
+  const d = E("details");
+  d.append(
+    E(
+      "summary",
+      {
+        budgets: "Conciliación avanzada",
+        nodes: "Registrar nodo dirigente",
+        workers: "Registrar trabajador Boxer",
+      }[kind],
+    ),
+  );
+  const values = {};
+  const fields =
+    kind === "budgets"
+      ? ["account", "operation", "data"]
+      : kind === "nodes"
+        ? ["id", "role"]
+        : ["id", "node"];
+  for (const field of fields) {
+    const label = E(
+      "label",
+      {
+        account: "Cuenta",
+        operation: "Operación",
+        data: "Datos JSON",
+        id: "Identificador",
+        role: "Rol (napoleon o snowball)",
+        node: "Nodo",
+      }[field],
+    );
+    const input = E(field === "data" ? "textarea" : "input");
+    input.value =
+      {
+        account: "codex-subscription",
+        operation: "status",
+        data: "{}",
+        role: "napoleon",
+        node: "napoleon-wsl",
+      }[field] || "";
+    values[field] = input;
+    label.append(input);
+    d.append(label);
+  }
+  const output = E("pre");
+  d.append(
+    button("Aplicar", async () => {
+      try {
+        let result;
+        if (kind === "budgets")
+          result = await api("/budget/" + values.operation.value, {
+            ...JSON.parse(values.data.value),
+            account: values.account.value,
+          });
+        else
+          result = await api(
+            "/" + kind,
+            Object.fromEntries(
+              Object.entries(values).map(([k, v]) => [k, v.value]),
+            ),
+          );
+        output.textContent = JSON.stringify(result, null, 2);
+      } catch (e) {
+        output.textContent = e.message;
+      }
+    }),
+    output,
+  );
+  return d;
+}
+// Owner-only write forms placed below Mateu's read-only lists, which pick up the change on their
+// next refresh.
+class FarmAdvanced extends HTMLElement {
+  async connectedCallback() {
+    if (this.shadowRoot) return;
+    const root = this.attachShadow({ mode: "open" });
+    const css = E("link");
+    css.rel = "stylesheet";
+    css.href = style;
+    root.append(css);
+    const me = await api("/me").catch(() => null);
+    if (me?.role === "owner") root.append(advancedForm(this.getAttribute("kind")));
+  }
 }
 class FarmConsole extends HTMLElement {
   connectedCallback() {
@@ -206,18 +348,10 @@ class FarmConsole extends HTMLElement {
         this.view = route;
         this.layout();
       }
-      let extra = null;
-      if (route === "budgets")
-        extra = await Promise.all(
-          (overview.budget_accounts || []).map((a) =>
-            api("/budget/" + encodeURIComponent(a.account)),
-          ),
-        );
-      if (route === "governance") extra = await api("/audit");
+      const extra = route === "governance" ? await api("/audit") : null;
       const dossiers = ["overview", "tasks", "governance"].includes(route)
         ? await api("/evidence")
         : [];
-      const providers = route === "budgets" ? await api("/providers") : null;
       const automation =
         route === "governance" ? await api("/automation").catch(() => null) : null;
       const metrics =
@@ -235,7 +369,6 @@ class FarmConsole extends HTMLElement {
         work,
         extra,
         dossiers,
-        providers,
         initiatives,
         automation,
         metrics,
@@ -244,35 +377,40 @@ class FarmConsole extends HTMLElement {
       };
       this.notifyAttention(work);
       this.render();
-      this.error.textContent = "";
+      if (this.pendingTask) {
+        const id = this.pendingTask;
+        this.pendingTask = null;
+        if (work.some((w) => w.id === id)) this.showTask(id);
+      }
+      if (this.pollFailed) this.error.textContent = "";
+      this.pollFailed = false;
     } catch (e) {
-      if (this.error)
+      if (this.error) {
+        this.pollFailed = true;
         this.error.textContent =
           e.message + " Los datos visibles pueden estar desactualizados.";
+      }
     } finally {
       this.loading = false;
     }
   }
   layout() {
     this.content.replaceChildren();
-    const titles = {
-      overview: "Tu granja, en directo",
-      nodes: "Nodos dirigentes",
-      workers: "Trabajadores Boxer",
-      tasks: "Del objetivo a la PR",
-      budgets: "Clover · presupuesto",
-      governance: "Gobierno de la granja",
+    const header = E("div", "", "toolbar");
+    const problem = E("p", "", "error"),
+      drawerProblem = E("p", "", "error");
+    problem.setAttribute("role", "alert");
+    drawerProblem.setAttribute("role", "alert");
+    // Drawers sit in the top layer, so an action's error has to show inside them too.
+    this.error = {
+      set textContent(text) {
+        problem.textContent = text;
+        drawerProblem.textContent = text;
+      },
     };
-    const header = E("header");
-    header.append(
-      E("p", titles[this.view] || titles.overview, "lead"),
-      button("Actualizar", () => this.poll()),
-    );
-    this.error = E("p", "", "error");
-    this.error.setAttribute("role", "status");
     this.strip = E("div", "", "strip");
     this.body = E("div");
-    this.content.append(header, this.error, this.strip, this.body);
+    this.content.append(header, problem, this.strip, this.body);
     this.signature = "";
     if (["overview", "tasks"].includes(this.view)) {
       this.repoOptions = null;
@@ -283,84 +421,73 @@ class FarmConsole extends HTMLElement {
         this.signature = "";
         this.render();
       };
-      header.insertBefore(this.repositorySelect, header.lastChild);
+      header.append(this.repositorySelect);
+    } else this.repositorySelect = null;
+    if (this.view === "tasks") {
+      const search = E("input", "", "search");
+      search.type = "search";
+      search.placeholder = "Buscar por título, repositorio o issue";
+      search.setAttribute("aria-label", "Buscar tareas");
+      search.value = this.query || "";
+      search.oninput = () => {
+        this.query = search.value;
+        this.signature = "";
+        this.render();
+      };
+      header.append(search);
     }
-    if (["overview", "tasks"].includes(this.view)) {
-      this.form = this.requestForm();
-      this.body.append(this.form);
-    }
+    this.pending = E("a");
+    this.pending.href = "/overview";
+    this.newTask = button("Nueva tarea", () => this.newDrawer.showModal(), true);
+    header.append(E("span", "", "spacer"), this.pending, this.newTask);
     this.live = E("div");
     this.body.append(this.live);
-    if (["nodes", "workers", "budgets"].includes(this.view))
-      this.body.append(this.advanced());
+    this.form = this.requestForm();
+    const fresh = this.drawer("Nueva tarea");
+    this.newDrawer = fresh.dialog;
+    fresh.body.append(this.form);
+    const task = this.drawer("Tarea");
+    this.taskDrawer = task.dialog;
+    this.taskTitle = task.title;
+    this.taskBody = E("div");
+    task.body.append(drawerProblem, this.taskBody);
+    this.taskDrawer.addEventListener("close", () => {
+      const id = this.openTask;
+      this.openTask = null;
+      this.taskBody.replaceChildren();
+      const url = new URL(location);
+      url.searchParams.delete("tarea");
+      history.replaceState(history.state, "", url);
+      // The card that opened the drawer may have been re-rendered meanwhile.
+      [...this.live.querySelectorAll("button.card")].find((c) => c.dataset.task === id)?.focus();
+    });
+    const linked = new URLSearchParams(location.search).get("tarea");
+    if (linked) this.pendingTask = linked;
+    this.content.append(this.newDrawer, this.taskDrawer);
   }
-  advanced() {
-    const d = E("details");
-    d.append(
-      E(
-        "summary",
-        this.view === "budgets" ? "Conciliación avanzada" : "Registrar agente",
-      ),
-    );
-    const values = {};
-    const fields =
-      this.view === "budgets"
-        ? ["account", "operation", "data"]
-        : this.view === "nodes"
-          ? ["id", "role"]
-          : ["id", "node"];
-    for (const field of fields) {
-      const label = E(
-        "label",
-        {
-          account: "Cuenta",
-          operation: "Operación",
-          data: "Datos JSON",
-          id: "Identificador",
-          role: "Rol (napoleon o snowball)",
-          node: "Nodo",
-        }[field],
-      );
-      const input = E(field === "data" ? "textarea" : "input");
-      input.value =
-        {
-          account: "codex-subscription",
-          operation: "status",
-          data: "{}",
-          role: "napoleon",
-          node: "napoleon-wsl",
-        }[field] || "";
-      values[field] = input;
-      label.append(input);
-      d.append(label);
-    }
-    const output = E("pre");
-    d.append(
-      button("Aplicar", async () => {
-        try {
-          let result;
-          if (this.view === "budgets")
-            result = await api("/budget/" + values.operation.value, {
-              ...JSON.parse(values.data.value),
-              account: values.account.value,
-            });
-          else
-            result = await api(
-              "/" + this.view,
-              Object.fromEntries(
-                Object.entries(values).map(([k, v]) => [k, v.value]),
-              ),
-            );
-          output.textContent = JSON.stringify(result, null, 2);
-          this.signature = "";
-          await this.poll();
-        } catch (e) {
-          output.textContent = e.message;
-        }
-      }),
-      output,
-    );
-    return d;
+  drawer(name) {
+    const dialog = E("dialog", "", "drawer"),
+      head = E("div", "", "drawer-head"),
+      title = E("h2", name),
+      body = E("div", "", "drawer-body");
+    title.id = "drawer-" + crypto.randomUUID();
+    dialog.setAttribute("aria-labelledby", title.id);
+    head.append(title, button("Cerrar", () => dialog.close(), "quiet"));
+    dialog.append(head, body);
+    // A press on the backdrop targets the dialog element itself.
+    dialog.addEventListener("click", (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+    return { dialog, title, body };
+  }
+  showTask(id) {
+    this.openTask = id;
+    const url = new URL(location);
+    url.searchParams.set("tarea", id);
+    history.replaceState(history.state, "", url);
+    this.signature = "";
+    this.render();
+    if (!this.taskDrawer.open) this.taskDrawer.showModal();
   }
   async action(path, body) {
     try {
@@ -372,10 +499,13 @@ class FarmConsole extends HTMLElement {
     }
   }
   requestForm() {
-    const d = E("details");
-    d.open = this.view === "tasks";
-    d.append(E("summary", "Nueva idea o tarea"));
     const section = E("section");
+    const problem = E("p", "", "error");
+    problem.setAttribute("role", "alert");
+    section.append(
+      E("p", "Napoleon investigará y te propondrá un alcance antes de cambiar código.", "muted"),
+      problem,
+    );
     const repo = E("input");
     repo.value = lastRepo();
     repo.placeholder = "owner/repositorio";
@@ -383,8 +513,7 @@ class FarmConsole extends HTMLElement {
     const title = E("input");
     title.placeholder = "Qué quieres mejorar";
     const request = E("textarea");
-    request.placeholder =
-      "Describe el objetivo. Napoleon investigará y te propondrá un alcance antes de implementarlo.";
+    request.placeholder = "Describe el objetivo que quieres conseguir.";
     for (const [name, input] of [
       ["Repositorio", repo],
       ["Título", title],
@@ -443,11 +572,11 @@ class FarmConsole extends HTMLElement {
         "Crear issue e investigar",
         async () => {
           if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo.value.trim())) {
-            this.error.textContent = "Indica el repositorio como owner/nombre.";
+            problem.textContent = "Indica el repositorio como owner/nombre.";
             return;
           }
           if (!title.value.trim() || !request.value.trim()) {
-            this.error.textContent = "Escribe un título y una petición.";
+            problem.textContent = "Escribe un título y una petición.";
             return;
           }
           try {
@@ -469,17 +598,27 @@ class FarmConsole extends HTMLElement {
             this.selectedRepo = repo.value.trim();
             rememberRepo(this.selectedRepo);
             this.form.replaceWith((this.form = this.requestForm()));
+            this.newDrawer.close();
             this.signature = "";
             await this.poll();
           } catch (e) {
-            this.error.textContent = e.message;
+            problem.textContent = e.message;
           }
         },
         true,
       ),
+      E("span", " "),
+      button(
+        "Pedir ideas de mejora",
+        () => {
+          title.value = "Proponer mejoras del proyecto";
+          request.value =
+            "Analiza el estado actual y propone mejoras priorizadas y viables, con fuentes cuando sean necesarias. No implementes nada; esperaré para seleccionar y aprobar el alcance.";
+        },
+        "quiet",
+      ),
     );
-    d.append(section);
-    return d;
+    return section;
   }
   render() {
     const { runtime: r, overview: o, work: allWork } = this.data,
@@ -488,7 +627,7 @@ class FarmConsole extends HTMLElement {
       q = s.quota || {},
       busy = liveSnapshots(r).some((x) => !!x.codex_pid);
     let work = allWork;
-    if (this.repositorySelect && ["overview", "tasks"].includes(this.view)) {
+    if (this.repositorySelect) {
       const repos = [...new Set(allWork.map((w) => w.repo))];
       if (this.selectedRepo === undefined)
         this.selectedRepo = "";
@@ -506,42 +645,15 @@ class FarmConsole extends HTMLElement {
         (w) => !this.selectedRepo || w.repo === this.selectedRepo,
       );
     }
-    this.strip.replaceChildren(
-      pill(
-        fresh
-          ? liveSnapshots(r).length > 1
-            ? liveSnapshots(r).length + " ejecutores conectados"
-            : "WSL conectado"
-          : "WSL sin señal",
-        fresh ? "ok" : "bad",
-      ),
-      pill(
-        busy
-          ? "Codex trabajando"
-          : fresh && s.executor_available
-            ? "Ejecutor disponible"
-            : "Ejecutor no disponible",
-        busy ? "ok" : "",
-      ),
-      pill(
-        o.paused ? "Admisión pausada" : "Admisión habilitada",
-        o.paused ? "warn" : "",
-      ),
-      pill(
-        r.quota_fresh
-          ? (100 - q.weekly_used_percent).toLocaleString("es-ES") +
-              " % cuota semanal restante"
-          : "Cuota actual desconocida",
-        r.quota_fresh ? "" : "warn",
-      ),
-    );
     const me = this.data.me;
-    if (me && me.role !== "owner")
-      this.strip.append(
-        pill(me.user + " · " + ({ reviewer: "revisor", observer: "observador" }[me.role] || me.role)),
-      );
-    if (r.quota_fresh && q.allowed === false)
-      this.strip.append(pill("Codex no admite trabajo", "warn"));
+    this.newTask.hidden = me?.role === "observer";
+    const decisions = allWork.filter(waiting).length;
+    this.pending.textContent =
+      this.view !== "overview" && decisions
+        ? decisions + (decisions === 1 ? " espera tu decisión" : " esperan tu decisión")
+        : "";
+    this.pending.hidden = !this.pending.textContent;
+    document.title = (decisions ? "(" + decisions + ") " : "") + "AgentFarm";
     const signature = JSON.stringify([
       this.view,
       s.run_state,
@@ -552,21 +664,24 @@ class FarmConsole extends HTMLElement {
       r.quota_fresh,
       q,
       work,
-      this.view === "nodes"
-        ? o.nodes
-        : o.nodes.map((n) => [n.id, n.enabled, n.reported_state]),
-      this.view === "workers"
-        ? o.workers
-        : o.workers.map((w) => [w.id, w.enabled, w.reported_state]),
+      o.nodes.map((n) => [n.id, n.enabled, n.reported_state]),
+      o.workers.map((w) => [w.id, w.enabled, w.reported_state]),
       o.paused,
       this.data.extra,
       this.data.dossiers,
-      this.data.providers,
       this.data.initiatives,
       (r.events || []).at(-1)?.id,
+      this.openTask,
     ]);
+    this.live?.querySelectorAll("[data-since]").forEach((e) => {
+      e.textContent = stageAge(e.dataset.since);
+    });
     if (signature === this.signature) return;
     this.signature = signature;
+    this.status(r, o, busy);
+    const roots = [this.live, this.taskBody];
+    const all = (selector) => roots.flatMap((x) => [...x.querySelectorAll(selector)]);
+    const drawerScroll = this.taskBody.parentElement?.scrollTop || 0;
     const focused = this.root.activeElement;
     const focusOwner = focused?.closest("details[data-key]");
     const focusState = focusOwner
@@ -579,16 +694,17 @@ class FarmConsole extends HTMLElement {
           end: focused.selectionEnd,
         }
       : null;
-    const drafts = [...this.live.querySelectorAll("details[data-key]")].map(
+    const drafts = all("details[data-key]").map(
       (d) => [
         d.dataset.key,
         [...d.querySelectorAll("textarea,input,select")].map((i) => i.value),
       ],
     );
-    const opened = [...this.live.querySelectorAll("details[open]")]
+    const opened = all("details[open]")
       .map((e) => e.dataset.key)
       .filter(Boolean);
     this.live.replaceChildren();
+    this.taskBody.replaceChildren();
     if (this.view === "overview") {
       const map = E("div", "", "map");
       const phases = liveSnapshots(r).map((x) => x.run_state || x.phase || "idle");
@@ -608,67 +724,51 @@ class FarmConsole extends HTMLElement {
               ? "Ejecutando tests"
               : "Disponible",
         ],
-        [
-          "Revisor",
-          () => horse("Caballo revisor"),
-          phase("reviewing") ? "Revisando" : "Disponible",
-        ],
+        ["Revisor", lens, phase("reviewing") ? "Revisando" : "Disponible"],
       ]) {
         if (map.children.length) map.append(E("span", "→", "arrow"));
-        const a = E("div", "", "agent");
-        const avatar = E("span", "", "avatar");
-        avatar.append(icon());
-        a.append(
-          avatar,
-          E("strong", name),
-          E("p", fresh ? state : "Sin señal", "muted"),
-        );
+        const a = E("div", "", "agent"),
+          text = E("div");
+        text.append(E("strong", name), E("p", fresh ? state : "Sin señal", "muted"));
+        a.append(icon(), text);
         map.append(a);
       }
       this.live.append(map);
       const split = E("div", "", "split"),
         main = E("section"),
         side = E("aside");
-      main.append(E("h2", "Trabajo y decisiones"));
-      this.workList(main, work);
-      side.append(
-        E("h2", "Siguiente paso"),
-        E(
-          "p",
-          o.paused
-            ? "La granja está pausada. Reanuda para atender la cola."
-            : work.some((w) => w.state === "proposed")
-              ? "Revisa y aprueba el alcance de una propuesta."
-              : work.some((w) => w.state === "review")
-                ? "Revisa las pruebas y la PR antes de integrar."
-                : busy
-                  ? s.task_title || "Hay una ejecución en curso."
-                  : "Escribe una idea o solicita sugerencias. Napoleon investigará antes de cambiar código.",
-        ),
+      const yours = work.filter(waiting).sort(byAttention);
+      main.append(E("h2", "Espera tu decisión"));
+      if (!yours.length)
+        main.append(E("p", "Nada espera tu decisión ahora mismo.", "empty"));
+      const inbox = E("div", "", "inbox");
+      for (const w of yours) inbox.append(this.taskTile(w, true));
+      main.append(inbox);
+      const moving = work.filter((w) =>
+        ["queued", "approved", "integrating"].includes(w.state),
       );
-      side.append(
-        button(o.paused ? "Reanudar cola" : "Pausar agentes", () =>
-          this.action("/governance/paused/" + !o.paused, {}),
-        ),
-      );
-      const suggest = button("Investigar posibles mejoras", () => {
-        this.form.open = true;
-        const inputs = this.form.querySelectorAll("input");
-        inputs[1].value = "Proponer mejoras del proyecto";
-        this.form.querySelector("textarea").value =
-          "Analiza el estado actual y propone mejoras priorizadas y viables, con fuentes cuando sean necesarias. No implementes nada; esperaré para seleccionar y aprobar el alcance.";
-        this.form.scrollIntoView({ block: "start" });
-      });
-      side.append(E("p", ""), suggest);
-      if ("Notification" in window && Notification.permission === "default")
-        side.append(
-          button("Avisarme en este navegador", async () => {
-            await Notification.requestPermission();
-            this.signature = "";
-            this.render();
-          }),
+      main.append(E("h2", "En curso"));
+      if (!moving.length)
+        main.append(
+          E(
+            "p",
+            busy ? s.task_title || "Hay una ejecución en curso." : "No hay trabajo en curso.",
+            "empty",
+          ),
         );
+      const inProgress = E("div", "", "inbox");
+      for (const w of moving.sort(byAttention)) inProgress.append(this.taskTile(w));
+      main.append(inProgress);
       this.metricsBlock(side, this.data.metrics);
+      if (me?.role === "owner")
+        side.append(
+          E("h2", "Control"),
+          button(
+            o.paused ? "Reanudar cola" : "Pausar agentes",
+            () => this.action("/governance/paused/" + !o.paused, {}),
+            o.paused ? "" : "danger",
+          ),
+        );
       side.append(
         (() => {
           const h = E("h2", "", "with-icon");
@@ -684,8 +784,7 @@ class FarmConsole extends HTMLElement {
         E(
           "small",
           q.observed_at
-            ? "Última lectura: " +
-                new Date(q.observed_at).toLocaleString("es-ES")
+            ? "Última lectura: " + when(q.observed_at)
             : "Sin lectura",
         ),
       );
@@ -697,6 +796,19 @@ class FarmConsole extends HTMLElement {
         bar.append(i);
         side.append(bar);
       }
+      if ("Notification" in window && Notification.permission === "default")
+        side.append(
+          E("p", ""),
+          button(
+            "Avisarme en este navegador",
+            async () => {
+              await Notification.requestPermission();
+              this.signature = "";
+              this.render();
+            },
+            "quiet",
+          ),
+        );
       split.append(main, side);
       this.live.append(split);
       this.console(r.events || []);
@@ -721,174 +833,89 @@ class FarmConsole extends HTMLElement {
       detail.append(E("summary", "Conexión y diagnóstico"), diagnostics);
       this.live.append(detail);
     } else if (this.view === "tasks") {
-      this.initiativeList(this.live);
-      this.workList(this.live, work);
-      const legacy = E("details");
-      legacy.append(E("summary", "Tareas del piloto anterior"));
-      for (const t of o.tasks || [])
-        legacy.append(
-          E(
-            "p",
-            t.id +
-              " · " +
-              t.state +
-              " · " +
-              (t.candidate_sha || "Sin candidato"),
-          ),
-        );
-      this.live.append(legacy);
-    } else if (this.view === "nodes" || this.view === "workers") {
-      const workers = this.view === "workers",
-        rows = workers ? o.workers : o.nodes;
-      const table = E("table");
-      const head = E("tr");
-      ["Agente", "Estado", "Última señal", "Gobierno"].forEach((x) =>
-        head.append(E("th", x)),
-      );
-      table.append(head);
-      for (const a of rows || []) {
-        const tr = E("tr"),
-          name = E("td");
-        name.append(
-          workers ? horse() : a.role === "snowball" ? snowflake() : hat(),
-          document.createTextNode(a.id),
-        );
-        const age = Date.now() / 1000 - Number(a.heartbeat || 0);
-        const alive = fresh && age >= 0 && age <= 12;
-        const state =
-          a.enabled === 0
-            ? "Deshabilitado"
-            : !alive
-              ? "Sin señal"
-              : a.reported_state === "busy"
-                ? "Trabajando"
-                : "Disponible";
-        const actions = E("td");
-        actions.append(
-          button(a.enabled ? "Deshabilitar" : "Habilitar", () =>
-            this.action(
-              "/entities/" +
-                (workers ? "worker" : "node") +
-                "/" +
-                encodeURIComponent(a.id) +
-                "/enabled/" +
-                !a.enabled,
-              {},
+      const query = (this.query || "").trim().toLowerCase();
+      this.board(
+        this.live,
+        work.filter(
+          (w) =>
+            !query ||
+            [w.title, w.repo, w.issue && "#" + w.issue].some((x) =>
+              String(x || "").toLowerCase().includes(query),
             ),
-          ),
-        );
-        tr.append(
-          name,
-          E("td", state),
-          E(
-            "td",
-            a.heartbeat
-              ? new Date(a.heartbeat * 1000).toLocaleTimeString("es-ES")
-              : "Nunca",
-          ),
-          actions,
-        );
-        table.append(tr);
-      }
-      this.live.append(table);
-    } else if (this.view === "budgets") {
-      this.live.append(
-        E("h2", "Cuota del proveedor"),
-        E(
-          "p",
-          r.quota_fresh
-            ? 100 - q.weekly_used_percent + " % semanal restante"
-            : "Cuota actual desconocida",
         ),
-        E(
-          "small",
-          q.observed_at
-            ? "Última observación: " +
-                new Date(q.observed_at).toLocaleString("es-ES")
-            : "Sin observación",
-        ),
+        query,
       );
-      const adapters = E("section");
-      adapters.append(E("h2", "Motores y capacidades"));
-      for (const provider of this.data.providers?.providers || [])
-        adapters.append(
-          E(
-            "p",
-            provider.id +
-              " · " +
-              (provider.state === "implemented"
-                ? "Ejecutor integrado"
-                : "Bloqueado: integración pendiente") +
-              " · Cuota: " +
-              ({
-                unknown: "desconocida",
-                "api-cost-observed": "coste API en USD por turno (cuenta Clover api)",
-              }[provider.quota] || "suscripción observada"),
-          ),
-        );
-      adapters.append(
-        E(
-          "small",
-          "Sin cambio automático de proveedor ni pagos adicionales. Económico y equilibrado usan la misma política actual; revisión reforzada espera al verificador separado.",
-        ),
+      const initiatives = E("details");
+      initiatives.dataset.key = "initiatives";
+      initiatives.append(
+        E("summary", "Iniciativas · " + (this.data.initiatives?.length || 0)),
       );
-      this.live.append(adapters);
-      const ledger = E("section");
-      ledger.append(E("h2", "Reservas y margen autorizado"));
-      this.live.append(ledger);
-      for (const a of this.data.extra || []) {
-        ledger.append(E("h3", a.account));
-        for (const w of a.windows || [])
-          ledger.append(
+      this.initiativeList(initiatives);
+      this.live.append(initiatives);
+      if (o.tasks?.length) {
+        const legacy = E("details");
+        legacy.dataset.key = "legacy-tasks";
+        legacy.append(E("summary", "Tareas del piloto anterior"));
+        for (const t of o.tasks)
+          legacy.append(
             E(
               "p",
-              w.period +
-                " · consumido " +
-                (a.unit === "usd_micros"
-                  ? (w.used / 1000000).toFixed(6) + " USD"
-                  : w.used / 100 + " %") +
-                " · reservado " +
-                (a.unit === "usd_micros"
-                  ? (w.reserved / 1000000).toFixed(6) + " USD"
-                  : w.reserved / 100 + " %") +
-                " · margen " +
-                (a.unit === "usd_micros"
-                  ? (w.remaining / 1000000).toFixed(6) + " USD"
-                  : w.remaining / 100 + " %"),
+              t.id +
+                " · " +
+                t.state +
+                " · " +
+                (t.candidate_sha || "Sin candidato"),
             ),
           );
-        if (a.reasons?.length)
-          ledger.append(E("p", a.reasons.join(" · "), "error"));
+        this.live.append(legacy);
       }
-    } else {
-      this.live.append(
+    } else if (this.view === "governance") {
+      const control = E("section", "", "panel");
+      const controls = E("div", "", "actions");
+      if (me?.role === "owner")
+        controls.append(
+          button(
+            o.paused ? "Reanudar cola" : "Pausar agentes",
+            () => this.action("/governance/paused/" + !o.paused, {}),
+            o.paused ? "" : "danger",
+          ),
+          link("Conectar ejecutor", "/setup.html"),
+        );
+      control.append(
         E("h2", "Control de ejecución"),
-        link("Conectar ejecutor", "/setup.html"),
-        button(o.paused ? "Reanudar cola" : "Pausar agentes", () =>
-          this.action("/governance/paused/" + !o.paused, {}),
-        ),
         E(
           "p",
           "Cada propuesta necesita tu aprobación. Cada integración queda vinculada al commit revisado.",
         ),
+        controls,
       );
+      this.live.append(control);
       this.automation(this.data.automation);
-      const audit = E("section");
+      const audit = E("section", "", "panel");
       this.live.append(audit);
       audit.append(E("h2", "Últimas decisiones"));
-      for (const row of (this.data.extra || []).slice(0, 30))
-        audit.append(
-          E(
-            "p",
-            new Date(row.at).toLocaleString("es-ES") +
-              " · " +
-              row.action +
-              " · " +
-              row.subject,
-          ),
-        );
+      if (!this.data.extra?.length) audit.append(E("p", "Sin decisiones registradas.", "muted"));
+      else {
+        const scroll = E("div", "", "table-scroll"),
+          grid = E("table"),
+          head = E("tr");
+        ["Fecha", "Decisión", "Sobre"].forEach((x) => head.append(E("th", x)));
+        grid.append(head);
+        for (const row of this.data.extra.slice(0, 30)) {
+          const tr = E("tr");
+          tr.append(E("td", when(row.at)), E("td", row.action), E("td", row.subject));
+          grid.append(tr);
+        }
+        scroll.append(grid);
+        audit.append(scroll);
+      }
     }
-    for (const d of this.live.querySelectorAll("details")) {
+    const shown = this.openTask && allWork.find((w) => w.id === this.openTask);
+    if (shown) {
+      this.taskTitle.textContent = shown.title;
+      this.taskBody.append(this.taskDetail(shown));
+    } else if (this.openTask && this.taskDrawer.open) this.taskDrawer.close();
+    for (const d of all("details")) {
       if (opened.includes(d.dataset.key)) d.open = true;
       const saved = drafts.find((x) => x[0] === d.dataset.key);
       if (saved)
@@ -907,6 +934,133 @@ class FarmConsole extends HTMLElement {
         input?.setSelectionRange?.(focusState.start, focusState.end);
       }
     }
+    if (this.taskBody.parentElement) this.taskBody.parentElement.scrollTop = drawerScroll;
+  }
+  // Only what needs saying right now, each with the way to resolve it; Bandeja also shows what is fine.
+  status(r, o, busy) {
+    const s = r.snapshot || {},
+      q = s.quota || {},
+      fresh = r.fresh,
+      owner = this.data.me?.role === "owner",
+      items = [];
+    const notice = (text, kind, control) => {
+      const row = E("div", "", "notice " + kind);
+      row.append(E("span", text));
+      if (control) row.append(control);
+      items.push(row);
+    };
+    if (!fresh)
+      notice(
+        "El ejecutor no da señal: el trabajo no avanzará hasta que se conecte.",
+        "bad",
+        owner ? link("Conectar ejecutor", "/setup.html") : null,
+      );
+    if (o.paused)
+      notice(
+        "La cola está pausada: no se admite trabajo nuevo.",
+        "warn",
+        owner ? button("Reanudar cola", () => this.action("/governance/paused/false", {})) : null,
+      );
+    if (this.view === "overview" || this.view === "budgets") {
+      if (!r.quota_fresh)
+        notice("Cuota actual desconocida: la última lectura no acredita el saldo.", "warn");
+      else if (q.allowed === false) notice("Codex no admite trabajo ahora mismo.", "warn");
+    }
+    if (this.view === "overview") {
+      const pills = E("div", "", "pills");
+      const live = liveSnapshots(r).length;
+      if (fresh)
+        pills.append(pill(live > 1 ? live + " ejecutores conectados" : "WSL conectado", "ok"));
+      if (fresh)
+        pills.append(
+          pill(
+            busy ? "Codex trabajando" : s.executor_available ? "Ejecutor disponible" : "Ejecutor no disponible",
+            busy || s.executor_available ? "ok" : "warn",
+          ),
+        );
+      if (!o.paused) pills.append(pill("Admisión habilitada"));
+      if (r.quota_fresh)
+        pills.append(
+          pill((100 - q.weekly_used_percent).toLocaleString("es-ES") + " % cuota semanal restante"),
+        );
+      const me = this.data.me;
+      if (me && me.role !== "owner")
+        pills.append(
+          pill(me.user + " · " + ({ reviewer: "revisor", observer: "observador" }[me.role] || me.role)),
+        );
+      items.push(pills);
+    }
+    this.strip.replaceChildren(...items);
+  }
+  // On the board the column already names the state, so a pill only adds what it does not say.
+  taskTile(w, explain = false, inColumn = false) {
+    const live = running(this.data.runtime, w.id);
+    const card = button(
+      "",
+      () => this.showTask(w.id),
+      "card" + (w.state === "blocked" ? " stop" : waiting(w) ? " you" : ""),
+    );
+    card.dataset.task = w.id;
+    card.append(
+      E("strong", w.title),
+      E("small", w.repo + (w.issue ? " · #" + w.issue : "")),
+    );
+    if (explain) card.append(E("span", whyYou(w), "why"));
+    if (w.state_since) {
+      const age = E("small", stageAge(w.state_since), "age");
+      age.dataset.since = w.state_since;
+      card.append(age);
+    }
+    if (!inColumn || live || ["integrating", "integrated", "cancelled"].includes(w.state))
+      card.append(
+        pill(
+          live ? activity[live.run_state] || names[w.state] : names[w.state] || w.state,
+          w.state === "blocked" ? "bad" : w.state === "integrated" ? "ok" : "",
+        ),
+      );
+    return card;
+  }
+  board(parent, work, query) {
+    if (!work.length) {
+      parent.append(
+        E(
+          "p",
+          query
+            ? "Ninguna tarea coincide con la búsqueda."
+            : "Sin tareas todavía. Crea una con «Nueva tarea» para abrir su issue y empezar.",
+          "empty",
+        ),
+      );
+      return;
+    }
+    const board = E("div", "", "board");
+    for (const c of columns) {
+      const closed = c.states.includes("integrated"),
+        rows = work
+          .filter((w) => c.states.includes(w.state))
+          .sort(closed ? byRecentlyClosed : byAttention);
+      const col = E("section", "", "column" + (rows.length ? "" : " vacant")),
+        head = E("header");
+      head.append(E("h2", c.title), E("span", String(rows.length), "count"));
+      col.append(head);
+      if (!rows.length) col.append(E("p", "Vacía", "none"));
+      const limit = closed && !query && !this.allClosed ? closedShown : rows.length;
+      for (const w of rows.slice(0, limit)) col.append(this.taskTile(w, false, true));
+      if (closed && !query && rows.length > closedShown)
+        col.append(
+          button(
+            this.allClosed ? "Ver solo las últimas " + closedShown : "Ver las " + rows.length,
+            () => {
+              this.allClosed = !this.allClosed;
+              this.signature = "";
+              this.render();
+            },
+            "quiet",
+          ),
+        );
+      board.append(col);
+    }
+    parent.append(board);
   }
   coordinationReason(reason) {
     if (reason === "initiative_paused")
@@ -921,8 +1075,9 @@ class FarmConsole extends HTMLElement {
     return reason;
   }
   initiativeList(parent) {
+    const owner = this.data.me?.role === "owner";
     const section = E("section");
-    section.append(E("h2", "Iniciativas · todos los repositorios"));
+    section.append(E("small", "Las iniciativas abarcan todos los repositorios."));
     const create = E("details");
     create.dataset.key = "new-initiative";
     create.append(E("summary", "Crear iniciativa"));
@@ -978,7 +1133,7 @@ class FarmConsole extends HTMLElement {
         }
       }),
     );
-    section.append(create);
+    if (owner) section.append(create);
     if (!this.data.initiatives?.length)
       section.append(
         E(
@@ -1029,7 +1184,7 @@ class FarmConsole extends HTMLElement {
               (milestone.complete ? " ✓" : ""),
           ),
         );
-      details.append(
+      if (owner) details.append(
         button(
           initiative.paused ? "Reanudar iniciativa" : "Pausar nuevas órdenes",
           () =>
@@ -1069,7 +1224,7 @@ class FarmConsole extends HTMLElement {
       option(predecessor, "", "Sin añadir dependencia");
       for (const work of initiative.tasks)
         option(predecessor, work.id, work.title);
-      details.append(
+      if (owner) details.append(
         task,
         milestone,
         predecessor,
@@ -1113,6 +1268,7 @@ class FarmConsole extends HTMLElement {
           const before = initiative.tasks.find((t) => t.id === id);
           row.append(E("p", "Depende de: " + (before?.title || id)));
           if (
+            owner &&
             !["review", "integrating", "integrated", "cancelled"].includes(
               work.state,
             ) &&
@@ -1155,12 +1311,14 @@ class FarmConsole extends HTMLElement {
           "p",
           "Candidato histórico sin criterios registrados. Revisa e importa su alcance antes de aceptarlo.",
         ),
-        button("Importar alcance de esta propuesta", () =>
-          this.action("/evidence/" + w.id + "/import-scope", {
-            version: w.version,
-            sha: w.sha,
-          }),
-        ),
+        this.data.me?.role === "owner"
+          ? button("Importar alcance de esta propuesta", () =>
+              this.action("/evidence/" + w.id + "/import-scope", {
+                version: w.version,
+                sha: w.sha,
+              }),
+            )
+          : "",
       );
     }
     for (const c of d.criteria) {
@@ -1227,7 +1385,7 @@ class FarmConsole extends HTMLElement {
       const environment = E("input");
       environment.setAttribute("aria-label", "Entorno de comprobación " + c.id);
       environment.placeholder = "Entorno y versión de herramientas utilizados";
-      detail.append(
+      if (this.data.me?.role === "owner") detail.append(
         kind,
         reason,
         environment,
@@ -1347,12 +1505,17 @@ class FarmConsole extends HTMLElement {
           new Notification("AgentFarm", {
             body: (w.state === "proposed" ? "Propuesta lista: " : "PR lista: ") + w.title,
             tag: "agentfarm-" + w.id,
-          });
+            icon: "/icons/napoleon.svg",
+          }).onclick = () => {
+            window.focus();
+            location.href = "/tasks?tarea=" + encodeURIComponent(w.id);
+          };
     this.attention = ids;
   }
   automation(a) {
     if (!a) return;
-    const section = E("section");
+    const owner = this.data.me?.role === "owner";
+    const section = E("section", "", "panel");
     section.append(E("h2", "Automatización"));
     const levels = Object.fromEntries((a.autonomy || []).map((x) => [x.recipe, x.level]));
     section.append(
@@ -1368,22 +1531,33 @@ class FarmConsole extends HTMLElement {
       ["test-improvement", "Mejora de pruebas"],
     ]) {
       const auto = levels[recipe] === "auto_implement";
-      const row = E("div", "", "row");
+      const row = E("div", "", "setting");
       row.append(
-        E("span", label + " · " + (auto ? "implementa sin esperar si todos los criterios son tests" : "requiere tu aprobación")),
-        button(auto ? "Volver a manual" : "Permitir autonomía", () =>
-          this.action("/automation/autonomy", {
-            recipe,
-            level: auto ? "manual" : "auto_implement",
-          }),
-        ),
+        E("span", label + " · " + (auto ? "implementa sin esperar si todos los criterios son tests" : "requiere aprobación")),
+      );
+      if (owner) row.append(
+        button(auto ? "Volver a manual" : "Permitir autonomía", () => {
+          if (
+            auto ||
+            confirm(
+              label +
+                ": se implementará sin esperar tu aprobación si todos los criterios son tests. Integrar seguirá exigiendo tu aprobación del SHA. ¿Permitirlo?",
+            )
+          )
+            return this.action("/automation/autonomy", {
+              recipe,
+              level: auto ? "manual" : "auto_implement",
+            });
+        }),
       );
       section.append(row);
     }
     const lessons = levels["project-memory"] === "propose_on_feedback";
-    const memoryRow = E("div", "", "row");
+    const memoryRow = E("div", "", "setting");
     memoryRow.append(
       E("span", "Memoria · " + (lessons ? "tus correcciones abren una propuesta de lección" : "sin propuestas automáticas")),
+    );
+    if (owner) memoryRow.append(
       button(lessons ? "Desactivar" : "Proponer lecciones", () =>
         this.action("/automation/autonomy", {
           recipe: "project-memory",
@@ -1395,7 +1569,7 @@ class FarmConsole extends HTMLElement {
     section.append(E("h3", "Disparadores por repositorio"));
     if (!a.github_configured)
       section.append(
-        E("p", "Configura una GitHub App o AGENTFARM_GITHUB_TOKEN_FILE en el panel para leer GitHub.", "error"),
+        E("p", "Configura una GitHub App o AGENTFARM_GITHUB_TOKEN_FILE en el panel para leer GitHub.", "notice warn"),
       );
     if (!a.sentry_configured)
       section.append(E("p", "Sentry: configura AGENTFARM_SENTRY_TOKEN_FILE para usar su disparador.", "muted"));
@@ -1417,7 +1591,7 @@ class FarmConsole extends HTMLElement {
             " · máx. " +
             t.max_new +
             " por pasada" +
-            (t.last_run ? " · última " + new Date(t.last_run * 1000).toLocaleString("es-ES") : "") +
+            (t.last_run ? " · última " + when(t.last_run * 1000) : "") +
             (t.last_error ? " · error: " + t.last_error : ""),
         ),
       );
@@ -1457,402 +1631,380 @@ class FarmConsole extends HTMLElement {
       ),
       button("Revisar ahora", () => this.action("/automation/triggers/run", {})),
     );
-    section.append(form);
+    if (owner) section.append(form);
     this.live.append(section);
   }
-  workList(parent, work) {
-    if (!work.length) {
-      parent.append(
-        E(
-          "p",
-          "Sin tareas nuevas. Crea una idea para abrir su issue y empezar.",
-          "empty",
-        ),
-      );
-      return;
-    }
-    const ordered = [...work].sort(
-      (a, b) =>
-        (attention[a.state] ?? 3) - (attention[b.state] ?? 3) ||
-        Number(b.created || 0) - Number(a.created || 0),
+  taskDetail(w) {
+    const task = E("article", "", "task"),
+      row = E("div", "", "row");
+    row.append(
+      pill(
+        running(this.data.runtime, w.id)
+          ? activity[running(this.data.runtime, w.id).run_state] || names[w.state]
+          : names[w.state] || w.state,
+        w.state === "blocked" ? "bad" : w.state === "integrated" ? "ok" : "",
+      ),
     );
-    for (const w of ordered) {
-      const task = E("article", "", "task"),
-        row = E("div", "", "row");
-      row.append(
-        E("h3", w.title),
-        pill(
-          running(this.data.runtime, w.id)
-            ? {
-                researching: "Napoleon investigando",
-                implementing: "Boxer implementando",
-                testing: "Ejecutando tests",
-                reviewing: "Revisión independiente",
-                integrating: "Integrando PR",
-              }[running(this.data.runtime, w.id).run_state] || names[w.state]
-            : names[w.state] || w.state,
-          w.state === "blocked" ? "bad" : w.state === "integrated" ? "ok" : "",
+    task.append(row);
+    if (["proposed", "review"].includes(w.state)) task.append(E("p", whyYou(w)));
+    if (w.recipe) {
+      const recipe = E("details");
+      recipe.dataset.key = "recipe-" + w.id;
+      recipe.append(E("summary", w.recipe.title + " · v" + w.recipe.version));
+      recipe.append(E("p", w.recipe.purpose));
+      for (const step of w.recipe.research_steps || [])
+        recipe.append(E("p", step));
+      recipe.append(E("strong", "Evidencia prevista"));
+      for (const evidence of w.recipe.required_evidence || [])
+        recipe.append(E("p", evidence));
+      recipe.append(
+        E(
+          "small",
+          "Versión conservada para esta tarea · SHA-256 " + w.recipe.hash,
         ),
       );
-      task.append(row);
-      if (w.recipe) {
-        const recipe = E("details");
-        recipe.dataset.key = "recipe-" + w.id;
-        recipe.append(E("summary", w.recipe.title + " · v" + w.recipe.version));
-        recipe.append(E("p", w.recipe.purpose));
-        for (const step of w.recipe.research_steps || [])
-          recipe.append(E("p", step));
-        recipe.append(E("strong", "Evidencia prevista"));
-        for (const evidence of w.recipe.required_evidence || [])
-          recipe.append(E("p", evidence));
-        recipe.append(
-          E(
-            "small",
-            "Versión conservada para esta tarea · SHA-256 " + w.recipe.hash,
-          ),
-        );
-        task.append(recipe);
-      }
-      const links = E("div", "", "links");
-      const base = "https://github.com/" + w.repo;
-      links.append(link(w.repo, base));
-      if (w.issue)
-        links.append(link("Issue #" + w.issue, base + "/issues/" + w.issue));
-      if (w.branch)
-        links.append(
-          link("Rama", base + "/tree/" + encodeURIComponent(w.branch)),
-        );
-      if (w.pr) {
-        links.append(
-          link("PR #" + w.pr, base + "/pull/" + w.pr),
-          link("Pruebas", base + "/pull/" + w.pr + "/checks"),
-          link("Diff", base + "/pull/" + w.pr + "/files"),
-        );
-      }
-      task.append(links);
-      if (w.pr && w.sha && ["review", "integrating"].includes(w.state))
-        task.append(this.diffViewer(w));
-      const initiative = this.data.initiatives?.find((i) =>
-        i.tasks.some((t) => t.id === w.id),
+      task.append(recipe);
+    }
+    const links = E("div", "", "links");
+    const base = "https://github.com/" + w.repo;
+    links.append(link(w.repo, base));
+    if (w.issue)
+      links.append(link("Issue #" + w.issue, base + "/issues/" + w.issue));
+    if (w.branch)
+      links.append(
+        link("Rama", base + "/tree/" + encodeURIComponent(w.branch)),
       );
-      if (initiative) {
-        const coordinated = initiative.tasks.find((t) => t.id === w.id);
-        task.append(
-          E(
-            "small",
-            "Iniciativa: " +
-              initiative.title +
-              " · Hito: " +
-              initiative.milestones.find((m) => m.id === coordinated.milestone)
-                ?.title,
+    if (w.pr) {
+      links.append(
+        link("PR #" + w.pr, base + "/pull/" + w.pr),
+        link("Pruebas", base + "/pull/" + w.pr + "/checks"),
+        link("Diff", base + "/pull/" + w.pr + "/files"),
+      );
+    }
+    task.append(links);
+    if (w.pr && w.sha && ["review", "integrating"].includes(w.state))
+      task.append(this.diffViewer(w));
+    const initiative = this.data.initiatives?.find((i) =>
+      i.tasks.some((t) => t.id === w.id),
+    );
+    if (initiative) {
+      const coordinated = initiative.tasks.find((t) => t.id === w.id);
+      task.append(
+        E(
+          "small",
+          "Iniciativa: " +
+            initiative.title +
+            " · Hito: " +
+            initiative.milestones.find((m) => m.id === coordinated.milestone)
+              ?.title,
+        ),
+      );
+      for (const blocker of coordinated.blockers)
+        task.append(E("p", this.coordinationReason(blocker), "warning"));
+    }
+    if (!w.issue)
+      task.append(
+        E("small", "Creación de issue pendiente de confirmación de GitHub."),
+      );
+    if (w.error) task.append(E("p", w.error, "error"));
+    const dossier = this.data.dossiers?.find((d) => d.item === w.id);
+    if (dossier) this.acceptance(task, w, dossier);
+    if (w.sha)
+      links.append(
+        link("Expediente JSON", "/api/evidence/" + encodeURIComponent(w.id)),
+      );
+    const p = json(w.proposal),
+      ev = json(w.evidence);
+    if (p.project_memory) {
+      const memory = p.project_memory,
+        box = E("details");
+      box.dataset.key = "memory-" + w.id;
+      box.append(
+        E(
+          "summary",
+          memory.present
+            ? "Memoria de proyecto consultada"
+            : "Sin archivo de memoria en la base consultada",
+        ),
+      );
+      if (/^[a-f0-9]{40}$/.test(memory.base_sha))
+        box.append(
+          link(
+            "Commit de origen · " + memory.base_sha.slice(0, 8),
+            base + "/commit/" + memory.base_sha,
           ),
         );
-        for (const blocker of coordinated.blockers)
-          task.append(E("p", this.coordinationReason(blocker), "warning"));
-      }
-      if (!w.issue)
-        task.append(
-          E("small", "Creación de issue pendiente de confirmación de GitHub."),
-        );
-      if (w.error) task.append(E("p", w.error, "error"));
-      const dossier = this.data.dossiers?.find((d) => d.item === w.id);
-      if (dossier) this.acceptance(task, w, dossier);
-      if (w.sha)
-        links.append(
-          link("Expediente JSON", "/api/evidence/" + encodeURIComponent(w.id)),
-        );
-      const p = json(w.proposal),
-        ev = json(w.evidence);
-      if (p.project_memory) {
-        const memory = p.project_memory,
-          box = E("details");
-        box.dataset.key = "memory-" + w.id;
+      if (memory.present) {
+        box.append(E("small", "SHA-256 " + memory.hash));
+        for (const entry of memory.document.entries) {
+          box.append(
+            E(
+              "h4",
+              ({
+                decision: "Decisión",
+                constraint: "Restricción",
+                rejection: "Motivo de rechazo",
+              }[entry.kind] || entry.kind) +
+                " · " +
+                entry.id,
+            ),
+          );
+          box.append(E("p", entry.summary), E("p", entry.rationale, "muted"));
+          for (const ref of entry.references || [])
+            box.append(link("Referencia", ref));
+        }
         box.append(
           E(
-            "summary",
-            memory.present
-              ? "Memoria de proyecto consultada"
-              : "Sin archivo de memoria en la base consultada",
-          ),
-        );
-        if (/^[a-f0-9]{40}$/.test(memory.base_sha))
-          box.append(
-            link(
-              "Commit de origen · " + memory.base_sha.slice(0, 8),
-              base + "/commit/" + memory.base_sha,
-            ),
-          );
-        if (memory.present) {
-          box.append(E("small", "SHA-256 " + memory.hash));
-          for (const entry of memory.document.entries) {
-            box.append(
-              E(
-                "h4",
-                ({
-                  decision: "Decisión",
-                  constraint: "Restricción",
-                  rejection: "Motivo de rechazo",
-                }[entry.kind] || entry.kind) +
-                  " · " +
-                  entry.id,
-              ),
-            );
-            box.append(E("p", entry.summary), E("p", entry.rationale, "muted"));
-            for (const ref of entry.references || [])
-              box.append(link("Referencia", ref));
-          }
-          box.append(
-            E(
-              "small",
-              "Contexto observado, no aprobación ni evidencia verificada. Los cambios se proponen con la receta «Actualizar la memoria del proyecto».",
-            ),
-          );
-        }
-        task.append(box);
-      }
-      if (ev.project_memory_validation) {
-        const validation = ev.project_memory_validation;
-        task.append(
-          E(
             "small",
-            validation.status === "passed"
-              ? "Esquema de memoria candidata válido · no acredita aceptación funcional."
-              : "Memoria candidata inválida: " + validation.error,
-            validation.status === "passed" ? "muted" : "error",
+            "Contexto observado, no aprobación ni evidencia verificada. Los cambios se proponen con la receta «Actualizar la memoria del proyecto».",
           ),
         );
       }
-      task.append(E("p", ev.summary || p.summary || w.request));
-      const detail = E("details");
-      detail.dataset.key = w.id;
-      detail.append(E("summary", "Alcance, antes/después y evidencias"));
-      if (p.acceptance) detail.append(E("p", p.acceptance));
-      if (Array.isArray(p.criteria)) {
-        const criteria = E("ul");
-        for (const criterion of p.criteria)
-          criteria.append(
-            E(
-              "li",
-              criterion.id +
-                ": " +
-                criterion.description +
-                " · " +
-                (criterion.method === "test"
-                  ? "Pruebas: " + (criterion.checks || []).join(", ")
-                  : "Validación manual"),
-            ),
-          );
-        detail.append(E("h4", "Criterios de la propuesta"), criteria);
-      }
-      const sources = (Array.isArray(p.sources) ? p.sources : [p.sources])
-        .filter(Boolean)
-        .map((x) =>
-          typeof x === "string" ? { url: x } : { url: x.url, reason: x.reason || x.motivo },
-        )
-        .filter((x) => x.url);
-      if (sources.length) {
-        const list = E("ul");
-        for (const x of sources) {
-          const li = E("li");
-          li.append(
-            /^https?:\/\//.test(x.url)
-              ? link(x.url, x.url)
-              : document.createTextNode(x.url),
-          );
-          if (x.reason) li.append(document.createTextNode(" · " + x.reason));
-          list.append(li);
-        }
-        detail.append(E("h4", "Fuentes"), list);
-      }
-      const comparison = E("div", "", "compare");
-      const delivered = ev.sha && ev.sha === w.sha && ev.to_be;
-      for (const [name, key] of [
-        ["As-is · base investigada", "as_is"],
-        [
-          delivered ? "To-be · resultado declarado" : "To-be · propuesto",
-          "to_be",
-        ],
-      ]) {
-        const col = E("section");
-        col.append(E("h3", name));
-        const diagram = E("div", "", "diagram");
-        const source =
-          key === "as_is" ? p.as_is : delivered ? ev.to_be : p.to_be;
-        diagram.append(E("pre", source || "Pendiente de investigación"));
-        col.append(diagram);
-        comparison.append(col);
-        if (source) this.draw(diagram, source);
-      }
-      detail.append(comparison);
-      if (p.base_sha)
-        detail.append(
-          link(
-            "Commit base: " + p.base_sha.slice(0, 12),
-            base + "/commit/" + p.base_sha,
-          ),
-        );
-      if (p.to_be) {
-        const proposed = E("details");
-        proposed.dataset.key = "design-" + w.id;
-        proposed.append(
-          E(
-            "summary",
-            (w.state === "proposed" ? "Diseño To-be propuesto" : "Diseño To-be aprobado") +
-              " · propuesta v" +
-              w.version,
-          ),
-          E("pre", p.to_be),
-        );
-        detail.append(proposed);
-      }
-      if (p.mcp?.length)
-        detail.append(
-          E("p", "Herramientas MCP para investigar y revisar: " + p.mcp.join(", "), "muted"),
-        );
-      if (p.sandbox)
-        detail.append(
-          E(
-            "p",
-            p.sandbox.mode === "host"
-              ? "Entorno de pruebas: host del ejecutor (requiere permiso del operador)"
-              : "Entorno de pruebas: contenedor " +
-                  p.sandbox.image +
-                  " · red " +
-                  ({ setup: "solo en setup", none: "sin red", always: "siempre" }[
-                    p.sandbox.network
-                  ] || p.sandbox.network) +
-                  " · " +
-                  p.sandbox.cpus +
-                  " CPU · " +
-                  p.sandbox.memory_mb +
-                  " MB · " +
-                  p.sandbox.timeout_minutes +
-                  " min",
-            "muted",
-          ),
-        );
-      if (ev.unit || p.unit_test) {
-        const t = E("details");
-        t.dataset.key = "unit-" + w.id;
-        t.append(
-          E(
-            "summary",
-            "Unitarias declaradas · " + (ev.unit?.status || "Planificadas"),
-          ),
-          E("pre", ev.unit ? JSON.stringify(ev.unit, null, 2) : p.unit_test),
-        );
-        detail.append(t);
-      }
-      if (ev.integration || p.integration_test) {
-        const t = E("details");
-        t.dataset.key = "integration-" + w.id;
-        t.append(
-          E(
-            "summary",
-            "Integración declarada · " +
-              (ev.integration?.status || "Planificadas"),
-          ),
-          E(
-            "pre",
-            ev.integration
-              ? JSON.stringify(ev.integration, null, 2)
-              : p.integration_test,
-          ),
-        );
-        detail.append(t);
-      }
-      if (ev.review) {
-        const t = E("details");
-        t.dataset.key = "review-" + w.id;
-        t.append(
-          E(
-            "summary",
-            "Revisión declarada · " +
-              (ev.review.passed ? "Sin bloqueos" : "Con incidencias"),
-          ),
-          E("pre", JSON.stringify(ev.review, null, 2)),
-        );
-        detail.append(t);
-      }
-      if (w.sha) detail.append(E("p", "Commit: " + w.sha));
-      task.append(detail);
-      const actions = E("div", "", "actions");
-      if (w.state === "proposed") {
-        const estimate = expectedCost(this.data.costs, w);
-        if (estimate) task.append(E("p", estimate, "muted"));
-      }
-      if (w.state === "proposed" && this.data.me?.role !== "observer")
-        actions.append(
-          button(
-            "Implementar propuesta v" + w.version,
-            () =>
-              this.action("/work/" + w.id + "/actions/implement", {
-                version: w.version,
-              }),
-            true,
-          ),
-        );
-      if (w.state === "review" && this.data.me?.role === "owner") {
-        const approve = E("details");
-        approve.dataset.key = "approve-" + w.id;
-        approve.append(
-          E("summary", "Aprobar e integrar"),
-          E(
-            "p",
-            "Se fusionará la PR #" +
-              w.pr +
-              " con el commit " +
-              w.sha +
-              ". GitHub y las pruebas deben confirmarlo.",
-          ),
-          button(
-            "Confirmar integración de este commit",
-            () =>
-              this.action("/work/" + w.id + "/actions/merge", { sha: w.sha }),
-            true,
-          ),
-        );
-        if (dossier?.ready) actions.append(approve);
-        else
-          actions.append(
-            E(
-              "p",
-              "Integración bloqueada: completa la aceptación del candidato.",
-              "error",
-            ),
-          );
-      }
-      if (["proposed", "review", "blocked"].includes(w.state)) {
-        const correct = E("details");
-        correct.dataset.key = "correct-" + w.id;
-        correct.append(E("summary", "Pedir correcciones"));
-        const feedback = E("textarea");
-        feedback.placeholder = "Qué debe corregirse";
-        correct.append(
-          feedback,
-          button("Investigar correcciones", () =>
-            this.action("/work/" + w.id + "/actions/correct", {
-              feedback: feedback.value,
-            }),
-          ),
-        );
-        actions.append(correct);
-      }
-      if (w.state === "blocked")
-        actions.append(
-          button("Reintentar operación", () =>
-            this.action("/work/" + w.id + "/actions/retry", {}),
-          ),
-        );
-      if (["queued", "approved"].includes(w.state))
-        actions.append(
-          button("Cancelar", () =>
-            this.action("/work/" + w.id + "/actions/cancel", {}),
-          ),
-        );
-      task.append(actions);
-      parent.append(task);
+      task.append(box);
     }
+    if (ev.project_memory_validation) {
+      const validation = ev.project_memory_validation;
+      task.append(
+        E(
+          "small",
+          validation.status === "passed"
+            ? "Esquema de memoria candidata válido · no acredita aceptación funcional."
+            : "Memoria candidata inválida: " + validation.error,
+          validation.status === "passed" ? "muted" : "error",
+        ),
+      );
+    }
+    task.append(E("p", ev.summary || p.summary || w.request));
+    const detail = E("details");
+    detail.dataset.key = w.id;
+    detail.append(E("summary", "Alcance, antes/después y evidencias"));
+    if (p.acceptance) detail.append(E("p", p.acceptance));
+    if (Array.isArray(p.criteria)) {
+      const criteria = E("ul");
+      for (const criterion of p.criteria)
+        criteria.append(
+          E(
+            "li",
+            criterion.id +
+              ": " +
+              criterion.description +
+              " · " +
+              (criterion.method === "test"
+                ? "Pruebas: " + (criterion.checks || []).join(", ")
+                : "Validación manual"),
+          ),
+        );
+      detail.append(E("h4", "Criterios de la propuesta"), criteria);
+    }
+    const sources = (Array.isArray(p.sources) ? p.sources : [p.sources])
+      .filter(Boolean)
+      .map((x) =>
+        typeof x === "string" ? { url: x } : { url: x.url, reason: x.reason || x.motivo },
+      )
+      .filter((x) => x.url);
+    if (sources.length) {
+      const list = E("ul");
+      for (const x of sources) {
+        const li = E("li");
+        li.append(
+          /^https?:\/\//.test(x.url)
+            ? link(x.url, x.url)
+            : document.createTextNode(x.url),
+        );
+        if (x.reason) li.append(document.createTextNode(" · " + x.reason));
+        list.append(li);
+      }
+      detail.append(E("h4", "Fuentes"), list);
+    }
+    const comparison = E("div", "", "compare");
+    const delivered = ev.sha && ev.sha === w.sha && ev.to_be;
+    for (const [name, key] of [
+      ["As-is · base investigada", "as_is"],
+      [
+        delivered ? "To-be · resultado declarado" : "To-be · propuesto",
+        "to_be",
+      ],
+    ]) {
+      const col = E("section");
+      col.append(E("h3", name));
+      const diagram = E("div", "", "diagram");
+      const source =
+        key === "as_is" ? p.as_is : delivered ? ev.to_be : p.to_be;
+      diagram.append(E("pre", source || "Pendiente de investigación"));
+      col.append(diagram);
+      comparison.append(col);
+      if (source) this.draw(diagram, source);
+    }
+    detail.append(comparison);
+    if (p.base_sha)
+      detail.append(
+        link(
+          "Commit base: " + p.base_sha.slice(0, 12),
+          base + "/commit/" + p.base_sha,
+        ),
+      );
+    if (p.to_be) {
+      const proposed = E("details");
+      proposed.dataset.key = "design-" + w.id;
+      proposed.append(
+        E(
+          "summary",
+          (w.state === "proposed" ? "Diseño To-be propuesto" : "Diseño To-be aprobado") +
+            " · propuesta v" +
+            w.version,
+        ),
+        E("pre", p.to_be),
+      );
+      detail.append(proposed);
+    }
+    if (p.mcp?.length)
+      detail.append(
+        E("p", "Herramientas MCP para investigar y revisar: " + p.mcp.join(", "), "muted"),
+      );
+    if (p.sandbox)
+      detail.append(
+        E(
+          "p",
+          p.sandbox.mode === "host"
+            ? "Entorno de pruebas: host del ejecutor (requiere permiso del operador)"
+            : "Entorno de pruebas: contenedor " +
+                p.sandbox.image +
+                " · red " +
+                ({ setup: "solo en setup", none: "sin red", always: "siempre" }[
+                  p.sandbox.network
+                ] || p.sandbox.network) +
+                " · " +
+                p.sandbox.cpus +
+                " CPU · " +
+                p.sandbox.memory_mb +
+                " MB · " +
+                p.sandbox.timeout_minutes +
+                " min",
+          "muted",
+        ),
+      );
+    if (ev.unit || p.unit_test) {
+      const t = E("details");
+      t.dataset.key = "unit-" + w.id;
+      t.append(
+        E(
+          "summary",
+          "Unitarias declaradas · " + (ev.unit?.status || "Planificadas"),
+        ),
+        E("pre", ev.unit ? JSON.stringify(ev.unit, null, 2) : p.unit_test),
+      );
+      detail.append(t);
+    }
+    if (ev.integration || p.integration_test) {
+      const t = E("details");
+      t.dataset.key = "integration-" + w.id;
+      t.append(
+        E(
+          "summary",
+          "Integración declarada · " +
+            (ev.integration?.status || "Planificadas"),
+        ),
+        E(
+          "pre",
+          ev.integration
+            ? JSON.stringify(ev.integration, null, 2)
+            : p.integration_test,
+        ),
+      );
+      detail.append(t);
+    }
+    if (ev.review) {
+      const t = E("details");
+      t.dataset.key = "review-" + w.id;
+      t.append(
+        E(
+          "summary",
+          "Revisión declarada · " +
+            (ev.review.passed ? "Sin bloqueos" : "Con incidencias"),
+        ),
+        E("pre", JSON.stringify(ev.review, null, 2)),
+      );
+      detail.append(t);
+    }
+    if (w.sha) detail.append(E("p", "Commit: " + w.sha));
+    task.append(detail);
+    const actions = E("div", "", "actions");
+    if (w.state === "proposed") {
+      const estimate = expectedCost(this.data.costs, w);
+      if (estimate) task.append(E("p", estimate, "muted"));
+    }
+    if (w.state === "proposed" && this.data.me?.role !== "observer")
+      actions.append(
+        button(
+          "Implementar propuesta v" + w.version,
+          () =>
+            this.action("/work/" + w.id + "/actions/implement", {
+              version: w.version,
+            }),
+          true,
+        ),
+      );
+    if (w.state === "review" && this.data.me?.role === "owner") {
+      const approve = E("details");
+      approve.dataset.key = "approve-" + w.id;
+      approve.append(
+        E("summary", "Aprobar e integrar"),
+        E(
+          "p",
+          "Se fusionará la PR #" +
+            w.pr +
+            " con el commit " +
+            w.sha +
+            ". GitHub y las pruebas deben confirmarlo.",
+        ),
+        button(
+          "Confirmar integración de este commit",
+          () =>
+            this.action("/work/" + w.id + "/actions/merge", { sha: w.sha }),
+          true,
+        ),
+      );
+      if (dossier?.ready) actions.append(approve);
+      else
+        actions.append(
+          E(
+            "p",
+            "Integración bloqueada: completa la aceptación del candidato.",
+            "error",
+          ),
+        );
+    }
+    const canAct = this.data.me?.role !== "observer";
+    if (canAct && ["proposed", "review", "blocked"].includes(w.state)) {
+      const correct = E("details");
+      correct.dataset.key = "correct-" + w.id;
+      correct.append(E("summary", "Pedir correcciones"));
+      const feedback = E("textarea");
+      feedback.placeholder = "Qué debe corregirse";
+      correct.append(
+        feedback,
+        button("Investigar correcciones", () =>
+          this.action("/work/" + w.id + "/actions/correct", {
+            feedback: feedback.value,
+          }),
+        ),
+      );
+      actions.append(correct);
+    }
+    if (canAct && w.state === "blocked")
+      actions.append(
+        button("Reintentar operación", () =>
+          this.action("/work/" + w.id + "/actions/retry", {}),
+        ),
+      );
+    if (canAct && ["queued", "approved"].includes(w.state))
+      actions.append(
+        button("Cancelar", () =>
+          this.action("/work/" + w.id + "/actions/cancel", {}),
+        ),
+      );
+    task.append(actions);
+    return task;
   }
   async draw(target, source) {
     try {
@@ -1884,7 +2036,7 @@ class FarmConsole extends HTMLElement {
       line.append(
         E(
           "summary",
-          new Date(ev.at).toLocaleTimeString("es-ES") +
+          when(ev.at) +
             " · " +
             ev.worker +
             " · " +
@@ -1899,6 +2051,7 @@ class FarmConsole extends HTMLElement {
   }
 }
 customElements.define("farm-console", FarmConsole);
+customElements.define("farm-advanced", FarmAdvanced);
 
 // Compatibility with Mateu definitions cached by earlier panel versions.
 customElements.define("agentfarm-monitor", class extends FarmConsole {});

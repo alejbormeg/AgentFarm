@@ -21,7 +21,7 @@ Los informes se etiquetan como declarados; un passed de Boxer no verifica
 automáticamente ningún criterio. Los campos de credenciales conocidos se ocultan
 en la exportación; no debe enviarse ningún secreto como evidencia.
 
-En Tareas/Panorama se ve qué criterio está pendiente, validado manualmente,
+Al abrir la tarea se ve qué criterio está pendiente, validado manualmente,
 rechazado o exceptuado. Una decisión necesita una explicación de al menos veinte
 caracteres y el entorno utilizado. Registrar validación manual significa que
 el operador declara haber realizado esa comprobación; no certifica una prueba

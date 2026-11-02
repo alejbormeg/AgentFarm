@@ -46,7 +46,7 @@ Sin recargas ni fallback de pago. [Contrato](BUDGET.md).
 
 ## Gobierno
 
-Seis vistas Mateu: Panorama, Nodos, Boxer, Tareas, Clover y Gobierno.
+Cinco vistas Mateu: Bandeja, Tareas, Agentes, Presupuesto y Gobierno.
 Sin heartbeat el estado es desconocido; tras 45 segundos caduca. El progreso
 se identifica como declarado. Los cambios de gobierno se auditan.
 

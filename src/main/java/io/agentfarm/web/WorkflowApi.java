@@ -88,9 +88,8 @@ public class WorkflowApi {
   public Object action(
       @PathVariable String id, @PathVariable String action, @RequestBody JsonNode n, Principal p) {
     if (action.equals("merge") && !publisher.configured())
-      throw new org.springframework.web.server.ResponseStatusException(
-          org.springframework.http.HttpStatus.CONFLICT,
-          "Configure the control-plane integration publisher first");
+      throw new IllegalArgumentException(
+          "Falta configurar el publicador de integración del panel; sin él no se puede fusionar.");
     return work.action(id, action, n, p.getName());
   }
 

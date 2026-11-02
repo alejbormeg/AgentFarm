@@ -1,6 +1,6 @@
 # Recetas mantenidas — segundo incremento de fase 4
 
-En **Tareas → Nueva idea o tarea**, selecciona una receta opcional y describe
+En **Nueva tarea**, selecciona una receta opcional y describe
 el problema concreto. También puedes seguir enviando peticiones libres.
 
 | Receta | Investigación guiada | Evidencia prevista |

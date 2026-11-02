@@ -6,7 +6,7 @@ GitHub CLI autenticados en la cuenta Linux.
 
 ## Uso desde el panel
 
-1. En Panorama o Tareas, abre **Nueva idea o tarea**, indica `owner/repository`,
+1. Pulsa **Nueva tarea** en cualquier vista, indica `owner/repository`,
    título y objetivo. **Crear issue e investigar** encola una orden persistente.
    Hasta que GitHub confirme la creación, se muestra explícitamente pendiente.
 2. Napoleon inspecciona el checkout y usa búsqueda web cuando es necesaria.
