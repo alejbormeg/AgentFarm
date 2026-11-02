@@ -1,4 +1,4 @@
-const style = "/farm-console.css?v=10";
+const style = "/farm-console.css?v=11";
 const names = {
   queued: "En cola",
   approved: "Lista para implementar",
@@ -230,7 +230,7 @@ function advancedForm(kind) {
     E(
       "summary",
       {
-        budgets: "Conciliación avanzada",
+        budgets: "Ajustes avanzados de presupuesto",
         nodes: "Registrar nodo dirigente",
         workers: "Registrar trabajador Boxer",
       }[kind],
@@ -575,7 +575,7 @@ class FarmConsole extends HTMLElement {
   weekBlock(main) {
     const d = this.data.digest;
     if (!d) return;
-    main.append(E("h2", "Esta semana"));
+    main.append(E("h2", "La cosecha de esta semana"));
     const pills = E("div", "", "pills");
     pills.append(
       pill(d.integrated.length + " integradas", d.integrated.length ? "ok" : ""),
@@ -887,7 +887,7 @@ class FarmConsole extends HTMLElement {
               ? "Ejecutando tests"
               : "Disponible",
         ],
-        ["Revisor", lens, phase("reviewing") ? "Revisando" : "Disponible"],
+        ["Benjamin · revisor", lens, phase("reviewing") ? "Revisando" : "Disponible"],
       ]) {
         if (map.children.length) map.append(E("span", "→", "arrow"));
         const a = E("div", "", "agent"),
@@ -896,12 +896,10 @@ class FarmConsole extends HTMLElement {
         a.append(icon(), text);
         map.append(a);
       }
-      this.live.append(map);
       const split = E("div", "", "split"),
         main = E("section"),
         side = E("aside");
-      this.firstSteps(main, r, allWork);
-      this.weekBlock(main);
+      if (!this.firstSteps(main, r, allWork)) this.weekBlock(main);
       const yours = work.filter(waiting).sort(byAttention);
       main.append(E("h2", "Espera tu decisión"));
       if (!yours.length)
@@ -944,7 +942,7 @@ class FarmConsole extends HTMLElement {
           "p",
           r.quota_fresh
             ? "Parada al 2 % restante."
-            : "La última lectura no acredita el saldo actual.",
+            : "Sin una lectura reciente de la cuota no se admite trabajo nuevo.",
         ),
         E(
           "small",
@@ -975,7 +973,7 @@ class FarmConsole extends HTMLElement {
           ),
         );
       split.append(main, side);
-      this.live.append(split);
+      this.live.append(split, map);
       this.console(r.events || []);
       const detail = E("details");
       detail.dataset.key = "technical";
@@ -1013,7 +1011,7 @@ class FarmConsole extends HTMLElement {
       const initiatives = E("details");
       initiatives.dataset.key = "initiatives";
       initiatives.append(
-        E("summary", "Iniciativas · " + (this.data.initiatives?.length || 0)),
+        E("summary", "Molinos · iniciativas: " + (this.data.initiatives?.length || 0)),
       );
       this.initiativeList(initiatives);
       this.live.append(initiatives);
@@ -1029,7 +1027,7 @@ class FarmConsole extends HTMLElement {
                 " · " +
                 t.state +
                 " · " +
-                (t.candidate_sha || "Sin candidato"),
+                (t.candidate_sha || "Sin commit"),
             ),
           );
         this.live.append(legacy);
@@ -1060,7 +1058,7 @@ class FarmConsole extends HTMLElement {
         E("h2", "Los Siete Mandamientos"),
         E(
           "p",
-          "Cada candidato los cumple antes de poder integrarse. Están en el código del panel: ningún agente puede repintarlos.",
+          "Cada cambio los cumple antes de poder integrarse. Están en el código del panel: ningún agente puede repintarlos.",
           "muted",
         ),
       );
@@ -1154,7 +1152,7 @@ class FarmConsole extends HTMLElement {
       );
     if (this.view === "overview" || this.view === "budgets") {
       if (!r.quota_fresh)
-        notice("Cuota actual desconocida: la última lectura no acredita el saldo.", "warn");
+        notice("Cuota desconocida: sin una lectura reciente no se admite trabajo nuevo.", "warn");
       else if (q.allowed === false) notice("Codex no admite trabajo ahora mismo.", "warn");
     }
     if (this.view === "overview") {
@@ -1169,7 +1167,6 @@ class FarmConsole extends HTMLElement {
             busy || s.executor_available ? "ok" : "warn",
           ),
         );
-      if (!o.paused) pills.append(pill("Admisión habilitada"));
       if (r.quota_fresh)
         pills.append(
           pill((100 - q.weekly_used_percent).toLocaleString("es-ES") + " % cuota semanal restante"),
@@ -1255,7 +1252,7 @@ class FarmConsole extends HTMLElement {
   }
   coordinationReason(reason) {
     if (reason === "initiative_paused")
-      return "Iniciativa en pausa para nuevas órdenes.";
+      return "Molino en pausa para nuevas órdenes.";
     if (reason === "initiative_review_limit")
       return "Esperando espacio en la bandeja de revisión.";
     if (reason.startsWith("dependency_not_integrated:")) {
@@ -1268,19 +1265,19 @@ class FarmConsole extends HTMLElement {
   initiativeList(parent) {
     const owner = this.data.me?.role === "owner";
     const section = E("section");
-    section.append(E("small", "Las iniciativas abarcan todos los repositorios."));
+    section.append(E("small", "Un molino es una iniciativa larga: se levanta piedra a piedra (tareas) y muro a muro (hitos), y abarca todos los repositorios."));
     const create = E("details");
     create.dataset.key = "new-initiative";
-    create.append(E("summary", "Crear iniciativa"));
+    create.append(E("summary", "Levantar un molino"));
     const title = E("input");
-    title.setAttribute("aria-label", "Nombre de la iniciativa");
-    title.placeholder = "Nombre de la iniciativa";
+    title.setAttribute("aria-label", "Nombre del molino");
+    title.placeholder = "Nombre del molino";
     const goal = E("textarea");
-    goal.setAttribute("aria-label", "Objetivo de la iniciativa");
+    goal.setAttribute("aria-label", "Objetivo del molino");
     goal.placeholder = "Objetivo y resultado esperado";
     const milestones = E("textarea");
-    milestones.setAttribute("aria-label", "Hitos, uno por línea");
-    milestones.placeholder = "Hitos, uno por línea";
+    milestones.setAttribute("aria-label", "Muros (hitos), uno por línea");
+    milestones.placeholder = "Muros (hitos), uno por línea";
     const limit = E("input");
     limit.type = "number";
     limit.min = "1";
@@ -1300,7 +1297,7 @@ class FarmConsole extends HTMLElement {
       milestones,
       E("p", "Máximo de cambios en desarrollo o pendientes de revisión:"),
       limit,
-      button("Guardar iniciativa", async () => {
+      button("Guardar el molino", async () => {
         this.initiativeRequestId ??= crypto.randomUUID();
         const titles = milestones.value
           .split("\n")
@@ -1359,7 +1356,7 @@ class FarmConsole extends HTMLElement {
         ),
       );
       details.append(
-        E("summary", "Hitos, dependencias y gobierno"),
+        E("summary", "Muros, dependencias y gobierno"),
         E("p", initiative.goal),
       );
       for (const milestone of initiative.milestones)
@@ -1377,7 +1374,7 @@ class FarmConsole extends HTMLElement {
         );
       if (owner) details.append(
         button(
-          initiative.paused ? "Reanudar iniciativa" : "Pausar nuevas órdenes",
+          initiative.paused ? "Reanudar el molino" : "Pausar nuevas órdenes",
           () =>
             this.action("/initiatives/" + initiative.id + "/pause", {
               version: initiative.version,
@@ -1393,7 +1390,7 @@ class FarmConsole extends HTMLElement {
         milestone = E("select"),
         predecessor = E("select");
       task.setAttribute("aria-label", "Tarea de " + initiative.title);
-      milestone.setAttribute("aria-label", "Hito de " + initiative.title);
+      milestone.setAttribute("aria-label", "Muro de " + initiative.title);
       predecessor.setAttribute(
         "aria-label",
         "Predecesora de " + initiative.title,
@@ -1510,7 +1507,7 @@ class FarmConsole extends HTMLElement {
       box.append(
         E(
           "p",
-          "Candidato histórico sin criterios registrados. Revisa e importa su alcance antes de aceptarlo.",
+          "Tarea antigua sin criterios registrados. Revisa e importa su alcance antes de aceptarla.",
         ),
         this.data.me?.role === "owner"
           ? button("Importar alcance de esta propuesta", () =>
@@ -1633,7 +1630,7 @@ class FarmConsole extends HTMLElement {
     const roles = [
       ["research", "Napoleon"],
       ["implement", "Boxer"],
-      ["review", "Revisor"],
+      ["review", "Benjamin"],
     ].filter(([role]) => used[role]?.length);
     if (!roles.length) return;
     const details = E("details");
@@ -1689,7 +1686,7 @@ class FarmConsole extends HTMLElement {
   diffViewer(w) {
     const d = E("details");
     d.dataset.key = "diff-" + w.id;
-    d.append(E("summary", "Ver cambios del candidato " + w.sha.slice(0, 12)));
+    d.append(E("summary", "Ver los cambios · " + w.sha.slice(0, 12)));
     const body = E("div", "", "diffs");
     d.append(body);
     this.diffs ||= {};
@@ -1738,7 +1735,7 @@ class FarmConsole extends HTMLElement {
       ["Propuestas", t.proposals],
       ["Aprobadas", t.approval_rate == null ? "—" : Math.round(t.approval_rate * 100) + " %"],
       ["Correcciones pedidas", t.corrections],
-      ["PR integradas", t.integrated],
+      ["Cosecha · PR integradas", t.integrated],
       ["Ciclo mediano", t.median_cycle_hours == null ? "—" : t.median_cycle_hours.toFixed(1) + " h"],
     ]) {
       const tr = E("tr");
@@ -1832,15 +1829,15 @@ class FarmConsole extends HTMLElement {
     section.append(E("h3", "Disparadores por repositorio"));
     if (!a.github_configured)
       section.append(
-        E("p", "Configura una GitHub App o AGENTFARM_GITHUB_TOKEN_FILE en el panel para leer GitHub.", "notice warn"),
+        E("p", "Falta conectar el panel con GitHub, con una GitHub App o un token (ver docs/TEAM.md). Sin eso no se vigila ningún repositorio.", "notice warn"),
       );
     if (!a.sentry_configured)
-      section.append(E("p", "Sentry: configura AGENTFARM_SENTRY_TOKEN_FILE para usar su disparador.", "muted"));
+      section.append(E("p", "Para vigilar errores de Sentry, el panel necesita su token (ver docs/AUTOMATION.md).", "muted"));
     const kinds = {
       labeled_issue: "Issues con etiqueta agentfarm",
       failing_ci: "CI roto en la rama principal",
       dependabot: "Alertas Dependabot",
-      weekly: "Revisión semanal",
+      weekly: "Reunión del domingo (revisión semanal)",
       pr_feedback: "Comentarios y checks de sus PR",
       sentry: "Errores nuevos en Sentry",
     };
@@ -1955,9 +1952,9 @@ class FarmConsole extends HTMLElement {
       task.append(
         E(
           "small",
-          "Iniciativa: " +
+          "Molino: " +
             initiative.title +
-            " · Hito: " +
+            " · Muro: " +
             initiative.milestones.find((m) => m.id === coordinated.milestone)
               ?.title,
         ),
@@ -1978,7 +1975,7 @@ class FarmConsole extends HTMLElement {
     this.usedSkills(task, w, json(w.evidence).skills || { research: json(w.proposal).skills });
     if (w.sha)
       links.append(
-        link("Expediente JSON", "/api/evidence/" + encodeURIComponent(w.id)),
+        link("Descargar expediente", "/api/evidence/" + encodeURIComponent(w.id)),
       );
     const p = json(w.proposal),
       ev = json(w.evidence);
@@ -2035,8 +2032,8 @@ class FarmConsole extends HTMLElement {
         E(
           "small",
           validation.status === "passed"
-            ? "Esquema de memoria candidata válido · no acredita aceptación funcional."
-            : "Memoria candidata inválida: " + validation.error,
+            ? "La memoria del proyecto tiene un formato válido; eso no demuestra que funcione."
+            : "Memoria del proyecto inválida: " + validation.error,
           validation.status === "passed" ? "muted" : "error",
         ),
       );
@@ -2116,7 +2113,7 @@ class FarmConsole extends HTMLElement {
       proposed.append(
         E(
           "summary",
-          (w.state === "proposed" ? "Diseño To-be propuesto" : "Diseño To-be aprobado") +
+          (w.state === "proposed" ? "Diseño propuesto" : "Diseño aprobado") +
             " · propuesta v" +
             w.version,
         ),
@@ -2156,7 +2153,7 @@ class FarmConsole extends HTMLElement {
       t.append(
         E(
           "summary",
-          "Unitarias declaradas · " + (ev.unit?.status || "Planificadas"),
+          "Squealer dice · unitarias: " + (ev.unit?.status || "Planificadas"),
         ),
         E("pre", ev.unit ? JSON.stringify(ev.unit, null, 2) : p.unit_test),
       );
@@ -2168,7 +2165,7 @@ class FarmConsole extends HTMLElement {
       t.append(
         E(
           "summary",
-          "Integración declarada · " +
+          "Squealer dice · integración: " +
             (ev.integration?.status || "Planificadas"),
         ),
         E(
@@ -2186,7 +2183,7 @@ class FarmConsole extends HTMLElement {
       t.append(
         E(
           "summary",
-          "Revisión declarada · " +
+          "Revisión de Benjamin · " +
             (ev.review.passed ? "Sin bloqueos" : "Con incidencias"),
         ),
         E("pre", JSON.stringify(ev.review, null, 2)),
@@ -2236,7 +2233,7 @@ class FarmConsole extends HTMLElement {
         actions.append(
           E(
             "p",
-            "Integración bloqueada: completa la aceptación del candidato.",
+            "Integración bloqueada: faltan criterios o mandamientos por cubrir.",
             "error",
           ),
         );

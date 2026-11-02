@@ -41,7 +41,7 @@ public class BudgetStatus implements ComponentTreeSupplier {
     var parts = new ArrayList<Component>();
     parts.add(UiSupport.heading(null, "Cuota del proveedor"));
     parts.add(quota(UiSupport.telemetry().snapshot()));
-    parts.add(UiSupport.heading("/icons/clover.svg", "Clover · reservas y margen autorizado"));
+    parts.add(UiSupport.heading("/icons/clover.svg", "Clover · lo reservado y lo que queda"));
     for (var account : UiSupport.budgets().accounts()) {
       String name = String.valueOf(account.get("account"));
       var status = UiSupport.budgets().status(name);

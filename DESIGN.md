@@ -13,7 +13,8 @@ at 20 px: a pig in a bicorne for Napoleon (also logo and favicon), a draft-horse
 with a harness for Boxer, a four-leaf clover for budget, a snowflake reserved for
 Snowball. The reviewer is a magnifying glass with a check.
 
-Bandeja puts what waits on the owner first, then work in progress. Tareas is a
+The metaphor names things and plain words name actions: docs/ANIMAL_FARM.md holds the glossary.
+Bandeja puts the week and what waits on the owner first, then work in progress. Tareas is a
 board by stage; cards open the task in a side drawer and are not dragged, because
 stages only change through evidence and approvals. Nueva tarea is a drawer too.
 Console, PID, session, test outputs and diagrams are progressive disclosures.

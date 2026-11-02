@@ -99,7 +99,7 @@ const shownErrors = () =>
 
 const views = {
   overview: "Espera tu decisión",
-  tasks: "Investigación",
+  tasks: "Molinos · iniciativas",
   agents: "Nodos dirigentes",
   budgets: "Cuota del proveedor",
   governance: "Los Siete Mandamientos",
@@ -132,7 +132,7 @@ try {
 
   // Agentes re-fetches itself; each render must not add another poll.
   await go("/overview");
-  check(await until(() => visible("Esta semana")), "the inbox shows the week");
+  check(await until(() => visible("La cosecha de esta semana")), "the inbox shows the week");
   check(await visible("Adoptar repositorio"), "an owner can adopt a repository");
   await go("/agents");
   await until(() => visible("Nodos dirigentes"));

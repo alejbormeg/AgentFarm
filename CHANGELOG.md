@@ -4,6 +4,14 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — vocabulario de Orwell y lenguaje llano
+
+- Molinos (iniciativas), muros (hitos), cosecha (lo integrado), reunión del domingo (revisión
+  semanal), Benjamin (revisor) y «Squealer dice» (lo que declara el agente). Glosario en
+  [Animal Farm](docs/ANIMAL_FARM.md). La API no cambia.
+- Fuera términos internos como «Admisión», «candidato» o «no acredita», y variables de entorno en la interfaz.
+- La Bandeja muestra primero la semana y las decisiones; el estado de los agentes pasa al final.
+
 ## Sin publicar — adoptar repositorios y aprobar por lotes
 
 - **Adoptar repositorio:** una tarea analiza el repo, propone `agentfarm.yaml` y deja activa la vigilancia.
