@@ -613,7 +613,8 @@ public class FarmDaemon extends CodexRunner {
                 item.path("request").asText() + recipeContext(item),
                 "feedback",
                 payload.path("feedback").asText()));
-    String prompt = rendered.text();
+    var skills = skills("research", profile == null ? List.of() : profile.skills());
+    String prompt = rendered.text() + skills.text();
     if (profile != null)
       prompt +=
           "\nProject profile (commands and scope are binding): "
@@ -624,6 +625,8 @@ public class FarmDaemon extends CodexRunner {
     ((com.fasterxml.jackson.databind.node.ObjectNode) p)
         .set("prompt", JSON.valueToTree(rendered.reference()));
     ((com.fasterxml.jackson.databind.node.ObjectNode) p).put("provider", providerFor("research"));
+    ((com.fasterxml.jackson.databind.node.ObjectNode) p)
+        .set("skills", JSON.valueToTree(skills.references()));
     ((com.fasterxml.jackson.databind.node.ObjectNode) p)
         .set("mcp", JSON.valueToTree(profile == null ? List.of() : profile.mcp()));
     ((com.fasterxml.jackson.databind.node.ObjectNode) p).set("project_memory", memory);
@@ -637,6 +640,7 @@ public class FarmDaemon extends CodexRunner {
       object.put("setup", profile.setup());
       object.set("allowed_paths", JSON.valueToTree(profile.allowedPaths()));
       object.set("quality", JSON.valueToTree(profile.quality()));
+      object.set("named_skills", JSON.valueToTree(profile.skills()));
     }
     ((com.fasterxml.jackson.databind.node.ObjectNode) p)
         .set("sandbox", JSON.valueToTree(policy == null ? Map.of("mode", "host") : policy.summary()));
@@ -647,6 +651,21 @@ public class FarmDaemon extends CodexRunner {
   }
 
   static io.agentfarm.core.Prompts.Rendered implementPrompt, reviewPrompt;
+  /** Off only to compare results with and without skills; see docs/SKILLS.md. */
+  static final boolean SKILLS = !"off".equals(System.getProperty("agentfarm.skills"));
+
+  static io.agentfarm.core.SkillCatalog.Selection skills(String role, List<String> named)
+      throws Exception {
+    if (!SKILLS) return new io.agentfarm.core.SkillCatalog.Selection("", List.of());
+    return io.agentfarm.core.SkillCatalog.select(
+        role, io.agentfarm.core.SkillCatalog.detectStacks(checkout), named, STATE.resolve("skills"));
+  }
+
+  static List<String> namedSkills(JsonNode p) {
+    var names = new ArrayList<String>();
+    p.path("named_skills").forEach(n -> names.add(n.asText()));
+    return names;
+  }
 
   /** True when the commit has CI workflows besides the AgentFarm template. */
   static boolean ownWorkflows(String ref) throws Exception {
@@ -855,6 +874,7 @@ public class FarmDaemon extends CodexRunner {
       throw new IOException(
           "La base cambió desde la investigación; solicita actualizar la propuesta");
     boolean ownCi = ownWorkflows(baseSha);
+    var implementSkills = skills("implement", namedSkills(p));
     String result =
         agentTurn(
             "implement",
@@ -870,10 +890,13 @@ public class FarmDaemon extends CodexRunner {
                             p.toString(),
                             "request",
                             item.path("request").asText() + recipeContext(item))))
-                .text());
+                .text()
+                + implementSkills.text());
     var change = resultJson(result);
     ((com.fasterxml.jackson.databind.node.ObjectNode) change)
         .set("prompt", JSON.valueToTree(implementPrompt.reference()));
+    ((com.fasterxml.jackson.databind.node.ObjectNode) change)
+        .set("skills", JSON.valueToTree(implementSkills.references()));
     var jobs = new LinkedHashMap<String, Object>();
     for (String kind : List.of("unit", "integration")) {
       String testCommand = p.path(kind + "_test").asText();
@@ -975,6 +998,7 @@ public class FarmDaemon extends CodexRunner {
     var regression = proveRegression(item, p, baseSha, sha, unit, integration);
     active = REVIEWER;
     phase = "reviewing";
+    var reviewSkills = skills("review", namedSkills(p));
     JsonNode review =
         resultJson(
             agentTurn(
@@ -991,7 +1015,8 @@ public class FarmDaemon extends CodexRunner {
                                 p.toString(),
                                 "tests",
                                 unit + " " + integration)))
-                    .text()));
+                    .text()
+                    + reviewSkills.text()));
     boolean pass =
         unit.get("status").equals("passed") || unit.get("status").equals("not_applicable");
     pass &=
@@ -1066,6 +1091,16 @@ public class FarmDaemon extends CodexRunner {
             quality,
             "regression",
             regression,
+            "skills",
+            obj(
+                "enabled",
+                SKILLS,
+                "research",
+                p.path("skills"),
+                "implement",
+                change.path("skills"),
+                "review",
+                reviewSkills.references()),
             "ci_checks",
             p.has("ci_checks") ? p.path("ci_checks") : ciChecks(sha),
             "passed",

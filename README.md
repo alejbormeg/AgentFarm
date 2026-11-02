@@ -14,6 +14,7 @@ Java 21, Spring Boot 4 y Mateu. Un solo proceso, SQLite, sin Node ni servidor SQ
 | Integración gobernada | Aprobar e integrar exige el SHA revisado, CI verde y cobertura de todos los criterios de aceptación. [Evidencias](docs/EVIDENCE.md) |
 | Presupuesto (Clover) | Reserva de cuota de suscripción Codex por ventana; parada al umbral configurado; sin pago adicional ni cambio de proveedor. [Presupuesto](docs/BUDGET.md) |
 | Los Siete Mandamientos | Pruebas en entorno limpio, prueba de regresión en cada bug, revisión independiente, alcance, métricas que no empeoran y sin secretos. [Mandamientos](docs/COMMANDMENTS.md) |
+| Skills por rol y tecnología | Diseño, pruebas, revisión, seguridad y guías por lenguaje en cada turno, con versión registrada en la evidencia. [Skills](docs/SKILLS.md) |
 | Alcance Git | `scope` comprueba que un commit solo toca las rutas permitidas. |
 | Iniciativas y recetas | Agrupar tareas con dependencias y límite de cambios en revisión; recetas versionadas para bugs, dependencias, pruebas y migraciones. [Iniciativas](docs/INITIATIVES.md) · [Recetas](docs/RECIPES.md) |
 | Memoria de proyecto | Decisiones, restricciones y rechazos versionados en Git; cada propuesta guarda el snapshot del commit base. [Memoria](docs/PROJECT_MEMORY.md) |

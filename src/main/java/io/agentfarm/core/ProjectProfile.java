@@ -20,6 +20,7 @@ public record ProjectProfile(
     TestSandbox.Policy container,
     List<String> mcp,
     Map<String, Object> quality,
+    List<String> skills,
     String hash) {
   public static ProjectProfile load(Path file) throws Exception {
     if (Files.size(file) > 65536) throw new IllegalArgumentException("Profile exceeds 64 KiB");
@@ -53,7 +54,8 @@ public record ProjectProfile(
               "secret_refs",
               "container",
               "mcp",
-              "quality")
+              "quality",
+              "skills")
           .contains(k.getKey()))
         throw new IllegalArgumentException("Unknown profile field: " + k.getKey());
     if (!n.path("version").isIntegralNumber() || n.path("version").asInt() != 1)
@@ -123,6 +125,17 @@ public record ProjectProfile(
       }
     }
     var quality = quality(n.path("quality"));
+    // Names only: the catalog and the operator decide what a name means.
+    var skills = new ArrayList<String>();
+    if (n.has("skills")) {
+      if (!n.path("skills").isArray() || n.path("skills").size() > 16)
+        throw new IllegalArgumentException("skills must be a list of at most 16 names");
+      for (var name : n.path("skills")) {
+        if (!name.isTextual() || !name.asText().matches("[a-z0-9][a-z0-9-]{0,39}"))
+          throw new IllegalArgumentException("Invalid skill name");
+        skills.add(name.asText());
+      }
+    }
     var refs = new LinkedHashMap<String, String>();
     if (n.has("secret_refs")) {
       if (!n.path("secret_refs").isObject())
@@ -145,6 +158,7 @@ public record ProjectProfile(
         container,
         List.copyOf(mcp),
         quality,
+        List.copyOf(skills),
         sha256(canonical(n)));
   }
 
@@ -217,6 +231,8 @@ public record ProjectProfile(
         mcp,
         "quality",
         quality,
+        "skills",
+        skills,
         "hash",
         hash);
   }
