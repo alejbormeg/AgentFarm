@@ -1,4 +1,4 @@
-const style = "/farm-console.css?v=11";
+const style = "/farm-console.css?v=12";
 const names = {
   queued: "En cola",
   approved: "Lista para implementar",
@@ -1178,6 +1178,8 @@ class FarmConsole extends HTMLElement {
         );
       items.push(pills);
     }
+    if (this.data.me?.demo)
+      notice("Modo demo: los agentes y GitHub son simulados. Nada sale de este equipo y nada se integra.", "warn");
     this.strip.replaceChildren(...items);
   }
   // On the board the column already names the state, so a pill only adds what it does not say.

@@ -40,8 +40,39 @@ BUGFIX = dict(
 )
 
 
+# What the demo's simulated agents say and change, found by a word in the request.
+DEMO = {
+    "jackson": ("Subir jackson-databind a la versión con la corrección de seguridad", "dependencias.txt", "Las pruebas siguen pasando con la versión nueva"),
+    "login": ("Cubrir el inicio de sesión con contraseñas caducadas", "login.txt", "Una contraseña caducada no permite entrar"),
+    "cupón": ("Rechazar los cupones caducados al calcular el carrito", "cupon.txt", "Un cupón caducado no descuenta nada"),
+    "enlace": ("Corregir el enlace del README", "enlace.txt", "El enlace apunta a una página que existe"),
+    "latencia": ("Medir la latencia del gateway por ruta", "latencia.txt", "Cada petición registra su duración"),
+}
+
+
+def demo(prompt):
+    request = prompt[prompt.find("Petición:") :]
+    return next((v for k, v in DEMO.items() if k in request), None)
+
+
 def answer(thread, prompt):
     assert "Skills de AgentFarm" in prompt, "every turn receives its skills"
+    scenario = demo(prompt)
+    if scenario and not prompt.startswith("Revisión independiente"):
+        summary, name, criterion = scenario
+        if thread["sandbox"] == "workspace-write":
+            with open(os.path.join(thread["cwd"], "demo", name), "w") as f:
+                f.write("simulado\n")
+            return {"summary": summary, "as_is": "flowchart LR; A[Antes] --> B[Con el problema]", "to_be": "flowchart LR; A[Después] --> B[Resuelto]", "limitations": "Ninguna"}
+        return dict(
+            PROPOSAL,
+            summary=summary,
+            acceptance=criterion,
+            as_is="flowchart LR; A[Antes] --> B[Con el problema]",
+            to_be="flowchart LR; A[Después] --> B[Resuelto]",
+            risks="Ninguno relevante",
+            criteria=[{"id": "AC-1", "description": criterion, "method": "test", "checks": ["unit", "integration"]}],
+        )
     if "Corrige el saludo" in prompt and thread["sandbox"] == "workspace-write":
         os.makedirs(os.path.join(thread["cwd"], "tests"), exist_ok=True)
         with open(os.path.join(thread["cwd"], "fixed.txt"), "w") as f:
@@ -56,7 +87,7 @@ def answer(thread, prompt):
             f.write("hola desde AgentFarm\n")
         return {"summary": "Añadido greeting.txt", "as_is": PROPOSAL["as_is"], "to_be": PROPOSAL["to_be"], "limitations": "Ninguna"}
     if prompt.startswith("Revisión independiente"):
-        return {"passed": True, "findings": "greeting.txt cumple AC-1 y AC-2"}
+        return {"passed": True, "findings": "Cumple los criterios; sin hallazgos bloqueantes."}
     return PROPOSAL
 
 

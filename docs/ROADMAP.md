@@ -76,6 +76,21 @@ Origen: [segunda auditoría](AUDIT-2026-11.md).
 | 7.2 ✅ | Disparadores desde Sentry/Grafana. | Un error nuevo abre una propuesta `bugfix` enlazada. |
 | 7.3 (parcial) | Interfaz fuera de Mateu beta o actualizada a Vaadin 26. | Sin avisos de deprecación; mismas vistas. |
 
+## Fase 8 — Mantener repos para desarrolladores
+
+Objetivo: dejar de mantener un repositorio, sin perder el control de lo que se integra.
+
+| # | Entrega | Criterio de salida |
+| --- | --- | --- |
+| 8.1 ✅ | Prueba de navegador en la CI. | Una vista en blanco rompe la CI. |
+| 8.2 ✅ | [Verificador](EVIDENCE.md#verificador): las pruebas superadas cierran sus criterios. | Un criterio de test se cierra sin excepción manual. |
+| 8.3 ✅ | [Siete Mandamientos](COMMANDMENTS.md) como puertas. | Uno incumplido bloquea la integración. |
+| 8.4 (parcial) | [Skills](SKILLS.md) por rol y tecnología. | Falta comparar resultados con un agente real. |
+| 8.5 (parcial) | Adoptar un repo, resumen semanal y aprobación por lotes. | Falta probarlo con un repo real. |
+| 8.6 ✅ | Vocabulario y lenguaje llano. | Falta validarlo con usuarios. |
+| 8.7 (parcial) | Modo demo y página pública. | Falta publicarla y abrir el repositorio. |
+| 8.8 | Vía para quien tiene ideas y no programa: entrevista, repo nuevo y vistas previas. | Después de validar lo anterior. |
+
 ## Fuera de alcance por ahora
 
 Consenso distribuido entre varios nodos Napoleon/Snowball, despliegue y

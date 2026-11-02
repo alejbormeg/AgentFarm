@@ -4,6 +4,12 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — modo demo y página pública
+
+- `./agentfarm demo`: la granja completa con agentes y GitHub simulados, en un minuto y sin cuentas.
+- README con el nuevo enfoque, capturas y versión en inglés.
+- `site/`: página estática lista para publicar. No está publicada.
+
 ## Sin publicar — vocabulario de Orwell y lenguaje llano
 
 - Molinos (iniciativas), muros (hitos), cosecha (lo integrado), reunión del domingo (revisión

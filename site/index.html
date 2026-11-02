@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentFarm · Deja de mantener tus repos</title>
+<meta name="description" content="Agentes de código que vigilan la CI y las dependencias de tus repos, proponen arreglos y te traen cada cambio con sus pruebas. Tú decides qué entra.">
+<link rel="icon" href="icons/napoleon.svg">
+<style>
+:root {
+  --paper: #f7f3ea; --surface: #fffdf8; --ink: #142d4e; --muted: #55637a;
+  --line: #ddd5c4; --action: #285bc5; --action-ink: #fff; --barn: #7c2a22; --barn-ink: #f9f1e4;
+  --gold: #e3ab3e; --code: #142d4e; --code-ink: #f4efe4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161d; --surface: #1a2029; --ink: #edeae2; --muted: #a4adbb;
+    --line: #333b47; --action: #7ea3f2; --action-ink: #0d1420; --barn: #5e1f19; --code: #0b0e13;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161d; --surface: #1a2029; --ink: #edeae2; --muted: #a4adbb;
+  --line: #333b47; --action: #7ea3f2; --action-ink: #0d1420; --barn: #5e1f19; --code: #0b0e13;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--action); }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+header { display: flex; align-items: center; gap: 10px; padding: 18px 0; font-weight: 700; }
+header img { width: 34px; height: 34px; }
+header nav { margin-left: auto; display: flex; gap: 18px; font-weight: 500; font-size: 15px; }
+h1, h2 { font-family: Georgia, "Times New Roman", serif; line-height: 1.12; letter-spacing: -0.01em; }
+h1 { font-size: clamp(42px, 8vw, 76px); margin: 36px 0 16px; max-width: 13ch; }
+h2 { font-size: clamp(28px, 5vw, 42px); margin: 0 0 18px; }
+.lead { font-size: clamp(18px, 2.6vw, 22px); color: var(--muted); max-width: 40em; margin: 0 0 26px; }
+.try { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px; }
+pre { margin: 0; background: var(--code); color: var(--code-ink); padding: 14px 18px; border-radius: 8px; overflow-x: auto; font-size: 15px; line-height: 1.5; max-width: 100%; }
+.button { display: inline-block; background: var(--action); color: var(--action-ink); padding: 12px 20px; border-radius: 8px; font-weight: 600; text-decoration: none; }
+.note { color: var(--muted); font-size: 15px; margin: 8px 0 0; }
+figure { margin: 40px 0 0; }
+figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: 10px; }
+figcaption { color: var(--muted); font-size: 15px; margin-top: 8px; }
+section { padding: 64px 0 0; }
+.steps { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); margin: 0; padding: 0; list-style: none; counter-reset: step; }
+.steps li { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; counter-increment: step; }
+.steps li::before { content: counter(step); font: 700 30px Georgia, serif; color: var(--barn); display: block; }
+:root[data-theme="dark"] .steps li::before { color: var(--gold); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .steps li::before { color: var(--gold); } }
+.steps strong { display: block; margin-bottom: 4px; }
+.wall { background: var(--barn); color: var(--barn-ink); padding: 44px 16px; margin-top: 64px; }
+.wall h2 { font-size: clamp(30px, 6vw, 52px); }
+.wall ol { max-width: 44em; padding-left: 1.4em; font: 700 clamp(18px, 2.6vw, 23px)/1.4 Georgia, serif; }
+.wall li { margin-bottom: 10px; }
+.wall p { max-width: 44em; }
+.wall a { color: var(--barn-ink); }
+.cast { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); }
+.cast div { display: flex; gap: 12px; align-items: flex-start; }
+.cast img { width: 52px; height: 52px; flex: none; }
+.cast strong { display: block; }
+ul.plain { padding-left: 1.2em; max-width: 44em; }
+footer { padding: 64px 0 40px; color: var(--muted); font-size: 15px; }
+@media (max-width: 420px) { header nav a:first-child { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="icons/napoleon.svg" alt="">
+    <span>AgentFarm</span>
+    <nav>
+      <a href="#como">Cómo funciona</a>
+      <a href="https://github.com/alejbormeg/AgentFarm">GitHub</a>
+    </nav>
+  </header>
+  <h1>Deja de mantener tus repos.</h1>
+  <p class="lead">Conecta una granja de agentes de código. Vigilan la CI y las dependencias, proponen arreglos y te traen cada cambio con sus pruebas. Tú solo decides qué entra.</p>
+  <div class="try">
+    <pre><code>git clone https://github.com/alejbormeg/AgentFarm.git
+cd AgentFarm &amp;&amp; ./agentfarm demo</code></pre>
+  </div>
+  <p class="note">Un minuto, con agentes y GitHub simulados. Necesitas JDK 21, git y python3. Nada sale de tu equipo.</p>
+  <figure>
+    <img src="img/bandeja.png" width="1280" height="800" alt="La Bandeja de AgentFarm: la cosecha de la semana, dos cambios listos para integrar a la vez y las decisiones pendientes.">
+    <figcaption>La Bandeja: lo que ha pasado esta semana y lo único que te necesita.</figcaption>
+  </figure>
+</div>
+
+<section id="como">
+  <div class="wrap">
+    <h2>Mantener un repo, sin tener que mantenerlo</h2>
+    <ol class="steps">
+      <li><strong>Adopta un repo</strong>Los agentes lo estudian y proponen sus comandos de prueba, sus reglas de calidad y las tres primeras mejoras.</li>
+      <li><strong>Ellos vigilan</strong>CI rota, alertas de Dependabot, errores de Sentry, comentarios en PR y una revisión semanal. Cada señal llega como propuesta.</li>
+      <li><strong>Ellos trabajan</strong>Un agente implementa, las pruebas corren en un contenedor sin credenciales y otro agente revisa sin poder tocar nada.</li>
+      <li><strong>Tú decides</strong>Apruebas el commit exacto, uno a uno o por lotes si son cambios de bajo riesgo. Nada se integra sin ti.</li>
+    </ol>
+  </div>
+</section>
+
+<div class="wall">
+  <div class="wrap">
+    <h2>Aquí nadie repinta los mandamientos de noche</h2>
+    <ol>
+      <li>Todo cambio de código pasa pruebas unitarias y de integración en un entorno limpio.</li>
+      <li>Todo bug corregido trae una prueba que antes fallaba.</li>
+      <li>Ningún agente revisa su propio trabajo.</li>
+      <li>Ningún agente toca más de lo aprobado.</li>
+      <li>Ninguna métrica de calidad empeora sin una excepción firmada.</li>
+      <li>Ningún secreto ni vulnerabilidad conocida llega a la rama principal.</li>
+      <li>Ningún agente cambia estos mandamientos.</li>
+    </ol>
+    <p>Son comprobaciones, no buenos deseos: cada cambio muestra cuáles cumple y por qué, y uno incumplido bloquea la integración. El panel lee la CI y el diff por su cuenta, en lugar de creer lo que dice el agente.</p>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <h2>El reparto</h2>
+    <div class="cast">
+      <div><img src="icons/napoleon.svg" alt=""><span><strong>Napoleon</strong>Investiga y propone. Nunca toca los mandamientos.</span></div>
+      <div><img src="icons/boxer.svg" alt=""><span><strong>Boxer</strong>Implementa. «Trabajaré más duro».</span></div>
+      <div><img src="icons/clover.svg" alt=""><span><strong>Clover</strong>Vigila la cuota y detiene el trabajo antes de agotarla, sin pagos extra.</span></div>
+    </div>
+    <figure>
+      <img src="img/tarea.png" width="1280" height="800" alt="Una tarea abierta en AgentFarm, con los siete mandamientos cumplidos y el motivo de cada uno." loading="lazy">
+      <figcaption>Cada cambio llega con su evidencia, las skills que usó cada agente y cada mandamiento comprobado.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Lo que conviene saber</h2>
+    <ul class="plain">
+      <li>Corre en tu máquina, con tu suscripción de Codex o tu clave de Claude Code. Es software libre, con licencia Apache 2.0.</li>
+      <li>Es un producto joven: aún no coordina varias máquinas ni tiene doble factor.</li>
+      <li>Pasar los mandamientos no garantiza que no haya errores. Una prueba que pasa no siempre es una buena prueba.</li>
+      <li>Hoy está pensado para desarrolladores: instalar el ejecutor pide Docker, Java y las CLI de GitHub y Codex.</li>
+    </ul>
+    <p><a class="button" href="https://github.com/alejbormeg/AgentFarm">Ver el código en GitHub</a></p>
+  </div>
+</section>
+
+<div class="wrap">
+  <footer>AgentFarm toma sus personajes de <cite>Rebelión en la granja</cite>, de George Orwell. No tiene relación con sus herederos ni con sus editoriales.</footer>
+</div>
+</body>
+</html>
