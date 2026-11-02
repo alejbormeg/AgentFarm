@@ -103,22 +103,45 @@ distribuido. El transporte, la identidad de nodos, el registro consistente,
 la recuperación, los leases y la prevención de doble asignación siguen
 pendientes de diseño y pruebas. El SQLite actual solo coordina un nodo.
 
+## Vocabulario del producto
+
+La metáfora nombra cosas; las acciones y los estados usan palabras normales: el botón dice
+«Aprobar», nunca «Moler». La interfaz muestra ambas palabras donde hace falta («Molinos ·
+iniciativas») y la API y la base de datos conservan sus identificadores (`initiatives`, `work_items`).
+
+| En la novela | En AgentFarm | Por qué encaja |
+| --- | --- | --- |
+| El molino | Iniciativa larga | Se levanta poco a poco, puede caer y se reconstruye con muros más gruesos: un fallo termina en una prueba de regresión |
+| Los muros | Hito de un molino | Lo que queda en pie entre una etapa y otra |
+| Las piedras | Tareas de un molino | Cada una se arrastra y se coloca por separado |
+| La cosecha | Lo integrado en la semana | El resultado del trabajo |
+| La reunión del domingo | Revisión semanal | La asamblea periódica en el granero |
+| Los mandamientos del granero | [Los Siete Mandamientos](COMMANDMENTS.md) | Aquí nadie los repinta de noche |
+| Benjamin | Revisión independiente | Sabe leer y no se deja engañar |
+| Clover | Presupuesto | Le advierte a Boxer que no se exceda |
+| Squealer | Lo que declara el agente | Da cifras favorables: «Squealer dice» es lo que aún nadie ha comprobado |
+
+Reservados para más adelante, sin uso en la interfaz: cantera (backlog), tormenta (incidente),
+Viejo Mayor (brief de una idea), Muriel (explicar en lenguaje llano), Mollie (trabajo fuera de
+alcance) y Jones (regresiones). Hay que probar con usuarios si se entiende; unos seis términos
+en la interfaz es el límite que nos ponemos.
+
+*Rebelión en la granja* es de dominio público en Reino Unido y la UE, pero en Estados Unidos no lo
+será hasta 2041. Antes de lanzar públicamente conviene una revisión legal, y no copiar frases de
+traducciones publicadas.
+
 ## Ideas adicionales para valorar
 
 Estas extensiones son sugerencias; no se activan ni se asignan permisos aquí.
 
 | Nombre propuesto | Función posible | Resultado útil |
 | --- | --- | --- |
-| **Benjamin** | Revisión escéptica e independiente | Objeciones, regresiones y evidencia que falta. |
-| **Clover** | Supervisión de capacidad y salud | Frenar admisión al agotar presupuesto, tiempo o capacidad de revisión. |
 | **Old Major** | Visión y principios del proyecto | Manifiesto humano versionado que los agentes pueden proponer cambiar. |
-| **Windmill** | Nombre de un hito o iniciativa | Mostrar progreso por criterios aceptados y evidencias. |
 
-Benjamin debe evaluar un candidato sin modificarlo. Clover propondría o
-explicaría una parada; los límites reales se imponen mediante código
-determinista. Old Major es documentación aprobada por el humano, no un agente
-que pueda reescribir sus propias reglas. Windmill no declara avance por contar
-tareas generadas o líneas de código.
+Benjamin evalúa un candidato sin modificarlo. Clover explica una parada; los límites
+reales se imponen mediante código determinista. Old Major es documentación aprobada
+por el humano, no un agente que pueda reescribir sus propias reglas. Un molino no
+declara avance por contar tareas generadas o líneas de código.
 
 ## Estado y siguiente implementación
 
