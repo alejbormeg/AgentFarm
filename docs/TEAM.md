@@ -39,7 +39,9 @@ cuenta pide el código después de la contraseña.
 - **Intentos:** cada código sirve una vez, y cinco fallos bloquean la cuenta cinco minutos.
 
 ## Credencial de GitHub del panel
-Comprueba cualquiera de ellas con `./agentfarm github-check owner/repo`.
+Comprueba cualquiera de ellas con `./agentfarm github-check owner/repo`. No escribe nada: lee lo que necesita la
+integración y lo que GitHub dice que puede hacer esa credencial. Una regla de protección de rama aún podría
+rechazar una fusión.
 
 | Credencial | Sirve | Alcance |
 | --- | --- | --- |

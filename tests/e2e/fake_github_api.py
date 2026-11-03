@@ -39,6 +39,10 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if not self.headers.get("Authorization", "").startswith("Bearer "):
             return self.reply(401, {"message": "Bad credentials"})
+        if path == "/repos/e2e/demo":
+            return self.reply(200, {"permissions": {"push": True, "pull": True}})
+        if path == "/repos/e2e/demo/pulls":
+            return self.reply(200, [])
         if m := re.fullmatch(r"/repos/e2e/demo/pulls/(\d+)", path):
             pr = pull(m[1])
             if not pr:
