@@ -4,10 +4,9 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — criterios acreditables y revisión informada
+## Sin publicar — los agentes no leen credenciales
 
-- Los agentes proponen solo criterios que la plataforma puede acreditar (`research.v4`).
-- El revisor recibe las comprobaciones de la plataforma y no bloquea por criterios manuales (`review.v3`).
+- Los turnos de Codex ocultan las credenciales del usuario, el estado del ejecutor, las copias, los demás workspaces y los discos montados en `/mnt`.
 
 ## Sin publicar — adopción probada en un repositorio real
 
