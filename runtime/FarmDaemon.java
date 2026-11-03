@@ -1494,7 +1494,15 @@ public class FarmDaemon extends CodexRunner {
 
   static ScheduledExecutorService observationLoops(
       Runnable quotaRead, Runnable heartbeat, long quotaDelay, long heartbeatDelay) {
-    var scheduler = Executors.newScheduledThreadPool(2);
+    // Daemon threads: if the main loop dies, the process must end so that systemd restarts it.
+    var scheduler =
+        Executors.newScheduledThreadPool(
+            2,
+            r -> {
+              var thread = new Thread(r);
+              thread.setDaemon(true);
+              return thread;
+            });
     scheduler.scheduleWithFixedDelay(quotaRead, 0, quotaDelay, TimeUnit.MILLISECONDS);
     scheduler.scheduleWithFixedDelay(heartbeat, 0, heartbeatDelay, TimeUnit.MILLISECONDS);
     return scheduler;

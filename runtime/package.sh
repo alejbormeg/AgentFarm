@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-./mvnw -B -ntp -DskipTests package dependency:copy-dependencies -DoutputDirectory=target/dependency -DincludeGroupIds=com.fasterxml.jackson.core,org.yaml
+MVN=./mvnw bash runtime/mvn-retry.sh -B -ntp -DskipTests package dependency:copy-dependencies -DoutputDirectory=target/dependency -DincludeGroupIds=com.fasterxml.jackson.core,org.yaml
 stage=$(mktemp -d "$PWD/target/executor-dist.XXXXXX")
 trap 'rm -rf -- "$stage"' EXIT
 out="$stage/agentfarm-executor"
-mkdir -p "$out/lib" target/runtime
+mkdir -p "$out/lib" "$stage/classes"
 cp target/dependency/*.jar "$out/lib/"
-javac --release 21 -cp "target/classes:$out/lib/*" -d target/runtime runtime/CodexRunner.java runtime/FarmDaemon.java
-jar --create --file "$out/executor.jar" -C target/runtime CodexRunner.class -C target/runtime FarmDaemon.class -C target/classes io/agentfarm/core/Json.class -C target/classes io/agentfarm/core/ProjectProfile.class
+javac --release 21 -cp "target/classes:$out/lib/*" -d "$stage/classes" runtime/CodexRunner.java runtime/FarmDaemon.java
+# Everything these two compile to, nested classes included. jdeps below only checks the core list.
+jar --create --file "$out/executor.jar" -C "$stage/classes" . -C target/classes io/agentfarm/core/Json.class -C target/classes io/agentfarm/core/ProjectProfile.class
 for name in SkillCatalog SkillCatalog\$Skill SkillCatalog\$Selection TestPolicy SecretScan QualityGate Commandments Commandments\$Verdict ProjectMemory AgentAdapter AgentAdapters CodexAdapter UnavailableAdapter TestSandbox TestSandbox\$Policy TestSandbox\$Output TestSandbox\$Runner Prompts Prompts\$Rendered ClaudeCodeAdapter ClaudeCodeAdapter\$Result McpCatalog McpCatalog\$Server ProposalShape BuildInfo ProfileCheck Backoff AgentSandbox SandboxProbe ExecutorWork; do
   jar --update --file "$out/executor.jar" -C target/classes "io/agentfarm/core/$name.class"
 done
