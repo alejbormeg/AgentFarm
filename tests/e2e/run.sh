@@ -225,23 +225,6 @@ sleep 3
 wait_for review 150
 adoption corrected || fail "corrected adoption candidate"
 
-# The last stretch: the panel verifies the candidate, refuses another SHA and integrates this one.
-item=e2e-request-adopt
-sha=$(curl -fs -u "admin:$password" "$panel/api/work" | python3 -c 'import json,sys;print([x for x in json.load(sys.stdin) if x["id"]=="e2e-request-adopt"][0]["sha"])')
-ready=false
-for _ in $(seq 1 60); do
-  ready=$(curl -fs -u "admin:$password" "$panel/api/evidence/$item" | python3 -c 'import json,sys;print(str(json.load(sys.stdin)["ready"]).lower())')
-  [[ "$ready" == true ]] && break
-  sleep 2
-done
-[[ "$ready" == true ]] || fail "acceptance never ready: $(curl -fs -u "admin:$password" "$panel/api/evidence/$item" | python3 -c 'import json,sys;print(json.load(sys.stdin)["blockers"])')"
-if owner "/work/$item/actions/merge" "{\"sha\":\"$(printf '0%.0s' $(seq 1 40))\"}" > /dev/null 2>&1; then fail "merged another SHA"; fi
-owner "/work/$item/actions/merge" "{\"sha\":\"$sha\"}" > /dev/null
-wait_for integrated 30
-git -C "$work/remote.git" show main:agentfarm.yaml > /dev/null || fail "integration did not reach main"
-git -C "$work/remote.git" show main:adopted.txt > /dev/null || fail "integration did not reach main"
-python3 -c 'import json,sys;assert json.load(open(sys.argv[1]))["pulls"]["3"]["merged"] is True' "$work/gh.json" || fail "PR not merged"
-echo "Integrated from the panel by SHA: $sha"
 # A task whose branch the base has moved past starts over from the base on the same PR.
 item=e2e-request-0001
 old_head=$(git -C "$work/remote.git" rev-parse "$branch")
@@ -263,3 +246,21 @@ print("Stale branch rebuilt on the base: PR", item["pr"], item["sha"][:12])
 PY
 git -C "$work/remote.git" merge-base --is-ancestor "$adopt_main" "$branch" || fail "rebuilt branch does not contain the base"
 [[ "$(git -C "$work/remote.git" rev-parse "$branch")" != "$old_head" ]] || fail "branch not replaced"
+
+# The last stretch: the panel verifies the candidate, refuses another SHA and integrates this one.
+item=e2e-request-adopt
+sha=$(curl -fs -u "admin:$password" "$panel/api/work" | python3 -c 'import json,sys;print([x for x in json.load(sys.stdin) if x["id"]=="e2e-request-adopt"][0]["sha"])')
+ready=false
+for _ in $(seq 1 60); do
+  ready=$(curl -fs -u "admin:$password" "$panel/api/evidence/$item" | python3 -c 'import json,sys;print(str(json.load(sys.stdin)["ready"]).lower())')
+  [[ "$ready" == true ]] && break
+  sleep 2
+done
+[[ "$ready" == true ]] || fail "acceptance never ready: $(curl -fs -u "admin:$password" "$panel/api/evidence/$item" | python3 -c 'import json,sys;print(json.load(sys.stdin)["blockers"])')"
+if owner "/work/$item/actions/merge" "{\"sha\":\"$(printf '0%.0s' $(seq 1 40))\"}" > /dev/null 2>&1; then fail "merged another SHA"; fi
+owner "/work/$item/actions/merge" "{\"sha\":\"$sha\"}" > /dev/null
+wait_for integrated 30
+git -C "$work/remote.git" show main:agentfarm.yaml > /dev/null || fail "integration did not reach main"
+git -C "$work/remote.git" show main:adopted.txt > /dev/null || fail "integration did not reach main"
+python3 -c 'import json,sys;assert json.load(open(sys.argv[1]))["pulls"]["3"]["merged"] is True' "$work/gh.json" || fail "PR not merged"
+echo "Integrated from the panel by SHA: $sha"
