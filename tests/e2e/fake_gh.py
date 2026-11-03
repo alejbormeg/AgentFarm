@@ -18,6 +18,9 @@ args = sys.argv[1:]
 if args[:2] == ["repo", "clone"]:
     sys.exit(subprocess.call(["git", "clone", "-q", REMOTE, args[3]]))
 if args[:2] == ["pr", "ready"]:
+    s = load()
+    s["pulls"][args[2]]["draft"] = "--undo" in args
+    save(s)
     sys.exit(0)
 if args[0] != "api":
     sys.exit("unsupported: " + " ".join(args))

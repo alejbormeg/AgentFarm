@@ -551,7 +551,7 @@ public class FarmDaemon extends CodexRunner {
         "\n__pycache__/\n*.pyc\n",
         StandardOpenOption.APPEND);
     gitAt("fetch", "origin");
-    String defaultBranch = github("GET", "repos/" + repo, null).path("default_branch").asText();
+    defaultBranch = github("GET", "repos/" + repo, null).path("default_branch").asText();
     String branch =
         "agentfarm/"
             + issue
@@ -565,14 +565,61 @@ public class FarmDaemon extends CodexRunner {
     if (item.path("branch").isTextual() && !item.path("branch").asText().isBlank())
       branch = item.path("branch").asText();
     if (implement) {
-      if (!gitAt("branch", "--list", branch).isBlank()) gitAt("checkout", branch);
-      else gitAt("checkout", "-b", branch, "origin/" + defaultBranch);
+      if (!gitAt("branch", "--list", branch).isBlank() && !(adoption(item) && !resumable(item, branch)))
+        gitAt("checkout", branch);
+      else gitAt("checkout", "-B", branch, "origin/" + defaultBranch);
       report("checkpoint", "branch", branch);
     } else if (gitAt("status", "--porcelain").isBlank()) {
-      if (item.path("branch").isTextual() && !gitAt("branch", "--list", branch).isBlank())
-        gitAt("checkout", branch);
+      if (item.path("branch").isTextual()
+          && !adoption(item)
+          && !gitAt("branch", "--list", branch).isBlank()) gitAt("checkout", branch);
       else gitAt("checkout", "--detach", "origin/" + defaultBranch);
     }
+  }
+
+  static String defaultBranch;
+
+  /** Adopting adds the profile: a correction starts over from the base so it is still an addition. */
+  static boolean adoption(JsonNode item) {
+    return item.path("recipe").path("id").asText().equals("adopt-repo");
+  }
+
+  /** The receipt of this same version names the branch head: only publishing is left to do. */
+  static boolean resumable(JsonNode item, String branch) throws Exception {
+    Path receipt = STATE.resolve("receipts" + SUFFIX).resolve(itemId + ".json");
+    if (!Files.exists(receipt)) return false;
+    var saved = JSON.readTree(Files.readString(receipt));
+    return saved.path("version").asInt() == item.path("version").asInt()
+        && saved.path("sha").asText().equals(gitAt("rev-parse", branch).strip());
+  }
+
+  /** The base branch governs: a candidate cannot set the rules it is judged by or block its fix. */
+  static io.agentfarm.core.ProjectProfile baseProfile() throws Exception {
+    String base = "origin/" + defaultBranch;
+    if (gitAt("ls-tree", "--name-only", base, "agentfarm.yaml").isBlank()) return null;
+    return io.agentfarm.core.ProjectProfile.parse(gitAt("show", base + ":agentfarm.yaml"));
+  }
+
+  /** Whether the agent's new profile will load, since the executor reads it on every later task. */
+  static Map<String, Object> candidateProfile(String baseSha, String sha) throws Exception {
+    if (gitAt("diff", "--name-only", baseSha, sha, "--", "agentfarm.yaml").isBlank())
+      return obj("status", "not_applicable");
+    try {
+      var profile = io.agentfarm.core.ProjectProfile.parse(gitAt("show", sha + ":agentfarm.yaml"));
+      profile.requireSupportedExecution();
+      if (!profile.repository().equals(repo))
+        throw new IllegalArgumentException("Profile repository mismatch");
+      return obj("status", "passed", "hash", profile.hash());
+    } catch (IllegalArgumentException e) {
+      return obj("status", "failed", "error", e.getMessage());
+    }
+  }
+
+  static String adoptionContract(JsonNode item) {
+    return adoption(item)
+        ? "\nFormato obligatorio de agentfarm.yaml; ninguna otra clave o forma es válida:\n"
+            + io.agentfarm.core.ProjectProfile.FORMAT
+        : "";
   }
 
   static String issueBody(JsonNode item, JsonNode p, int issue) {
@@ -598,9 +645,8 @@ public class FarmDaemon extends CodexRunner {
     active = AGENT;
     workspace(item, issue, false);
     var memory = currentProjectMemory();
-    io.agentfarm.core.ProjectProfile profile = null;
-    if (Files.exists(checkout.resolve("agentfarm.yaml"))) {
-      profile = io.agentfarm.core.ProjectProfile.load(checkout.resolve("agentfarm.yaml"));
+    var profile = baseProfile();
+    if (profile != null) {
       profile.requireSupportedExecution();
       if (!profile.repository().equals(repo)) throw new IOException("Profile repository mismatch");
     }
@@ -622,7 +668,7 @@ public class FarmDaemon extends CodexRunner {
                 "feedback",
                 payload.path("feedback").asText()));
     var skills = skills("research", profile == null ? List.of() : profile.skills());
-    String prompt = rendered.text() + skills.text();
+    String prompt = rendered.text() + adoptionContract(item) + skills.text();
     if (profile != null)
       prompt +=
           "\nProject profile (commands and scope are binding): "
@@ -899,6 +945,7 @@ public class FarmDaemon extends CodexRunner {
                             "request",
                             item.path("request").asText() + recipeContext(item))))
                 .text()
+                + adoptionContract(item)
                 + implementSkills.text());
     var change = resultJson(result);
     ((com.fasterxml.jackson.databind.node.ObjectNode) change)
@@ -1061,6 +1108,11 @@ public class FarmDaemon extends CodexRunner {
       pass = false;
       event("error", "El candidato cambia las reglas del proyecto: " + protectedFiles);
     }
+    var profileValidation = candidateProfile(baseSha, sha);
+    if (profileValidation.get("status").equals("failed")) {
+      pass = false;
+      event("error", "agentfarm.yaml no es válido: " + profileValidation.get("error"));
+    }
     if (!gitAt("rev-parse", "HEAD").equals(sha) || !gitAt("status", "--porcelain").isBlank())
       throw new IOException("El candidato cambió durante la revisión");
     var evidence =
@@ -1093,6 +1145,8 @@ public class FarmDaemon extends CodexRunner {
             review,
             "workflow_changes",
             workflowChanges,
+            "profile_validation",
+            profileValidation,
             "untested_code",
             untested,
             "quality",
@@ -1150,7 +1204,9 @@ public class FarmDaemon extends CodexRunner {
       throw new IOException("Posible secreto en el candidato: " + String.join(", ", secrets));
     String branch = gitAt("branch", "--show-current");
     guard();
-    gitAt("push", "-u", "origin", branch);
+    // A corrected adoption restarts from the base, so its branch is replaced rather than extended.
+    if (adoption(item)) gitAt("push", "-u", "--force-with-lease", "origin", branch);
+    else gitAt("push", "-u", "origin", branch);
     String body =
         "Closes #"
             + issue

@@ -55,8 +55,44 @@ def demo(prompt):
     return next((v for k, v in DEMO.items() if k in request), None)
 
 
+# Adoption: the first candidate writes a profile the parser rejects, the corrected one a valid one.
+BAD_PROFILE = "setup: echo hola\nreview: {required: true}\n"
+GOOD_PROFILE = """version: 1
+repository: e2e/demo
+setup: ""
+tests:
+  unit: test -f adopted.txt
+  integration: grep -qs adoptado adopted.txt
+allowed_paths: [adopted.txt, tests/]
+environment: container
+container: {image: 'bash:5.2', network: setup, timeout_minutes: 5}
+review: independent
+secret_refs: {}
+"""
+ADOPT = dict(PROPOSAL, summary="Adoptar", acceptance="Perfil válido", unit_test="test -f adopted.txt",
+             integration_test="grep -qs adoptado adopted.txt",
+             criteria=[{"id": "AC-1", "description": "adopted.txt", "method": "test", "checks": ["unit", "integration"]}])
+
+
+def adoption(thread, prompt):
+    assert "Formato obligatorio de agentfarm.yaml" in prompt or prompt.startswith("Revisión independiente"), prompt[:200]
+    if thread["sandbox"] == "workspace-write":
+        assert not os.path.exists(os.path.join(thread["cwd"], "agentfarm.yaml")), "a correction starts from the base"
+        corrected = "Perfil corregido" in prompt
+        with open(os.path.join(thread["cwd"], "agentfarm.yaml"), "w") as f:
+            f.write(GOOD_PROFILE if corrected else BAD_PROFILE)
+        with open(os.path.join(thread["cwd"], "adopted.txt"), "w") as f:
+            f.write("adoptado\n")
+        return {"summary": "Adoptado", "as_is": ADOPT["as_is"], "to_be": ADOPT["to_be"], "limitations": "Ninguna"}
+    if prompt.startswith("Revisión independiente"):
+        return {"passed": True, "findings": "Sin hallazgos bloqueantes."}
+    return dict(ADOPT, summary="Perfil corregido") if "usa el formato real" in prompt else ADOPT
+
+
 def answer(thread, prompt):
     assert "Skills de AgentFarm" in prompt, "every turn receives its skills"
+    if "Adopta este repositorio" in prompt:
+        return adoption(thread, prompt)
     scenario = demo(prompt)
     if scenario and not prompt.startswith("Revisión independiente"):
         summary, name, criterion = scenario

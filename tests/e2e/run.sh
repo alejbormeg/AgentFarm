@@ -177,3 +177,41 @@ if [[ -n "${E2E_CHROME:-}" ]]; then
 else
   echo "Browser smoke test skipped: set E2E_CHROME to a Chrome binary"
 fi
+
+# Adoption in a repository without a profile: an invalid candidate stays a draft and can be corrected.
+git -C "$work/seed" pull -q --ff-only "$work/remote.git" main 2>/dev/null || true
+git -C "$work/seed" rm -q agentfarm.yaml
+git -C "$work/seed" -c user.name=e2e -c user.email=e2e@localhost commit -q -m "Sin perfil"
+git -C "$work/seed" push -q "$work/remote.git" HEAD:main
+adopt_main=$(git -C "$work/seed" rev-parse HEAD)
+owner /work '{"request_id":"e2e-request-adopt","repository":"e2e/demo","title":"Adoptar","request":"Adopta este repositorio.","recipe":{"id":"adopt-repo","version":1}}' > /dev/null
+item=e2e-request-adopt
+wait_for proposed 60
+owner /work/e2e-request-adopt/actions/implement '{"version":1}' > /dev/null
+wait_for review 150
+adoption() {
+  python3 - "$panel" "$password" "$work/gh.json" "$1" "$adopt_main" <<'PY'
+import base64, json, sys, urllib.request
+panel, password, gh, step, main = sys.argv[1:]
+req = urllib.request.Request(panel + "/api/work", headers={"Authorization": "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()})
+item = [x for x in json.load(urllib.request.urlopen(req)) if x["id"] == "e2e-request-adopt"][0]
+evidence = json.loads(item["evidence"])
+pull = json.load(open(gh))["pulls"][str(item["pr"])]
+assert evidence["base_sha"] == main, evidence["base_sha"]
+if step == "invalid":
+    assert evidence["profile_validation"]["status"] == "failed", evidence["profile_validation"]
+    assert evidence["passed"] is False and pull["draft"] is True, (evidence["passed"], pull)
+else:
+    assert evidence["profile_validation"]["status"] == "passed", evidence["profile_validation"]
+    assert evidence["passed"] is True and pull["draft"] is False, (evidence["passed"], pull)
+print("Adoption", step, "OK: PR", item["pr"], item["sha"][:12])
+PY
+}
+adoption invalid || fail "invalid adoption candidate"
+owner /work/e2e-request-adopt/actions/correct '{"feedback":"El perfil no carga: usa el formato real."}' > /dev/null
+sleep 3
+wait_for proposed 60
+owner /work/e2e-request-adopt/actions/implement '{"version":2}' > /dev/null
+sleep 3
+wait_for review 150
+adoption corrected || fail "corrected adoption candidate"

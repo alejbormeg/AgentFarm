@@ -44,6 +44,14 @@ secret_refs: {}
   }
 
   @Test
+  void adoptionFormatGivenToAgentsIsAValidProfile() {
+    var profile = ProjectProfile.parse(ProjectProfile.FORMAT);
+    assertEquals("owner/name", profile.repository());
+    assertEquals("container", profile.environment());
+    assertFalse(profile.quality().isEmpty());
+  }
+
+  @Test
   void containerProfileDeclaresSandboxPolicy() {
     var defaults = ProjectProfile.parse(PROFILE.replace("local", "container"));
     assertDoesNotThrow(defaults::requireSupportedExecution);
