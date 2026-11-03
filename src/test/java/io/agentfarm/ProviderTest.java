@@ -256,6 +256,17 @@ class ProviderTest {
         "acceptEdits",
         ClaudeCodeAdapter.command("claude", "implement", "").get(5));
     assertThrows(IllegalArgumentException.class, () -> ClaudeCodeAdapter.command("claude", "merge", ""));
+    assertEquals("user", review.get(review.indexOf("--setting-sources") + 1), "a repository's settings are not trusted");
+    var rules =
+        Json.parse(
+            ClaudeCodeAdapter.command("claude", "implement", "", List.of(), null, List.of("/home/a/.ssh"))
+                .stream()
+                .filter(a -> a.startsWith("{"))
+                .findFirst()
+                .orElseThrow());
+    assertEquals(
+        "[\"Read(//home/a/.ssh)\",\"Read(//home/a/.ssh/**)\",\"Edit(//home/a/.ssh)\",\"Edit(//home/a/.ssh/**)\"]",
+        rules.path("permissions").path("deny").toString());
     assertThrows(
         IllegalArgumentException.class, () -> ClaudeCodeAdapter.command("claude", "review", "x; rm -rf /"));
     var ok =

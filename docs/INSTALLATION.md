@@ -60,8 +60,12 @@ panel lo avisa. `bash tests/codex_sandbox.sh` hace una comprobación más comple
 actualizar Codex. Es una lista de exclusión: el resto de tus archivos, como otros
 proyectos en tu home, sigue siendo legible. Requiere Codex CLI 0.166 o posterior.
 Ejecutar el ejecutor con un usuario propio sigue siendo más seguro: consulta el
-[modelo de amenazas](SECURITY.md). No se aplica a
-Claude Code, cuya herramienta `Read` no tiene esta limitación.
+[modelo de amenazas](SECURITY.md).
+
+Claude Code no corre en ese sandbox. Recibe las mismas rutas como reglas de bloqueo de sus
+herramientas, ignora la configuración del repositorio y no tiene `Bash`, pero esas reglas **no se
+han probado con una cuenta real** y son más débiles que un aislamiento del sistema. El panel lo
+avisa mientras un rol lo use.
 
 **Límite importante:** gh y Codex siguen ejecutándose con la identidad Linux
 del servicio. Las pruebas ya se aíslan en contenedor (ver más abajo), pero el

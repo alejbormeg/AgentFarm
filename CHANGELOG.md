@@ -7,6 +7,9 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 ## Sin publicar — modelo de amenazas
 
 - `docs/SECURITY.md` recoge qué se protege, los riesgos que quedan y por qué el camino para Docker es ejecutarlo sin root. Falta una revisión independiente.
+## Sin publicar — Claude Code con reglas de bloqueo
+
+- Claude Code recibe las rutas ocultas como reglas de bloqueo de `Read` y `Edit`, e ignora los ajustes del repositorio, que podían concederle herramientas o ejecutar hooks. Estas reglas no se han probado con una cuenta real, y el panel lo avisa mientras un rol lo use.
 
 ## Sin publicar — avisos del panel comprobados en navegador
 
