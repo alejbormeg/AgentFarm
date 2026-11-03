@@ -4,6 +4,11 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — guías en inglés
+
+- Instalación, operación y evidencias tienen versión en inglés, enlazada desde `README.en.md`.
+- `docs/OPERATIONS.md` deja de citar una contraseña en `panel-password` y un `install-service.sh` sin argumentos que ya no existen.
+
 ## Sin publicar — avisos del panel comprobados en navegador
 
 - El smoke comprueba los avisos de ejecutor con otra versión, de ejecutor sin aislamiento y de tareas sobre los mismos archivos, y los cambios entre versiones de una propuesta.

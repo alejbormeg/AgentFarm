@@ -19,7 +19,7 @@ GitHub CLI autenticados en la cuenta Linux.
    El ejecutor escribe un workflow con los comandos aprobados y publica la PR.
    Si hay fallos, la PR queda en borrador.
 5. Revisa enlaces y evidencias. **Aprobar e integrar** muestra el SHA y exige
-   confirmación explícita. El ejecutor vuelve a consultar GitHub: SHA, draft,
+   confirmación explícita. El panel vuelve a consultar GitHub: SHA, draft,
    checks esperados, estados CI y revisiones con cambios solicitados. Solo
    registra integración después de la respuesta positiva de GitHub.
 
@@ -36,13 +36,11 @@ Autenticar Codex con la cuenta de suscripción y GitHub mediante:
 gh auth login --hostname github.com --git-protocol https --web
 gh auth refresh --hostname github.com --scopes workflow
 gh auth setup-git
-./mvnw test package
-bash runtime/install-service.sh
+bash runtime/install-service.sh /ruta/absoluta/executor.env
 systemctl --user status agentfarm-executor
 ```
 
-La contraseña del panel se lee de
-`~/.local/state/agentfarm/panel-password` (permisos 600), nunca de Git.
+[Instalación](INSTALLATION.md) explica `executor.env` y la credencial del nodo.
 El servicio instalado arranca con el gestor de usuario de WSL; WSL debe estar
 encendida. El panel conserva Compose como instalación principal y JAR como
 alternativa. Este ejecutor sigue siendo local, con un único operador y un único
