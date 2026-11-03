@@ -114,7 +114,7 @@ assert code == 1 and "límite" in report["stopped"] and actions(fake) == ["work"
 print("ok   stops when the quota reaches the limit mid-way")
 
 fake = Fake(["proposed", "review"], ready=False)
-code, report = run(fake, "--merge", "--timeout", "0")
+code, report = run(fake, "--merge", "--timeout", "1")
 assert code == 1 and "merge" not in actions(fake) and report["blocked"][0]["error"] == "['falta CI']", report
 print("ok   does not merge what the panel says is not ready")
 
