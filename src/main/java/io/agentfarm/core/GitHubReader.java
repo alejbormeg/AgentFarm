@@ -39,7 +39,7 @@ public class GitHubReader {
       throw new IllegalArgumentException("Invalid GitHub path");
     var response =
         http.send(
-            HttpRequest.newBuilder(URI.create("https://api.github.com/repos/" + repo + path))
+            HttpRequest.newBuilder(URI.create(GitHubApi.base() + "/repos/" + repo + path))
                 .timeout(Duration.ofSeconds(20))
                 .header("Authorization", "Bearer " + credentials.token())
                 .header("Accept", "application/vnd.github+json")
