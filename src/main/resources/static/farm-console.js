@@ -132,6 +132,23 @@ const liveSnapshots = (r) =>
       : [];
 const running = (r, id) =>
   liveSnapshots(r).find((x) => x.task_id === id && x.run_state !== "idle");
+const TEST_STATUS = { passed: "Superadas", failed: "Fallidas", not_applicable: "No aplican" };
+const testStatus = (status) => (status ? TEST_STATUS[status] || status : "Planificadas");
+// The record as stored stays one click away, for whoever needs the rest of its fields.
+const rawRecord = (record, key) => {
+  const raw = E("details");
+  raw.dataset.key = key;
+  raw.append(E("summary", "Registro completo"), E("pre", JSON.stringify(record, null, 2)));
+  return raw;
+};
+const testEvidence = (planned, result, key) => {
+  if (!result) return [E("p", "Comando previsto", "muted"), E("pre", planned)];
+  const parts = [E("p", testStatus(result.status), result.status === "failed" ? "warning" : "")];
+  if (result.command) parts.push(E("p", "Comando", "muted"), E("pre", result.command));
+  if (result.output) parts.push(E("p", "Salida", "muted"), E("pre", result.output));
+  parts.push(rawRecord(result, key));
+  return parts;
+};
 // Expected implementation cost from settled runs of the same recipe (no estimate without data).
 const expectedCost = (costs, w) => {
   const recipe = w.recipe?.id || "libre";
@@ -2277,9 +2294,9 @@ class FarmConsole extends HTMLElement {
       t.append(
         E(
           "summary",
-          "Squealer dice · unitarias: " + (ev.unit?.status || "Planificadas"),
+          "Squealer dice · unitarias: " + testStatus(ev.unit?.status),
         ),
-        E("pre", ev.unit ? JSON.stringify(ev.unit, null, 2) : p.unit_test),
+        ...testEvidence(p.unit_test, ev.unit, "unit-raw-" + w.id),
       );
       detail.append(t);
     }
@@ -2289,15 +2306,9 @@ class FarmConsole extends HTMLElement {
       t.append(
         E(
           "summary",
-          "Squealer dice · integración: " +
-            (ev.integration?.status || "Planificadas"),
+          "Squealer dice · integración: " + testStatus(ev.integration?.status),
         ),
-        E(
-          "pre",
-          ev.integration
-            ? JSON.stringify(ev.integration, null, 2)
-            : p.integration_test,
-        ),
+        ...testEvidence(p.integration_test, ev.integration, "integration-raw-" + w.id),
       );
       detail.append(t);
     }
@@ -2310,7 +2321,8 @@ class FarmConsole extends HTMLElement {
           "Revisión de Benjamin · " +
             (ev.review.passed ? "Sin bloqueos" : "Con incidencias"),
         ),
-        E("pre", JSON.stringify(ev.review, null, 2)),
+        E("p", ev.review.findings || "Sin comentarios."),
+        rawRecord(ev.review, "review-raw-" + w.id),
       );
       detail.append(t);
     }
