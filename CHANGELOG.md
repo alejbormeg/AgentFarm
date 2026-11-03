@@ -4,6 +4,10 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — piloto con una orden
+
+- `tests/pilot/run.py` recorre el flujo sobre un repositorio desechable e informa de las medidas de `docs/PILOTS.md`, con un límite de cuota. Solo se ha probado contra un panel simulado.
+
 ## Sin publicar — Claude Code con reglas de bloqueo
 
 - Claude Code recibe las rutas ocultas como reglas de bloqueo de `Read` y `Edit`, e ignora los ajustes del repositorio, que podían concederle herramientas o ejecutar hooks. Estas reglas no se han probado con una cuenta real, y el panel lo avisa mientras un rol lo use.

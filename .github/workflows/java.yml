@@ -22,6 +22,7 @@ jobs:
       - run: bash tests/credentials.sh
       - run: bash tests/ops.sh
       - run: bash tests/merge_gate.sh
+      - run: python3 -I tests/pilot/test_run.py
       - run: java -jar target/agentfarm.jar memory --file examples/project-memory.json --repository owner/example
       - run: java -jar target/agentfarm.jar memory --file agentfarm-memory.json --repository alejbormeg/AgentFarm
       - run: bash runtime/verify.sh

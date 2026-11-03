@@ -40,6 +40,7 @@ Lo pendiente vive en las issues de GitHub, no en listas de la documentación.
 | `agentfarm`, credenciales | además `bash tests/credentials.sh` y `bash tests/ops.sh` |
 | `compose.yaml`, `Dockerfile`, copias | además `bash tests/compose_backup.sh`, en un proyecto de Compose desechable |
 | `.claude/skills/resolver-issue/merge-gate.sh` | además `bash tests/merge_gate.sh` |
+| `tests/pilot/run.py` | además `python3 -I tests/pilot/test_run.py` |
 | Aislamiento de los agentes | además `bash tests/codex_sandbox.sh`, sin inferencia, contra el Codex instalado |
 
 `tests/e2e/run.sh` necesita Docker y la imagen `bash:5.2`; con `E2E_SANDBOX=host` corre sin contenedor. `tests/eval/run.sh` y los

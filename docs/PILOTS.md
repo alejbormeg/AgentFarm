@@ -28,6 +28,19 @@ probar justo el último tramo.
 4. Lanza una tarea con cada receta que hayas cambiado, y otra sobre una rama que haya quedado desactualizada.
 5. Integra al menos una de ellas por SHA.
 
+## Lanzarlo con una orden
+`tests/pilot/run.py` recorre el flujo desde el panel y escribe las medidas en JSON. **Gasta cuota**: se detiene
+al llegar a `--max-quota` (90 % semanal por defecto) y no lanza nada si no puede leerla.
+
+```bash
+python3 tests/pilot/run.py --repo owner/repo-de-pilotos --password-file ~/.config/agentfarm-password \
+  --request "Corrige un fallo concreto" --merge
+```
+
+Aprueba las propuestas tal cual y **no decide por ti**: si una tarea se bloquea, lo informa y termina con error, y
+nunca reescribe un criterio. Sin `--merge` se queda en la revisión. Una cuenta con segundo factor no sirve, porque
+usa HTTP Basic. No mide las correcciones, que piden criterio humano: el paso 2 del recorrido sigue siendo manual.
+
 ## Qué medir
 Anótalo en el `CHANGELOG.md` junto con la versión probada:
 
