@@ -9,7 +9,7 @@ GitHub CLI autenticados en la cuenta Linux.
 1. Pulsa **Nueva tarea** en cualquier vista, indica `owner/repository`,
    título y objetivo. **Crear issue e investigar** encola una orden persistente.
    Hasta que GitHub confirme la creación, se muestra explícitamente pendiente.
-2. Napoleon inspecciona el checkout y usa búsqueda web cuando es necesaria.
+2. Napoleon inspecciona el checkout y usa búsqueda web cuando es necesaria. Es el único turno con búsqueda web: los de implementación y revisión la tienen apagada.
    La issue contiene fuentes, alcance, criterios, diagramas y comandos de tests.
 3. Revisa el alcance y los comandos (incluida instalación de dependencias).
    **Implementar propuesta vN** aprueba esa versión. **Pedir correcciones**

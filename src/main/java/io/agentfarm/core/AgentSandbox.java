@@ -69,6 +69,14 @@ public final class AgentSandbox {
     return filesystem;
   }
 
+  /**
+   * Only research needs the web. A manipulated page must not reach the turns that write the code or
+   * judge it, so the others turn search off instead of inheriting the user's Codex setting.
+   */
+  public static String webSearch(String role) {
+    return role.equals("research") ? "live" : "disabled";
+  }
+
   /** The config entries a Codex thread needs to apply the profile. */
   public static Map<String, Object> codexConfig(Map<String, Object> filesystem) {
     return obj(

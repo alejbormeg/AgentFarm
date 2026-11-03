@@ -15,6 +15,14 @@ class AgentSandboxTest {
   }
 
   @Test
+  void onlyResearchSearchesTheWeb() {
+    assertEquals("live", AgentSandbox.webSearch("research"));
+    assertEquals("disabled", AgentSandbox.webSearch("implement"));
+    assertEquals("disabled", AgentSandbox.webSearch("review"));
+    assertEquals("disabled", AgentSandbox.webSearch("anything-else"));
+  }
+
+  @Test
   void hidesCredentialsStateAndOtherWorkspacesButNotTheCheckout() throws Exception {
     Path root = dir.toRealPath(), home = mkdirs(root.resolve("home"));
     mkdirs(home.resolve(".config/gh"));
