@@ -26,6 +26,7 @@ repositorios y un humano decida qué se integra. Lee [PRODUCT.md](PRODUCT.md) an
 | `agentfarm`, `compose.yaml`, `Dockerfile` | Instalación y operación |
 | `tests/` | e2e, navegador y operación. Las pruebas unitarias están en `src/test` |
 | `docs/ROADMAP.md`, `CHANGELOG.md` | Qué falta y qué se hizo |
+| `docs/SECURITY.md` | Modelo de amenazas: actualízalo si cambia una defensa |
 
 `docs/PLAN.md` y `runtime/README.md` tienen partes históricas: si contradicen al código, manda el código.
 Lo pendiente vive en las issues de GitHub, no en listas de la documentación.
