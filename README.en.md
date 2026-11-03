@@ -42,5 +42,5 @@ They don't guarantee there are no bugs, and a passing test isn't always a good t
 ## Good to know
 
 - It runs on your machine, with your Codex subscription or your Claude Code key. Apache 2.0.
-- It's young: no multi-machine coordination or two-factor authentication yet.
+- It's young: no multi-machine coordination yet.
 - Installing the real executor takes Docker, Java and the GitHub and Codex CLIs.

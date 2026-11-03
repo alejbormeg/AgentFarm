@@ -38,6 +38,12 @@ public final class Cli {
                     Path.of(required(options, "checkout")).toRealPath(),
                     Boolean.parseBoolean(options.getOrDefault("write", "false")),
                     AgentSandbox.hostSockets(System.getenv(), required(options, "uid"))));
+      } else if (mode.equals("2fa-reset")) {
+        var store = new Store(env("AGENTFARM_DB"));
+        result =
+            obj(
+                "removed",
+                new TwoFactor(store, Clock.systemUTC()).reset(required(options, "user"), "host-operator"));
       } else if (mode.equals("github-check")) {
         var credentials =
             new GitHubCredentials(
