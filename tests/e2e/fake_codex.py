@@ -137,6 +137,9 @@ def answer(thread, prompt):
         return {"summary": "Añadido greeting.txt", "as_is": PROPOSAL["as_is"], "to_be": PROPOSAL["to_be"], "limitations": "Ninguna"}
     if prompt.startswith("Revisión independiente"):
         return {"passed": True, "findings": "Cumple los criterios; sin hallazgos bloqueantes."}
+    if "otro saludo" in prompt:
+        doubtful = {"id": "AC-3", "description": "El proceso corre como root", "method": "test", "checks": ["unit"]}
+        return dict(PROPOSAL, criteria=PROPOSAL["criteria"] + [doubtful])
     return PROPOSAL
 
 

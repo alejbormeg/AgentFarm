@@ -563,6 +563,8 @@ public class WorkflowService {
                 List.of("summary", "acceptance", "as_is", "to_be", "unit_test", "integration_test"))
               text(p, key);
             ((com.fasterxml.jackson.databind.node.ObjectNode) p)
+                .set("doubtful_criteria", ProposalShape.doubtfulCriteria(p));
+            ((com.fasterxml.jackson.databind.node.ObjectNode) p)
                 .set(
                     "previous_changes",
                     ProposalShape.changes(

@@ -2005,6 +2005,8 @@ class FarmConsole extends HTMLElement {
       );
     const p = json(w.proposal),
       ev = json(w.evidence);
+    for (const doubt of p.doubtful_criteria || [])
+      task.append(E("p", doubt.id + " quizá no se pueda acreditar. " + doubt.reason, "warning"));
     if (p.previous_changes?.length) {
       const changes = E("details");
       changes.dataset.key = "changes-" + w.id;
