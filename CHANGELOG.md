@@ -4,10 +4,6 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — usuario propio para el ejecutor
-
-- `runtime/install-dedicated-user.sh` crea un usuario sin privilegios para el ejecutor y comprueba que no pueda leer la home del operador. Solo se ha probado en un contenedor.
-
 ## Sin publicar — modelo de amenazas
 
 - `docs/SECURITY.md` recoge qué se protege, los riesgos que quedan y por qué el camino para Docker es ejecutarlo sin root. Falta una revisión independiente.
