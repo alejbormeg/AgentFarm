@@ -4,6 +4,10 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — los agentes no leen credenciales
+
+- Los turnos de Codex ocultan las credenciales del usuario, el estado del ejecutor, las copias, los demás workspaces y los discos montados en `/mnt`.
+
 ## Sin publicar — adopción probada en un repositorio real
 
 - Un `agentfarm.yaml` que el parser rechaza deja la PR en borrador, en vez de romper las tareas siguientes.
