@@ -557,14 +557,14 @@ public class FarmDaemon extends CodexRunner {
     if (item.path("branch").isTextual() && !item.path("branch").asText().isBlank())
       branch = item.path("branch").asText();
     if (implement) {
-      if (!gitAt("branch", "--list", branch).isBlank() && !(adoption(item) && !resumable(item, branch)))
+      if (!gitAt("branch", "--list", branch).isBlank() && !(startsOver(item, branch) && !resumable(item, branch)))
         gitAt("checkout", branch);
       else gitAt("checkout", "-B", branch, "origin/" + defaultBranch);
       report("checkpoint", "branch", branch);
     } else if (gitAt("status", "--porcelain").isBlank()) {
       if (item.path("branch").isTextual()
-          && !adoption(item)
-          && !gitAt("branch", "--list", branch).isBlank()) gitAt("checkout", branch);
+          && !gitAt("branch", "--list", branch).isBlank()
+          && !startsOver(item, branch)) gitAt("checkout", branch);
       else gitAt("checkout", "--detach", "origin/" + defaultBranch);
     }
   }
@@ -574,6 +574,12 @@ public class FarmDaemon extends CodexRunner {
   /** Adopting adds the profile: a correction starts over from the base so it is still an addition. */
   static boolean adoption(JsonNode item) {
     return item.path("recipe").path("id").asText().equals("adopt-repo");
+  }
+
+  /** Work on a branch the base has moved past would be judged without the base's own files. */
+  static boolean startsOver(JsonNode item, String branch) throws Exception {
+    String base = "origin/" + defaultBranch;
+    return adoption(item) || !gitAt("merge-base", base, branch).strip().equals(gitAt("rev-parse", base).strip());
   }
 
   /** The receipt of this same version names the branch head: only publishing is left to do. */
@@ -1212,7 +1218,9 @@ public class FarmDaemon extends CodexRunner {
         throw new IOException("Project profile changed during execution");
       for (String changed :
           gitAt("diff", "--name-only", p.path("base_sha").asText(), sha).split("\\n"))
-        if (!changed.isBlank() && !profile.permits(changed))
+        if (!changed.isBlank()
+            && !changed.equals(".github/workflows/agentfarm.yml")
+            && !profile.permits(changed))
           throw new IOException("Out of approved profile scope: " + changed);
     }
     // Once pushed a secret is exposed for good, so this check comes before the panel's own.
@@ -1223,9 +1231,8 @@ public class FarmDaemon extends CodexRunner {
       throw new IOException("Posible secreto en el candidato: " + String.join(", ", secrets));
     String branch = gitAt("branch", "--show-current");
     guard();
-    // A corrected adoption restarts from the base, so its branch is replaced rather than extended.
-    if (adoption(item)) gitAt("push", "-u", "--force-with-lease", "origin", branch);
-    else gitAt("push", "-u", "origin", branch);
+    // A corrected candidate may restart from the base, so its branch is replaced, never merged over.
+    gitAt("push", "-u", "--force-with-lease", "origin", branch);
     String body =
         "Closes #"
             + issue
