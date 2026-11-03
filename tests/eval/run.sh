@@ -13,9 +13,10 @@ pids=()
 cleanup() { for p in "${pids[@]}"; do kill "$p" 2>/dev/null || true; done; rm -rf "$work"; }
 trap cleanup EXIT
 
-cp -r "$eval/fixture" "$work/seed"
+cp -r "${EVAL_FIXTURE:-$eval/fixture}" "$work/seed"
 environment="environment: container
 container: {image: 'python:3.12-slim', network: setup, timeout_minutes: 10}"
+if [[ "${EVAL_NO_PROFILE:-0}" != 1 ]]; then
 cat > "$work/seed/agentfarm.yaml" <<YAML
 version: 1
 repository: eval/shop
@@ -31,6 +32,7 @@ quality:
   metrics:
     mutation: python3 tools/mutate.py
 YAML
+fi
 git init -q -b main "$work/seed"
 git -C "$work/seed" add -A
 git -C "$work/seed" -c user.name=eval -c user.email=eval@localhost commit -q -m seed
@@ -76,7 +78,7 @@ wait_for() {
   done
   echo "timeout: $1 waiting for $2" >&2; return 1
 }
-python3 -c 'import json,sys;[print(json.dumps(dict(t,request_id=t.pop("id"),repository="eval/shop"))) for t in json.load(open(sys.argv[1]))]' "$eval/tasks.json" > "$work/tasks.ndjson"
+python3 -c 'import json,sys;[print(json.dumps(dict(t,request_id=t.pop("id"),repository="eval/shop"))) for t in json.load(open(sys.argv[1]))]' "${EVAL_TASKS:-$eval/tasks.json}" > "$work/tasks.ndjson"
 while read -r task; do
   id=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["request_id"])' "$task")
   echo "Running $id with skills $mode"
@@ -89,5 +91,5 @@ while read -r task; do
 done < "$work/tasks.ndjson"
 
 mkdir -p "$eval/results"
-curl -fs -u "admin:$password" "$panel/api/work" > "$eval/results/$mode.json"
-echo "Results in tests/eval/results/$mode.json"
+curl -fs -u "admin:$password" "$panel/api/work" > "$eval/results/${EVAL_LABEL:-$mode}.json"
+echo "Results in tests/eval/results/${EVAL_LABEL:-$mode}.json"

@@ -19,7 +19,7 @@ public final class ProfileCheck {
       return failed(e.getMessage());
     }
     if (!profile.repository().equals(repository)) return failed("Profile repository mismatch");
-    if (!profile.tests().get("unit").equals(unit) || !profile.tests().get("integration").equals(integration))
+    if (!sameCommand(profile.tests().get("unit"), unit) || !sameCommand(profile.tests().get("integration"), integration))
       return failed("Los comandos de pruebas del perfil no coinciden con los aprobados");
     var uncovered =
         directories.stream()
@@ -34,6 +34,11 @@ public final class ProfileCheck {
         profile.quality(),
         "uncovered_directories",
         uncovered);
+  }
+
+  /** "N/A: motivo" is no command: two ways of writing the reason approve the same thing. */
+  private static boolean sameCommand(String profile, String approved) {
+    return profile.equals(approved) || (profile.startsWith("N/A:") && approved.startsWith("N/A:"));
   }
 
   private static Map<String, Object> failed(String error) {

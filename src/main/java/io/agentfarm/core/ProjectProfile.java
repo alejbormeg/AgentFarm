@@ -39,6 +39,8 @@ public record ProjectProfile(
       quality:
         checks: {nombre: comando que termina en 0}
         metrics: {nombre: {command: comando que imprime un número, better: lower}}
+      # Los nombres usan minúsculas, cifras, - o _ y tienen como máximo 40 caracteres.
+      # Los comandos de tests deben ser los de unit_test e integration_test de la propuesta.
       """;
 
   public static ProjectProfile load(Path file) throws Exception {
@@ -212,8 +214,8 @@ public record ProjectProfile(
   }
 
   private static void qualityName(String name) {
-    if (!name.matches("[a-z0-9][a-z0-9-]{0,39}"))
-      throw new IllegalArgumentException("Invalid quality gate name");
+    if (!name.matches("[a-z0-9][a-z0-9_-]{0,39}"))
+      throw new IllegalArgumentException("Invalid quality gate name: " + name);
   }
 
   public void requireSupportedExecution() {
