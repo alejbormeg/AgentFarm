@@ -712,17 +712,45 @@ public class FarmDaemon extends CodexRunner {
   }
 
   /** What a Codex thread may touch: see docs/INSTALLATION.md for what this does not cover. */
+  static Map<String, Object> agentProfile(Path workspace, boolean write) throws Exception {
+    return io.agentfarm.core.AgentSandbox.codexConfig(
+        io.agentfarm.core.AgentSandbox.filesystem(
+            Path.of(System.getProperty("user.home")).toRealPath(),
+            STATE.toRealPath(),
+            Path.of("/mnt"),
+            workspace.toRealPath(),
+            write,
+            io.agentfarm.core.AgentSandbox.hostSockets(System.getenv(), hostUser().split(":")[0])));
+  }
+
+  static volatile String sandboxFailure = "";
+  static long sandboxCheckedAt;
+
+  /** Checked before claiming: no task starts unless the real Codex hides what the profile says. */
+  static boolean sandboxHolds() throws Exception {
+    if (!providerFor("research").equals("codex")
+        && !providerFor("implement").equals("codex")
+        && !providerFor("review").equals("codex")) return true;
+    long interval = sandboxFailure.isEmpty() ? 600_000 : 30_000;
+    if (sandboxCheckedAt != 0 && System.currentTimeMillis() - sandboxCheckedAt < interval)
+      return sandboxFailure.isEmpty();
+    Path probe = Files.createDirectories(WORK.resolve(".sandbox-probe"));
+    var problem =
+        io.agentfarm.core.SandboxProbe.check(
+            io.agentfarm.core.SandboxProbe.command(
+                System.getProperty("agentfarm.codex", "codex"), agentProfile(probe, true), probe),
+            probe,
+            30);
+    sandboxCheckedAt = System.currentTimeMillis();
+    String found = problem.map(FarmDaemon::clean).orElse("");
+    if (!found.isEmpty() && !found.equals(sandboxFailure))
+      System.err.println("Sandbox: no se acepta trabajo: " + found);
+    sandboxFailure = found;
+    return found.isEmpty();
+  }
+
   static Map<String, Object> threadConfig(String role, boolean mcpTurn) throws Exception {
-    var config =
-        new LinkedHashMap<>(
-            io.agentfarm.core.AgentSandbox.codexConfig(
-                io.agentfarm.core.AgentSandbox.filesystem(
-                    Path.of(System.getProperty("user.home")).toRealPath(),
-                    STATE.toRealPath(),
-                    Path.of("/mnt"),
-                    checkout.toRealPath(),
-                    role.equals("implement"),
-                    io.agentfarm.core.AgentSandbox.hostSockets(System.getenv(), hostUser().split(":")[0]))));
+    var config = new LinkedHashMap<>(agentProfile(checkout, role.equals("implement")));
     config.put("web_search", io.agentfarm.core.AgentSandbox.webSearch(role));
     if (mcpTurn)
       config.put("mcp_servers", io.agentfarm.core.McpCatalog.codexConfig(mcpServers, System.getenv()));
@@ -1577,6 +1605,8 @@ public class FarmDaemon extends CodexRunner {
             phase,
             "build",
             io.agentfarm.core.BuildInfo.commit(),
+            "sandbox_failure",
+            sandboxFailure,
             "supervisor_pid",
             ProcessHandle.current().pid(),
             "executor_available",
@@ -1691,8 +1721,10 @@ public class FarmDaemon extends CodexRunner {
       while (true) {
         long wait = 2000;
         try {
-          var claim = post("/work/agent/claim", obj("agent", CLAIMANT));
-          if (claim.has("command")) work(claim);
+          if (sandboxHolds()) {
+            var claim = post("/work/agent/claim", obj("agent", CLAIMANT));
+            if (claim.has("command")) work(claim);
+          }
           failures = 0;
         } catch (Exception e) {
           if (failures == 0) System.err.println("Dispatcher: " + clean(e.getMessage()));

@@ -4,6 +4,10 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — el ejecutor comprueba el aislamiento
+
+- Antes de aceptar trabajo, y cada diez minutos, el ejecutor comprueba con el sandbox real de Codex que las rutas ocultas no se alcanzan. Si falla o no puede saberlo, no acepta tareas y el panel lo avisa.
+
 ## Sin publicar — búsqueda web solo al investigar
 
 - Los turnos de implementación y revisión tienen la búsqueda web apagada: una página manipulada ya no puede influir en quien escribe o juzga el código.

@@ -87,15 +87,39 @@ owner /work '{"request_id":"e2e-request-0001","repository":"e2e/demo","title":"A
 cp="$root/target/classes:$(find "$HOME/.m2/repository/com/fasterxml/jackson/core" "$HOME/.m2/repository/org/yaml/snakeyaml" -name '*.jar' | paste -sd:)"
 mkdir -p "$work/classes"
 javac -nowarn -cp "$cp" -d "$work/classes" "$root/runtime/CodexRunner.java" "$root/runtime/FarmDaemon.java"
-E2E_GH_STATE="$work/gh.json" E2E_REMOTE="$work/remote.git" \
-  java -cp "$work/classes:$cp" \
-  -Dagentfarm.url="$panel" -Dagentfarm.state="$work/state" \
-  -Dagentfarm.node=e2e-node -Dagentfarm.account=e2e-sub \
-  -Dagentfarm.codex="$e2e/fake-codex" -Dagentfarm.gh="$e2e/fake_gh.py" \
-  -Dagentfarm.sandbox="$sandbox" -Dagentfarm.sandbox-image=bash:5.2 \
-  FarmDaemon > "$work/executor.log" 2>&1 &
-executor=$!
-pids+=($executor)
+export E2E_QUOTA_RESETS=$(($(date +%s) + 3 * 86400))
+start_executor() {
+  E2E_GH_STATE="$work/gh.json" E2E_REMOTE="$work/remote.git" \
+    java -cp "$work/classes:$cp" \
+    -Dagentfarm.url="$panel" -Dagentfarm.state="$work/state" \
+    -Dagentfarm.node=e2e-node -Dagentfarm.account=e2e-sub \
+    -Dagentfarm.codex="$e2e/fake-codex" -Dagentfarm.gh="$e2e/fake_gh.py" \
+    -Dagentfarm.sandbox="$sandbox" -Dagentfarm.sandbox-image=bash:5.2 \
+    FarmDaemon > "$work/executor.log" 2>&1 &
+  executor=$!
+  pids+=($executor)
+}
+
+# An update of Codex that stops hiding a path must stop the work, and the panel must say so.
+export E2E_SANDBOX_BROKEN=1
+state_before=$(curl -fs -u "admin:$password" "$panel/api/work" | python3 -c 'import json,sys;print(json.load(sys.stdin)[0]["state"])')
+start_executor
+refused=0
+for _ in $(seq 1 30); do
+  refused=$(curl -fs -u "admin:$password" "$panel/api/runtime" | python3 -c 'import json,sys;print(len(json.load(sys.stdin)["unisolated_executors"]))')
+  [[ "$refused" == 1 ]] && break
+  sleep 1
+done
+[[ "$refused" == 1 ]] || fail "the panel does not warn about a broken sandbox"
+sleep 3
+state_after=$(curl -fs -u "admin:$password" "$panel/api/work" | python3 -c 'import json,sys;print(json.load(sys.stdin)[0]["state"])')
+[[ "$state_after" == "$state_before" ]] || fail "a broken sandbox still claimed work: $state_after"
+echo "Broken sandbox refused: the task stays $state_after"
+kill "$executor"
+wait "$executor" 2>/dev/null || true
+unset E2E_SANDBOX_BROKEN
+
+start_executor
 
 state() {
   curl -fs -u "admin:$password" "$panel/api/work" \

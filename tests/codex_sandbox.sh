@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Checks the agents' profile against the real Codex sandbox, without inference. Needs Codex and the
-# built JAR, so it is not part of CI: run it after updating Codex. It never reads a secret's content.
+# built JAR, so it is not part of CI. The executor runs a shorter check before claiming work
+# (SandboxProbe); this one also proves the network and .git cases. It never reads a secret's content.
 set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 state="$(mktemp -d "$HOME/.agentfarm-sandbox-XXXXXX")"
