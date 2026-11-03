@@ -8,6 +8,9 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 - Instalación, operación y evidencias tienen versión en inglés, enlazada desde `README.en.md`.
 - `docs/OPERATIONS.md` deja de citar una contraseña en `panel-password` y un `install-service.sh` sin argumentos que ya no existen.
+## Sin publicar — modelo de amenazas
+
+- `docs/SECURITY.md` recoge qué se protege, los riesgos que quedan y por qué el camino para Docker es ejecutarlo sin root. Falta una revisión independiente.
 ## Sin publicar — segundo factor
 
 - Cada persona puede activar un segundo factor (TOTP) en Gobierno, y un propietario puede exigirlo para integrar. `./agentfarm 2fa-reset <usuario>` lo restablece desde el equipo del panel. El servidor MCP acepta `--user`, porque una cuenta con segundo factor no puede usar HTTP Basic.
