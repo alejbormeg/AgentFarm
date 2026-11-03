@@ -31,6 +31,52 @@ public final class ProposalShape {
     return result;
   }
 
+  /** Evidence that the commands of a "test" criterion cannot show, in lower case and without accents. */
+  private static final List<String> OUT_OF_REACH =
+      List.of(
+          "identidad del binario", "hash del binario", "firma del binario", "binary identity",
+          "usuario del proceso", "uid del proceso", "process user", "como root",
+          "estado de la red", "sin acceso a red", "sin acceso a la red", "network state",
+          "en produccion", "in production", "captura de pantalla", "screenshot",
+          "a mano", "manualmente", "by hand", "manually",
+          "revision humana", "human review");
+  private static final Set<String> PROVES_NOTHING = Set.of("true", ":", "exit 0", "/bin/true");
+
+  /**
+   * Criteria that may never be accredited, so the owner sees them before approving. Advice only: a
+   * phrase can be a false alarm, and rejecting the proposal would waste a paid research turn. What is
+   * certainly impossible (a test criterion on a command marked N/A) is rejected by EvidenceService.
+   */
+  public static ArrayNode doubtfulCriteria(JsonNode proposal) {
+    var result = new ArrayNode(JsonNodeFactory.instance);
+    for (var criterion : proposal.path("criteria")) {
+      if (!criterion.path("method").asText().equals("test")) continue;
+      String reason = null;
+      String description = plain(criterion.path("description").asText());
+      for (String phrase : OUT_OF_REACH)
+        if (description.contains(phrase)) {
+          reason = "Pide «" + phrase + "», que las pruebas de la tarea quizá no puedan demostrar.";
+          break;
+        }
+      for (var check : criterion.path("checks")) {
+        String command = proposal.path(check.asText() + "_test").asText().trim();
+        if (reason == null && PROVES_NOTHING.contains(command))
+          reason = "Se cierra con «" + command + "», que siempre pasa y no demuestra nada.";
+      }
+      if (reason == null) continue;
+      var entry = result.addObject();
+      entry.put("id", criterion.path("id").asText());
+      entry.put("reason", reason);
+    }
+    return result;
+  }
+
+  private static String plain(String text) {
+    return java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD)
+        .replaceAll("\\p{M}", "")
+        .toLowerCase(Locale.ROOT);
+  }
+
   public static void normalize(JsonNode proposal) {
     for (var criterion : proposal.path("criteria")) {
       if (!(criterion instanceof ObjectNode c) || !c.path("method").asText().equals("test")) continue;

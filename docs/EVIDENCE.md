@@ -56,6 +56,12 @@ Cambiar SHA, versión aprobada o informe revisado invalida las decisiones; el
 servidor vuelve a comprobar la cobertura al solicitar merge y antes de publicar
 la integración. Las comprobaciones GitHub previas siguen siendo obligatorias.
 
+Al recibir una propuesta, el panel avisa de los criterios de test que quizá no se puedan acreditar:
+los que piden algo que las pruebas no suelen demostrar, como la identidad de un binario o el usuario
+del proceso, y los que se cierran con un comando que siempre pasa. Es un aviso y no bloquea, porque
+una frase puede dar una falsa alarma. Decide antes de aprobar: corrige la propuesta, o conviértelo en un
+criterio `manual`. Un criterio de test sobre un comando `N/A:` sí se rechaza.
+
 ## Compatibilidad y API
 No se conceden aceptaciones a tareas históricas. En un candidato histórico en
 revisión, el operador debe importar expresamente su alcance y después revisarlo.
