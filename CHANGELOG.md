@@ -4,10 +4,9 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — el panel sigue lo que pasa en GitHub
+## Sin publicar — los agentes no leen credenciales
 
-- Una PR fusionada fuera del panel cierra la tarea e indica que no pasó por sus puertas.
-- Una PR con conflictos bloquea la integración, y el expediente avisa de otras tareas en revisión que tocan los mismos archivos.
+- Los turnos de Codex ocultan las credenciales del usuario, el estado del ejecutor, las copias, los demás workspaces y los discos montados en `/mnt`.
 
 ## Sin publicar — adopción probada en un repositorio real
 
