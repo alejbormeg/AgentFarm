@@ -119,7 +119,10 @@ const checkNotices = async () => {
   check(await until(() => visible("Squealer dice · unitarias: Superadas")), "test results are in plain words");
   await js(`${all}.find(e=>e.tagName==='SUMMARY'&&e.textContent.startsWith('Squealer dice · unitarias')).click()`);
   check(await until(() => visible("Registro completo")), "the full record stays available");
-  check(!(await visible('"kind"')), "the evidence does not show raw JSON until asked");
+  check(
+    await js(`${all}.filter(e=>e.tagName==='PRE'&&e.textContent.includes('"kind"')).every(e=>e.closest('details:not([open])'))`),
+    "the evidence does not show raw JSON until asked",
+  );
   await go("/overview?tarea=e2e-request-overlap");
   check(await until(() => visible("Toca los mismos archivos que")), "a task warns about another one on the same files");
   await go("/overview?tarea=e2e-request-adopt");
