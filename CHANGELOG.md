@@ -4,12 +4,9 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — operación más predecible
+## Sin publicar — los agentes no leen credenciales
 
-- `./agentfarm` sin argumentos muestra la ayuda en vez de lanzar un build.
-- Instalar el ejecutor reinicia el servicio y conserva solo la copia actual, la anterior y las que usa otra unidad.
-- Con el panel caído, el ejecutor espera con pausas crecientes, sin salir ni llenar el registro.
-- El build de la imagen repite Maven solo si se cortó una descarga.
+- Los turnos de Codex ocultan las credenciales del usuario, el estado del ejecutor, las copias, los demás workspaces y los discos montados en `/mnt`.
 
 ## Sin publicar — adopción probada en un repositorio real
 
