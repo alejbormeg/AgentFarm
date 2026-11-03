@@ -4,6 +4,13 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — adopción probada en un repositorio real
+
+- Un `agentfarm.yaml` que el parser rechaza deja la PR en borrador, en vez de romper las tareas siguientes.
+- Las reglas de una investigación salen del perfil de la rama base, nunca del candidato: un perfil inválido ya no bloquea su corrección.
+- Corregir una adopción la rehace desde la rama base y reemplaza su rama.
+- El agente recibe el formato real del perfil al adoptar un repositorio.
+
 ## Sin publicar — modo demo y página pública
 
 - `./agentfarm demo`: la granja completa con agentes y GitHub simulados, en un minuto y sin cuentas.

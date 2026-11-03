@@ -22,6 +22,25 @@ public record ProjectProfile(
     Map<String, Object> quality,
     List<String> skills,
     String hash) {
+  /** What an adopting agent must follow; a test keeps it accepted by {@link #parse}. */
+  public static final String FORMAT =
+      """
+      version: 1
+      repository: owner/name
+      setup: comando de instalación, o cadena vacía
+      tests:
+        unit: comando
+        integration: comando
+      allowed_paths: [src/, tests/, README.md]
+      environment: container
+      container: {image: buildpack-deps:noble, network: setup, cpus: 2, memory_mb: 4096, timeout_minutes: 20}
+      review: human-and-independent
+      secret_refs: {}
+      quality:
+        checks: {nombre: comando que termina en 0}
+        metrics: {nombre: {command: comando que imprime un número, better: lower}}
+      """;
+
   public static ProjectProfile load(Path file) throws Exception {
     if (Files.size(file) > 65536) throw new IllegalArgumentException("Profile exceeds 64 KiB");
     return parse(Files.readString(file));
