@@ -115,6 +115,11 @@ const checkNotices = async () => {
     await until(() => visible("El ejecutor e2e-node-s9 no acepta trabajo: el aislamiento de los agentes no funciona")),
     "the inbox warns about a broken sandbox",
   );
+  await go("/overview?tarea=e2e-request-0001");
+  check(await until(() => visible("Squealer dice · unitarias: Superadas")), "test results are in plain words");
+  await js(`${all}.find(e=>e.tagName==='SUMMARY'&&e.textContent.startsWith('Squealer dice · unitarias')).click()`);
+  check(await until(() => visible("Registro completo")), "the full record stays available");
+  check(!(await visible('"kind"')), "the evidence does not show raw JSON until asked");
   await go("/overview?tarea=e2e-request-overlap");
   check(await until(() => visible("Toca los mismos archivos que")), "a task warns about another one on the same files");
   await go("/overview?tarea=e2e-request-adopt");
