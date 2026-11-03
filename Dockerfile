@@ -3,7 +3,8 @@ WORKDIR /build
 COPY pom.xml ./
 COPY src ./src
 COPY examples ./examples
-RUN mvn -B -ntp verify
+COPY runtime/mvn-retry.sh /usr/local/bin/mvn-retry
+RUN mvn-retry -B -ntp verify
 RUN mkdir /native && cd /native     && jar xf /root/.m2/repository/org/xerial/sqlite-jdbc/3.51.1.0/sqlite-jdbc-3.51.1.0.jar     && cp "org/sqlite/native/Linux/$(uname -m)/libsqlitejdbc.so" /native/libsqlitejdbc.so
 
 FROM eclipse-temurin:21-jre-jammy

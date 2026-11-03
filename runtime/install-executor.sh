@@ -29,4 +29,15 @@ UMask=0077
 WantedBy=default.target
 EOF
 systemctl --user daemon-reload
-systemctl --user enable --now "$unit.service"
+systemctl --user enable "$unit.service"
+systemctl --user restart "$unit.service"
+
+# Keep this copy, the previous one and any other unit still points at.
+parent="$(dirname "$root")"
+lib="$(dirname "$parent")"
+if [[ "$(basename "$parent")" == executor.* ]]; then
+  ls -1dt "$lib"/executor.* | tail -n +3 | while read -r old; do
+    [[ "$old" != "$parent" ]] || continue
+    grep -qsF "$old/" "$HOME"/.config/systemd/user/agentfarm-executor*.service || rm -rf -- "$old"
+  done
+fi
