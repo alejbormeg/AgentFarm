@@ -4,10 +4,9 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — correcciones sobre una base que ha cambiado
+## Sin publicar — los agentes no leen credenciales
 
-- Si la rama base avanzó, corregir una tarea rehace el candidato desde la base y reemplaza su rama, sobre la misma PR.
-- El workflow de plataforma no cuenta como cambio fuera del perfil.
+- Los turnos de Codex ocultan las credenciales del usuario, el estado del ejecutor, las copias, los demás workspaces y los discos montados en `/mnt`.
 
 ## Sin publicar — adopción probada en un repositorio real
 
