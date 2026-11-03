@@ -25,10 +25,10 @@ Afecta a la instalación real del propietario. Hazlo solo si te lo han pedido o 
 
    ```bash
    systemctl --user is-active agentfarm-executor
-   curl -fsS http://localhost:8080/api/version
+   curl -fsS -u "admin:$(cat ~/.config/agentfarm-password)" http://localhost:8080/api/version
    bash tests/codex_sandbox.sh
    ```
 
-   El commit de `/api/version` debe coincidir con `git rev-parse HEAD`, y el panel no debe avisar de que el ejecutor corre otro.
+   El commit de `/api/version` debe coincidir con `git rev-parse HEAD`, y el panel no debe avisar de que el ejecutor corre otro. Si hay una migración nueva, reinicia también el panel (`docker compose restart agentfarm`) y comprueba `/api/health`: el esquema base se ejecuta en cada arranque, y un fallo así no se ve al desplegar la primera vez.
 
 La contraseña del panel está en `~/.config/agentfarm-password`. Nunca la muestres: si hace falta, léela en una variable sin imprimirla, y al propietario dile que use `cat`. Docker no arranca solo en este equipo: si está parado, pide al propietario `sudo systemctl start docker`.
