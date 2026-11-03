@@ -4,6 +4,11 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — el panel sigue lo que pasa en GitHub
+
+- Una PR fusionada fuera del panel cierra la tarea e indica que no pasó por sus puertas.
+- Una PR con conflictos bloquea la integración, y el expediente avisa de otras tareas en revisión que tocan los mismos archivos.
+
 ## Sin publicar — adopción probada en un repositorio real
 
 - Un `agentfarm.yaml` que el parser rechaza deja la PR en borrador, en vez de romper las tareas siguientes.
