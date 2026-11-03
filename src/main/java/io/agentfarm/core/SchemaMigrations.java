@@ -39,7 +39,15 @@ public class SchemaMigrations {
                       + " UPDATE work_items SET state_since=NEW.created WHERE id=NEW.id; END",
                   "CREATE TRIGGER IF NOT EXISTS work_state_changed AFTER UPDATE OF state ON"
                       + " work_items WHEN OLD.state<>NEW.state BEGIN UPDATE work_items SET"
-                      + " state_since=CAST(strftime('%s','now') AS INTEGER) WHERE id=NEW.id; END")));
+                      + " state_since=CAST(strftime('%s','now') AS INTEGER) WHERE id=NEW.id; END")),
+          new Migration(
+              5,
+              "optional second factor per user, and whether integrating requires it",
+              List.of(
+                  "CREATE TABLE user_totp(username TEXT PRIMARY KEY,secret TEXT NOT NULL,confirmed"
+                      + " INTEGER NOT NULL DEFAULT 0,last_step INTEGER NOT NULL DEFAULT 0,failures"
+                      + " INTEGER NOT NULL DEFAULT 0,locked_until INTEGER NOT NULL DEFAULT 0)",
+                  "ALTER TABLE governance ADD COLUMN require_2fa_merge INTEGER NOT NULL DEFAULT 0")));
 
   // Services create their baseline tables in their constructors; depending on them orders this.
   public SchemaMigrations(

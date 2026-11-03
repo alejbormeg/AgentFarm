@@ -22,7 +22,21 @@ read -rs PASS; printf '%s\n' "$PASS" | java -jar agentfarm.jar user-hash   # imp
 
 La auditoría registra el nombre de cada persona. El panel oculta las acciones
 que tu rol no permite (`GET /api/me`); el servidor las rechaza igualmente.
-El fichero solo contiene hashes bcrypt. 2FA queda pendiente.
+El fichero solo contiene hashes bcrypt.
+
+## Segundo factor
+Opcional por persona, con cualquier aplicación de autenticación (TOTP). En **Gobierno → Segundo
+factor**, genera la clave, añádela a la aplicación y confirma con un código. A partir de ahí, tu
+cuenta pide el código después de la contraseña.
+
+- **Exigirlo para integrar:** un propietario con su segundo factor activo puede pulsar **Exigir para
+  integrar**. Desde entonces, solo integra quien lo tenga activo.
+- **Cuentas con segundo factor:** no pueden usar autenticación HTTP Basic, porque no conserva el código
+  validado. Para el [servidor MCP](MCP.md) o tus scripts, usa una cuenta `reviewer` u `observer` sin él.
+- **Teléfono perdido:** en el equipo del panel, `./agentfarm 2fa-reset <usuario>`. Queda en la auditoría.
+- **Dónde se guarda:** la clave está sin cifrar en la base de datos del panel, y por tanto en sus copias.
+  Protege esas copias como la contraseña.
+- **Intentos:** cada código sirve una vez, y cinco fallos bloquean la cuenta cinco minutos.
 
 ## Credencial de GitHub del panel
 Comprueba cualquiera de ellas con `./agentfarm github-check owner/repo`. No escribe nada: lee lo que necesita la

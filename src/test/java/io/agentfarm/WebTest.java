@@ -42,6 +42,10 @@ class WebTest {
             + hash
             + "\"},{\"username\":\"oscar\",\"role\":\"observer\",\"password_hash\":\""
             + hash
+            + "\"},{\"username\":\"olga\",\"role\":\"owner\",\"password_hash\":\""
+            + hash
+            + "\"},{\"username\":\"paula\",\"role\":\"owner\",\"password_hash\":\""
+            + hash
             + "\"}]");
     r.add("agentfarm.users-file", users::toString);
   }
@@ -90,6 +94,81 @@ class WebTest {
             "/api/budget/configure"))
       assertEquals(403, as("rita", "POST", owned, "{}").statusCode(), owned);
     assertEquals("{\"status\":\"UP\"}", as("rita", "GET", "/api/health", null).body(), "details for owners only");
+  }
+
+  @Test
+  void aSecondFactorIsAskedAfterThePasswordAndCanGuardIntegration() throws Exception {
+    String secret =
+        Json.parse(as("olga", "POST", "/api/me/2fa/setup", "{}").body()).path("secret").asText();
+    long step = java.time.Instant.now().getEpochSecond() / 30;
+    assertEquals(
+        200,
+        as("olga", "POST", "/api/me/2fa/confirm", "{\"code\":\"" + TwoFactor.code(secret, step) + "\"}").statusCode());
+
+    var browser =
+        HttpClient.newBuilder()
+            .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
+            .followRedirects(HttpClient.Redirect.NEVER)
+            .build();
+    HttpRequest.Builder basic =
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/work"))
+            .header(
+                "Authorization",
+                "Basic " + Base64.getEncoder().encodeToString(("olga:" + TEAM_PASSWORD).getBytes(StandardCharsets.UTF_8)));
+    assertEquals(401, HttpClient.newHttpClient().send(basic.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+
+    assertEquals(302, form(browser, "/login", "/login", "username=olga&password=" + TEAM_PASSWORD).statusCode());
+    assertTrue(page(browser, "/overview").headers().firstValue("Location").orElse("").endsWith("/login/2fa"));
+    assertEquals(401, page(browser, "/api/work").statusCode(), "the password alone opens nothing");
+
+    var wrong = form(browser, "/login/2fa", "/login/2fa", "code=000000");
+    assertTrue(wrong.headers().firstValue("Location").orElse("").endsWith("?error"));
+    assertEquals(401, page(browser, "/api/work").statusCode());
+    assertEquals(
+        302, form(browser, "/login/2fa", "/login/2fa", "code=" + TwoFactor.code(secret, step + 1)).statusCode());
+    assertEquals(200, page(browser, "/api/work").statusCode());
+
+    var csrf = Json.parse(page(browser, "/api/csrf").body());
+    var require =
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/governance/two-factor-to-integrate/true"))
+            .header(csrf.path("header").asText(), csrf.path("token").asText())
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString("{}"));
+    assertEquals(200, browser.send(require.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+    try {
+      var refused = as("paula", "POST", "/api/work/none/actions/merge", "{\"sha\":\"x\"}");
+      assertEquals(409, refused.statusCode());
+      assertTrue(refused.body().contains("segundo factor"), refused.body());
+      assertEquals(409, as("paula", "POST", "/api/work/batch/merge", "{\"items\":[]}").statusCode());
+      var unprotected = as("paula", "POST", "/api/governance/two-factor-to-integrate/false", "{}");
+      assertEquals(409, unprotected.statusCode());
+      assertTrue(unprotected.body().contains("segundo factor"), "the panel can show why: " + unprotected.body());
+    } finally {
+      var off =
+          HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/governance/two-factor-to-integrate/false"))
+              .header(csrf.path("header").asText(), csrf.path("token").asText())
+              .header("Content-Type", "application/json")
+              .POST(HttpRequest.BodyPublishers.ofString("{}"));
+      assertEquals(200, browser.send(off.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+    }
+  }
+
+  HttpResponse<String> page(HttpClient client, String path) throws Exception {
+    return client.send(
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + path)).build(),
+        HttpResponse.BodyHandlers.ofString());
+  }
+
+  /** Posts a form the way a browser does, with the CSRF token of the page that shows it. */
+  HttpResponse<String> form(HttpClient client, String pagePath, String action, String fields) throws Exception {
+    var token = java.util.regex.Pattern.compile("name=\"_csrf\" value=\"([^\"]+)\"").matcher(page(client, pagePath).body());
+    assertTrue(token.find(), pagePath + " has a CSRF field");
+    return client.send(
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + action))
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .POST(HttpRequest.BodyPublishers.ofString(fields + "&_csrf=" + java.net.URLEncoder.encode(token.group(1), StandardCharsets.UTF_8)))
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
   }
 
   @LocalServerPort int port;

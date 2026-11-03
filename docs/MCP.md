@@ -35,6 +35,9 @@ claude mcp add agentfarm -- java -jar /ruta/AgentFarm/target/agentfarm.jar mcp -
 }
 ```
 
+Por defecto entra como `admin`. Con `--user` usas otra cuenta, y es lo que necesitas si `admin` tiene
+[segundo factor](TEAM.md#segundo-factor), porque ese acceso usa HTTP Basic.
+
 El fichero de contraseña debe tener permiso 600 y nunca estar en Git.
 
 ## Salud
