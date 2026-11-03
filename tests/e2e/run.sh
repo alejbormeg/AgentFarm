@@ -346,7 +346,8 @@ echo "Integrated from the panel by SHA: $sha"
 location() { curl -s -o /dev/null -w '%{redirect_url}' -u "admin:$password" "$1"; }
 state_of() { python3 -c 'import json,sys;print(json.loads(sys.stdin.read())["action"].split("state=")[1])'; }
 first=$(owner /github-app/start '{}' | state_of)
-[[ "$(curl -s -o /dev/null -w '%{http_code}' -u "oscar:$observer_password" "$panel/github-app/created?code=abc&state=$first")" == 403 ]] \
+# 403, or 401 if the browser checks gave this account a second factor.
+[[ "$(curl -s -o /dev/null -w '%{http_code}' -u "oscar:$observer_password" "$panel/github-app/created?code=abc&state=$first")" == 40[13] ]] \
   || fail "an observer reached the GitHub App flow"
 [[ "$(curl -s -o /dev/null -w '%{http_code}' -u "admin:$password" "$panel/github-app/created?code=abc&state=forged")" == 400 ]] \
   || fail "a forged state was accepted"
