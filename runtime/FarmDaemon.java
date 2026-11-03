@@ -374,16 +374,8 @@ public class FarmDaemon extends CodexRunner {
                 checkout.toString(),
                 "approvalPolicy",
                 "never",
-                "sandbox",
-                write ? "workspace-write" : "read-only",
                 "config",
-                mcpTurn
-                    ? obj(
-                        "web_search",
-                        "live",
-                        "mcp_servers",
-                        io.agentfarm.core.McpCatalog.codexConfig(mcpServers, System.getenv()))
-                    : obj("web_search", "live")));
+                threadConfig(write, mcpTurn)));
     thread = t.path("thread").path("id").asText();
     session = thread;
     model = t.path("model").asText();
@@ -565,14 +557,14 @@ public class FarmDaemon extends CodexRunner {
     if (item.path("branch").isTextual() && !item.path("branch").asText().isBlank())
       branch = item.path("branch").asText();
     if (implement) {
-      if (!gitAt("branch", "--list", branch).isBlank() && !(adoption(item) && !resumable(item, branch)))
+      if (!gitAt("branch", "--list", branch).isBlank() && !(startsOver(item, branch) && !resumable(item, branch)))
         gitAt("checkout", branch);
       else gitAt("checkout", "-B", branch, "origin/" + defaultBranch);
       report("checkpoint", "branch", branch);
     } else if (gitAt("status", "--porcelain").isBlank()) {
       if (item.path("branch").isTextual()
-          && !adoption(item)
-          && !gitAt("branch", "--list", branch).isBlank()) gitAt("checkout", branch);
+          && !gitAt("branch", "--list", branch).isBlank()
+          && !startsOver(item, branch)) gitAt("checkout", branch);
       else gitAt("checkout", "--detach", "origin/" + defaultBranch);
     }
   }
@@ -582,6 +574,12 @@ public class FarmDaemon extends CodexRunner {
   /** Adopting adds the profile: a correction starts over from the base so it is still an addition. */
   static boolean adoption(JsonNode item) {
     return item.path("recipe").path("id").asText().equals("adopt-repo");
+  }
+
+  /** Work on a branch the base has moved past would be judged without the base's own files. */
+  static boolean startsOver(JsonNode item, String branch) throws Exception {
+    String base = "origin/" + defaultBranch;
+    return adoption(item) || !gitAt("merge-base", base, branch).strip().equals(gitAt("rev-parse", base).strip());
   }
 
   /** The receipt of this same version names the branch head: only publishing is left to do. */
@@ -711,6 +709,23 @@ public class FarmDaemon extends CodexRunner {
         .put("base_sha", gitAt("rev-parse", "HEAD"));
     github("PATCH", "repos/" + repo + "/issues/" + issue, obj("body", issueBody(item, p, issue)));
     report("proposed", "issue", issue, "proposal", p);
+  }
+
+  /** What a Codex thread may touch: see docs/INSTALLATION.md for what this does not cover. */
+  static Map<String, Object> threadConfig(boolean write, boolean mcpTurn) throws Exception {
+    var config =
+        new LinkedHashMap<>(
+            io.agentfarm.core.AgentSandbox.codexConfig(
+                io.agentfarm.core.AgentSandbox.filesystem(
+                    Path.of(System.getProperty("user.home")).toRealPath(),
+                    STATE.toRealPath(),
+                    Path.of("/mnt"),
+                    checkout.toRealPath(),
+                    write)));
+    config.put("web_search", "live");
+    if (mcpTurn)
+      config.put("mcp_servers", io.agentfarm.core.McpCatalog.codexConfig(mcpServers, System.getenv()));
+    return config;
   }
 
   static io.agentfarm.core.Prompts.Rendered implementPrompt, reviewPrompt;
@@ -1058,6 +1073,7 @@ public class FarmDaemon extends CodexRunner {
     var integration = results.get(1);
     if (!gitAt("status", "--porcelain").isBlank())
       throw new IOException("Las pruebas han cambiado el checkout; revisar antes de publicar");
+    // Before the review, so the reviewer judges what the platform checked rather than asking for it.
     var profileValidation = candidateProfile(p, baseSha, sha);
     var quality = runQuality(withCandidateGates(p, profileValidation), baseSha, sha);
     var regression = proveRegression(item, p, baseSha, sha, unit, integration);
@@ -1078,6 +1094,15 @@ public class FarmDaemon extends CodexRunner {
                                 sha,
                                 "proposal",
                                 p.toString(),
+                                "platform",
+                                JSON.writeValueAsString(
+                                    obj(
+                                        "profile_validation",
+                                        profileValidation,
+                                        "quality",
+                                        quality,
+                                        "regression",
+                                        regression)),
                                 "tests",
                                 unit + " " + integration)))
                     .text()
@@ -1205,7 +1230,9 @@ public class FarmDaemon extends CodexRunner {
         throw new IOException("Project profile changed during execution");
       for (String changed :
           gitAt("diff", "--name-only", p.path("base_sha").asText(), sha).split("\\n"))
-        if (!changed.isBlank() && !profile.permits(changed))
+        if (!changed.isBlank()
+            && !changed.equals(".github/workflows/agentfarm.yml")
+            && !profile.permits(changed))
           throw new IOException("Out of approved profile scope: " + changed);
     }
     // Once pushed a secret is exposed for good, so this check comes before the panel's own.
@@ -1216,9 +1243,8 @@ public class FarmDaemon extends CodexRunner {
       throw new IOException("Posible secreto en el candidato: " + String.join(", ", secrets));
     String branch = gitAt("branch", "--show-current");
     guard();
-    // A corrected adoption restarts from the base, so its branch is replaced rather than extended.
-    if (adoption(item)) gitAt("push", "-u", "--force-with-lease", "origin", branch);
-    else gitAt("push", "-u", "origin", branch);
+    // A corrected candidate may restart from the base, so its branch is replaced, never merged over.
+    gitAt("push", "-u", "--force-with-lease", "origin", branch);
     String body =
         "Closes #"
             + issue
@@ -1586,6 +1612,22 @@ public class FarmDaemon extends CodexRunner {
     return scheduler;
   }
 
+  static volatile int telemetryFailures;
+
+  /** A stopped panel is normal: wait for it here rather than exit and be restarted by systemd. */
+  static JsonNode waitForPanel() throws Exception {
+    for (int attempt = 0; ; attempt++) {
+      try {
+        return get("/csrf");
+      } catch (IOException e) {
+        // An answer such as 401 will not improve by waiting: a bad token must still fail visibly.
+        if (String.valueOf(e.getMessage()).startsWith("/csrf HTTP")) throw e;
+        if (attempt == 0) System.err.println("Waiting for the panel: " + clean(e.getMessage()));
+        Thread.sleep(io.agentfarm.core.Backoff.millis(attempt));
+      }
+    }
+  }
+
   public static void main(String[] args) throws Exception {
     if (!SLOT.isBlank() && !SLOT.matches("[1-9][0-9]?"))
       throw new IllegalArgumentException("agentfarm.slot must be 1-99");
@@ -1596,7 +1638,7 @@ public class FarmDaemon extends CodexRunner {
         var lock = ch.tryLock()) {
       if (lock == null) throw new IOException("Another AgentFarm executor is running");
       auth = "Bearer " + Files.readString(STATE.resolve("node-token")).trim();
-      var token = get("/csrf");
+      var token = waitForPanel();
       csrfHeader = token.path("header").asText();
       csrf = token.path("token").asText();
       startServer();
@@ -1623,8 +1665,10 @@ public class FarmDaemon extends CodexRunner {
               () -> {
                 try {
                   telemetry();
+                  telemetryFailures = 0;
                 } catch (Exception e) {
-                  System.err.println("Panel disconnected: " + e.getClass().getSimpleName());
+                  if (telemetryFailures++ == 0)
+                    System.err.println("Panel disconnected: " + e.getClass().getSimpleName());
                 }
               },
               1000,
@@ -1640,14 +1684,18 @@ public class FarmDaemon extends CodexRunner {
           Thread.sleep(2000);
         }
       }
+      int failures = 0;
       while (true) {
+        long wait = 2000;
         try {
           var claim = post("/work/agent/claim", obj("agent", CLAIMANT));
           if (claim.has("command")) work(claim);
+          failures = 0;
         } catch (Exception e) {
-          System.err.println("Dispatcher: " + clean(e.getMessage()));
+          if (failures == 0) System.err.println("Dispatcher: " + clean(e.getMessage()));
+          wait = io.agentfarm.core.Backoff.millis(failures++);
         }
-        Thread.sleep(2000);
+        Thread.sleep(wait);
       }
     }
   }

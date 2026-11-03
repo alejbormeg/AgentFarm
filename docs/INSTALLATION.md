@@ -49,6 +49,14 @@ un archivo privado de credenciales GitHub leído por Spring, accesible solo al
 operador del panel. Nunca lo montes en un directorio del trabajador.
 Sin ese archivo, las órdenes de integración no se procesarán.
 
+**Qué leen los agentes:** el modo de solo lectura de Codex alcanza todo el disco. El
+ejecutor le aplica un perfil de permisos que oculta `~/.config`, `~/.ssh`, `~/.aws`,
+`~/.docker`, `~/.codex/auth.json`, el estado del ejecutor, las copias, los demás
+workspaces y `/mnt`. Es una lista de exclusión: el resto de tus archivos, como otros
+proyectos en tu home, sigue siendo legible. Requiere Codex CLI 0.166 o posterior.
+Ejecutar el ejecutor con un usuario propio sigue siendo más seguro. No se aplica a
+Claude Code, cuya herramienta `Read` no tiene esta limitación.
+
 **Límite importante:** gh y Codex siguen ejecutándose con la identidad Linux
 del servicio. Las pruebas ya se aíslan en contenedor (ver más abajo), pero el
 sandbox de escritura de Codex sobre el checkout no es una frontera de seguridad. Se necesita una identidad/entorno de trabajador separado y

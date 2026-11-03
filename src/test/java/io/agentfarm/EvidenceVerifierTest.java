@@ -20,6 +20,7 @@ class EvidenceVerifierTest {
   Clock clock = Clock.systemUTC();
   String sha = "a".repeat(40);
   String conclusion = "success", status = "completed";
+  JsonNode pull = MAPPER.createObjectNode();
   List<String> files = new ArrayList<>(List.of("src/App.java", "src/AppTest.java"));
 
   JsonNode n(Object... v) {
@@ -34,6 +35,7 @@ class EvidenceVerifierTest {
           "check_runs",
           List.of(obj("name", "AgentFarm unit", "status", status, "conclusion", conclusion)));
     if (path.contains("/status")) return n("total_count", 0, "state", "pending");
+    if (path.startsWith("/pulls/")) return pull;
     if (path.contains("/compare/")) {
       var list = new ArrayList<Object>();
       for (String file : files) list.add(obj("filename", file));
@@ -144,6 +146,59 @@ class EvidenceVerifierTest {
     assertEquals("verified", d.path("acceptance_state").asText());
     assertEquals(0, d.path("exceptions").asInt());
     assertDoesNotThrow(() -> work.action("verify-task", "merge", n("sha", sha), "owner"));
+  }
+
+  @Test
+  void aMergeMadeOutsideThePanelClosesTheTaskAndSaysSo() {
+    candidate(report("unit", "mvn test", true));
+    verifier.reconcile("verify-task");
+    assertEquals("review", work.items().get(0).get("state"), "an open PR stays in review");
+    pull = n("merged", true);
+    verifier.reconcile("verify-task");
+    var item = work.items().get(0);
+    assertEquals("integrated", item.get("state"));
+    assertTrue(item.get("error").toString().contains("fuera del panel"));
+  }
+
+  @Test
+  void aConflictBlocksIntegrationOnlyWhenGitHubConfirmsIt() {
+    candidate(report("unit", "mvn test", true));
+    verifier.verify("verify-task");
+    pull = n("merged", false, "mergeable", null);
+    verifier.reconcile("verify-task");
+    assertTrue(dossier().path("ready").asBoolean(), "GitHub still computing");
+    pull = n("merged", false, "mergeable", false);
+    verifier.reconcile("verify-task");
+    assertTrue(dossier().path("blockers").toString().contains("conflictos"), dossier().toString());
+    assertFalse(dossier().path("ready").asBoolean());
+    pull = n("merged", false, "mergeable", true);
+    verifier.reconcile("verify-task");
+    assertTrue(dossier().path("ready").asBoolean());
+  }
+
+  @Test
+  void anotherTaskChangingTheSameFilesIsReported() throws Exception {
+    candidate(report("unit", "mvn test", true));
+    verifier.verify("verify-task");
+    assertEquals(0, dossier().path("overlaps").size());
+    store.tx(
+        c -> {
+          Store.exec(
+              c,
+              "INSERT INTO work_items(id,repo,title,request,state,version,proposal,evidence,pr,sha,created)"
+                  + " SELECT 'other',repo,'Otra','x','review',1,'{}','{}',9,?,1 FROM work_items WHERE id='verify-task'",
+              sha);
+          Store.exec(
+              c,
+              "INSERT INTO evidence_verifications(item,basis,sha,state,reason,detail,at)"
+                  + " VALUES('other','b',?,'success','ok',?,1)",
+              sha,
+              "{\"files\":[\"src/App.java\",\"docs/x.md\"]}");
+          return null;
+        });
+    var overlap = dossier().path("overlaps").get(0);
+    assertEquals("other", overlap.path("item").asText());
+    assertEquals("[\"src/App.java\"]", overlap.path("files").toString());
   }
 
   @Test

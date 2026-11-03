@@ -44,8 +44,44 @@ public class EvidenceVerifier {
   public void tick() {
     if (!configured.getAsBoolean()) return;
     for (var item :
-        db.tx(c -> rows(c, "SELECT * FROM work_items WHERE state='review' AND sha IS NOT NULL")))
+        db.tx(c -> rows(c, "SELECT * FROM work_items WHERE state='review' AND sha IS NOT NULL"))) {
       verify(item.get("id").toString());
+      reconcile(item.get("id").toString());
+    }
+  }
+
+  /** GitHub's view of the PR: a merge made elsewhere closes the task, a conflict blocks it. */
+  public void reconcile(String id) {
+    var item = db.tx(c -> EvidenceService.item(c, id));
+    if (item.get("pr") == null) return;
+    JsonNode pull;
+    try {
+      pull = github.get(item.get("repo").toString(), "/pulls/" + item.get("pr"));
+    } catch (Exception e) {
+      return; // verify() already records GitHub being unavailable
+    }
+    boolean merged = pull.path("merged").asBoolean();
+    // GitHub answers mergeable null while it computes; only an explicit false is a conflict.
+    boolean conflict = pull.path("mergeable").isBoolean() && !pull.path("mergeable").asBoolean();
+    db.tx(
+        c -> {
+          if (!"review".equals(EvidenceService.item(c, id).get("state"))) return null;
+          if (merged) {
+            exec(
+                c,
+                "UPDATE work_items SET state='integrated',error=? WHERE id=?",
+                "Integrada fuera del panel: no pasó por sus puertas de integración.",
+                id);
+            Store.audit(c, "github", "work.merged-externally", id + " PR " + item.get("pr"));
+            return null;
+          }
+          var row = one(c, "SELECT detail FROM evidence_verifications WHERE item=?", id);
+          if (row == null) return null;
+          var detail = (com.fasterxml.jackson.databind.node.ObjectNode) parse(row.get("detail").toString());
+          detail.put("pull_conflict", conflict);
+          exec(c, "UPDATE evidence_verifications SET detail=? WHERE item=?", encode(detail), id);
+          return null;
+        });
   }
 
   /** Reads GitHub outside any transaction and stores the outcome only if the candidate held. */

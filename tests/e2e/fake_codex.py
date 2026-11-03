@@ -88,6 +88,7 @@ def adoption(thread, prompt):
             f.write("adoptado\n")
         return {"summary": "Adoptado", "as_is": ADOPT["as_is"], "to_be": ADOPT["to_be"], "limitations": "Ninguna"}
     if prompt.startswith("Revisión independiente"):
+        assert '"profile_validation"' in prompt and "los decide el operador" in prompt, "the reviewer sees the platform checks"
         return {"passed": True, "findings": "Sin hallazgos bloqueantes."}
     return dict(ADOPT, summary="Perfil corregido") if "usa el formato real" in prompt else ADOPT
 
@@ -144,7 +145,10 @@ for line in sys.stdin:
             "usedPercent": 10, "windowDurationMins": 10080, "resetsAt": RESETS}}}})
     elif method == "thread/start":
         tid = "t%d" % (len(threads) + 1)
-        threads[tid] = {"cwd": params["cwd"], "sandbox": params["sandbox"]}
+        filesystem = params["config"]["permissions"]["agentfarm"]["filesystem"]
+        assert filesystem[":root"] == "read" and "sandbox" not in params, params
+        writes = filesystem.get(os.path.realpath(params["cwd"])) == "write"
+        threads[tid] = {"cwd": params["cwd"], "sandbox": "workspace-write" if writes else "read-only"}
         send({"id": mid, "result": {"thread": {"id": tid}, "model": "fake-codex"}})
     elif method == "turn/start":
         thread = threads[params["threadId"]]
