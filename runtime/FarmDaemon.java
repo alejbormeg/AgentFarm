@@ -1600,6 +1600,22 @@ public class FarmDaemon extends CodexRunner {
     return scheduler;
   }
 
+  static volatile int telemetryFailures;
+
+  /** A stopped panel is normal: wait for it here rather than exit and be restarted by systemd. */
+  static JsonNode waitForPanel() throws Exception {
+    for (int attempt = 0; ; attempt++) {
+      try {
+        return get("/csrf");
+      } catch (IOException e) {
+        // An answer such as 401 will not improve by waiting: a bad token must still fail visibly.
+        if (String.valueOf(e.getMessage()).startsWith("/csrf HTTP")) throw e;
+        if (attempt == 0) System.err.println("Waiting for the panel: " + clean(e.getMessage()));
+        Thread.sleep(io.agentfarm.core.Backoff.millis(attempt));
+      }
+    }
+  }
+
   public static void main(String[] args) throws Exception {
     if (!SLOT.isBlank() && !SLOT.matches("[1-9][0-9]?"))
       throw new IllegalArgumentException("agentfarm.slot must be 1-99");
@@ -1610,7 +1626,7 @@ public class FarmDaemon extends CodexRunner {
         var lock = ch.tryLock()) {
       if (lock == null) throw new IOException("Another AgentFarm executor is running");
       auth = "Bearer " + Files.readString(STATE.resolve("node-token")).trim();
-      var token = get("/csrf");
+      var token = waitForPanel();
       csrfHeader = token.path("header").asText();
       csrf = token.path("token").asText();
       startServer();
@@ -1637,8 +1653,10 @@ public class FarmDaemon extends CodexRunner {
               () -> {
                 try {
                   telemetry();
+                  telemetryFailures = 0;
                 } catch (Exception e) {
-                  System.err.println("Panel disconnected: " + e.getClass().getSimpleName());
+                  if (telemetryFailures++ == 0)
+                    System.err.println("Panel disconnected: " + e.getClass().getSimpleName());
                 }
               },
               1000,
@@ -1654,14 +1672,18 @@ public class FarmDaemon extends CodexRunner {
           Thread.sleep(2000);
         }
       }
+      int failures = 0;
       while (true) {
+        long wait = 2000;
         try {
           var claim = post("/work/agent/claim", obj("agent", CLAIMANT));
           if (claim.has("command")) work(claim);
+          failures = 0;
         } catch (Exception e) {
-          System.err.println("Dispatcher: " + clean(e.getMessage()));
+          if (failures == 0) System.err.println("Dispatcher: " + clean(e.getMessage()));
+          wait = io.agentfarm.core.Backoff.millis(failures++);
         }
-        Thread.sleep(2000);
+        Thread.sleep(wait);
       }
     }
   }
