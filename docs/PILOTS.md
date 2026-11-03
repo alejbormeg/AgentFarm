@@ -28,6 +28,18 @@ probar justo el último tramo.
 4. Lanza una tarea con cada receta que hayas cambiado, y otra sobre una rama que haya quedado desactualizada.
 5. Integra al menos una de ellas por SHA.
 
+## Probar agentes reales sin tocar GitHub
+`tests/eval/run.sh` usa Codex real y GitHub simulado, así que no necesita credencial ni repositorios. Ejecútalo al
+cambiar prompts o recetas: cada ronda de tres tareas tarda unos 7 minutos y gasta menos del 1 % de cuota semanal.
+
+```bash
+EVAL_CODEX=codex bash tests/eval/run.sh on
+EVAL_CODEX=codex EVAL_NO_PROFILE=1 EVAL_TASKS=tests/eval/adopt.json EVAL_LABEL=adopt-code bash tests/eval/run.sh on
+EVAL_CODEX=codex EVAL_NO_PROFILE=1 EVAL_TASKS=tests/eval/adopt.json EVAL_LABEL=adopt-empty EVAL_FIXTURE=tests/eval/fixture-empty bash tests/eval/run.sh on
+```
+
+Los resultados quedan en `tests/eval/results/`. La primera vez encontró tres fallos de adopción que el e2e no veía.
+
 ## Lanzarlo con una orden
 `tests/pilot/run.py` recorre el flujo desde el panel y escribe las medidas en JSON. **Gasta cuota**: se detiene
 al llegar a `--max-quota` (90 % semanal por defecto) y no lanza nada si no puede leerla.
