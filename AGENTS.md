@@ -47,7 +47,7 @@ Lo pendiente vive en las issues de GitHub, no en listas de la documentación.
 | `runtime/install-dedicated-user.sh` | además `bash tests/dedicated_user.sh`, en un contenedor |
 
 `tests/e2e/run.sh` necesita Docker y la imagen `bash:5.2`; con `E2E_SANDBOX=host` corre sin contenedor. `tests/eval/run.sh` y los
-pilotos reales de `docs/PILOTS.md` gastan cuota: no los lances sin que te lo pidan.
+pilotos reales de `docs/PILOTS.md` gastan cuota: mírala antes y no los lances sin que te lo pidan, salvo que la tarea lo exija.
 
 La CI ejecuta todo esto en `.github/workflows/java.yml`, con Java 21 y 25. Un cambio de documentación también pasa por ella.
 

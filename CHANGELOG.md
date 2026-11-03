@@ -4,6 +4,19 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — adopción probada con un agente real
+
+Codex 0.166 real y GitHub simulado, sobre el commit de esta PR. Antes de los arreglos, las dos adopciones necesitaban una corrección; después, ninguna.
+
+| Repositorio | Antes | Después |
+| --- | --- | --- |
+| Con código | El perfil no cargaba: un nombre de métrica con `_` | 2 de 2 sin correcciones |
+| Sin código | El motivo `N/A` debía coincidir letra a letra, y el perfil contaba como código sin probar | 1 de 1 sin correcciones |
+
+- Un motivo `N/A:` no se compara como si fuera un comando, y `agentfarm.yaml` no cuenta como código sin probar.
+- Los nombres de puertas de calidad admiten `_`, y el formato que recibe el agente explica la regla.
+- Cada adopción cuesta unos 2 minutos y menos del 1 % de la cuota semanal. No incluye integrar desde el panel con GitHub real.
+
 ## Sin publicar — conectar GitHub con un clic
 
 - **Gobierno → Conectar GitHub** crea la GitHub App con el flujo de manifiesto de GitHub y guarda sus credenciales sin copiar nada. Solo se ha probado contra un doble de GitHub.
