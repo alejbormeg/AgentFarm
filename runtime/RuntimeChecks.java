@@ -92,8 +92,9 @@ public class RuntimeChecks {
 
   static void memoryChecks(java.nio.file.Path state) throws Exception {
     var repo = java.nio.file.Files.createDirectory(state.resolve("repo"));
-    FarmDaemon.checkout = repo;
-    FarmDaemon.repo = "owner/repo";
+    FarmDaemon.task =
+        new FarmDaemon.Task(CodexRunner.JSON.readTree("{\"item\":{\"id\":\"i\",\"repo\":\"owner/repo\"},\"command\":{\"id\":\"c\"}}"));
+    FarmDaemon.task.checkout = repo;
     FarmDaemon.gitAt("init");
     FarmDaemon.gitAt("config", "user.email", "fixture@example.invalid");
     FarmDaemon.gitAt("config", "user.name", "Fixture");
