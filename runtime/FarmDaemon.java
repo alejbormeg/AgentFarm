@@ -1536,6 +1536,8 @@ public class FarmDaemon extends CodexRunner {
             phase,
             "phase",
             phase,
+            "build",
+            io.agentfarm.core.BuildInfo.commit(),
             "supervisor_pid",
             ProcessHandle.current().pid(),
             "executor_available",

@@ -1,6 +1,9 @@
 services:
   agentfarm:
-    build: .
+    build:
+      context: .
+      args:
+        AGENTFARM_COMMIT: ${AGENTFARM_COMMIT:-unknown}
     image: agentfarm:local
     ports:
       - "127.0.0.1:8080:8080"
@@ -9,6 +12,10 @@ services:
     environment:
       AGENTFARM_BIND: 0.0.0.0
       AGENTFARM_DB: /data/agentfarm.db
+      AGENTFARM_GITHUB_TOKEN_FILE: /data/github-token
+      AGENTFARM_GITHUB_APP_ID: ${AGENTFARM_GITHUB_APP_ID:-}
+      AGENTFARM_GITHUB_APP_KEY_FILE: ${AGENTFARM_GITHUB_APP_KEY_FILE:-}
+      AGENTFARM_GITHUB_INSTALLATION_ID: ${AGENTFARM_GITHUB_INSTALLATION_ID:-}
     read_only: true
     tmpfs:
       - /tmp:rw,nosuid,size=128m

@@ -896,6 +896,14 @@ class FarmConsole extends HTMLElement {
         a.append(icon(), text);
         map.append(a);
       }
+      if (r.outdated_executors?.length)
+        map.append(
+          E(
+            "p",
+            "Ejecutor con otra versión que el panel: " + r.outdated_executors.join(", ") + ". Actualízalo.",
+            "warning",
+          ),
+        );
       const split = E("div", "", "split"),
         main = E("section"),
         side = E("aside");

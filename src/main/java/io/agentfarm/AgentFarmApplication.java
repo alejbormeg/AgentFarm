@@ -36,6 +36,7 @@ public class AgentFarmApplication {
                 "scope",
                 "import",
                 "doctor",
+                "github-check",
                 "profile",
                 "memory",
                 "backup",

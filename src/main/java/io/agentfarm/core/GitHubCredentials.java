@@ -64,6 +64,20 @@ public class GitHubCredentials {
     return app() ? "github-app" : configured() ? "token-file" : "none";
   }
 
+  /** The kind of credential, for advice; never its value. */
+  public String kind() {
+    if (app()) return "github-app";
+    if (!configured()) return "none";
+    try {
+      String token = Files.readString(Path.of(tokenFile)).trim();
+      return token.startsWith("github_pat_")
+          ? "fine-grained-token"
+          : token.startsWith("ghp_") ? "classic-token" : "token";
+    } catch (java.io.IOException e) {
+      return "none";
+    }
+  }
+
   public boolean configured() {
     if (app()) return Files.isReadable(Path.of(keyFile));
     return !tokenFile.isBlank() && Files.isReadable(Path.of(tokenFile));

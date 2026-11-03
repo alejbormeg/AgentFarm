@@ -38,7 +38,7 @@ public class TelemetryService {
     var snapshot=n.path("snapshot");
     if(!snapshot.isObject())throw new IllegalArgumentException("Snapshot required");
     var accepted=MAPPER.createObjectNode();
-    for(String k:List.of("provider","account","node","executor","host","distro","repository","branch","run_state","phase","cli_version","model","session","observed_at","last_event_at","supervisor_pid","codex_pid","code_host_pid","implementation_done","review_done","quota","changed_files","files_count","source","active_worker","executor_available","task_id","task_title","github_error")) {
+    for(String k:List.of("provider","account","node","executor","host","distro","repository","branch","run_state","phase","cli_version","build","model","session","observed_at","last_event_at","supervisor_pid","codex_pid","code_host_pid","implementation_done","review_done","quota","changed_files","files_count","source","active_worker","executor_available","task_id","task_title","github_error")) {
       var v=snapshot.get(k);if(v==null)continue;
       if(encode(v).length()>50000)throw new IllegalArgumentException("Snapshot field too large");
       if(v.isTextual())accepted.put(k,clean(v.asText()));else accepted.set(k,v);
@@ -75,7 +75,11 @@ public class TelemetryService {
         long age=now-((Number)r.get("received_at")).longValue();
         executors.add(obj("executor",r.get("executor"),"fresh",age>=0&&age<=12,"age_seconds",age,"snapshot",parse(r.get("payload").toString())));
       }
-      var result=obj("connected",false,"fresh",false,"age_seconds",null,"snapshot",Map.of(),"executors",executors,"events",rows(c,"SELECT * FROM (SELECT id,at,worker,kind,text FROM runtime_events ORDER BY id DESC LIMIT 200) ORDER BY id"));
+      var outdated=new ArrayList<Object>();
+      for(var r:rows(c,"SELECT * FROM runtime_executors ORDER BY executor")){
+        if(BuildInfo.mismatch(BuildInfo.commit(),parse(r.get("payload").toString()).path("build").asText(null)))outdated.add(r.get("executor"));
+      }
+      var result=obj("connected",false,"fresh",false,"age_seconds",null,"snapshot",Map.of(),"outdated_executors",outdated,"executors",executors,"events",rows(c,"SELECT * FROM (SELECT id,at,worker,kind,text FROM runtime_events ORDER BY id DESC LIMIT 200) ORDER BY id"));
       if(row!=null){
         long age=clock.instant().getEpochSecond()-((Number)row.get("received_at")).longValue();
         result.put("connected",true);result.put("fresh",age>=0&&age<=12);

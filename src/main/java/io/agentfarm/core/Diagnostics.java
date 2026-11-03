@@ -116,7 +116,9 @@ public final class Diagnostics {
           process.exitValue() == 0,
           process.exitValue() == 0
               ? "Command succeeded"
-              : "Command failed; check tool authentication/setup locally");
+              : id.equals("docker")
+                  ? "Docker no responde; en Ubuntu/WSL arráncalo con: sudo systemctl start docker"
+                  : "Command failed; check tool authentication/setup locally");
     } catch (Exception e) {
       check(all, id, false, "Tool unavailable, failed or timed out");
     } finally {
