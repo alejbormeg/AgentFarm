@@ -204,6 +204,7 @@ if step == "invalid":
 else:
     assert evidence["profile_validation"]["status"] == "passed", evidence["profile_validation"]
     assert evidence["passed"] is True and pull["draft"] is False, (evidence["passed"], pull)
+    assert "summary" in [c["field"] for c in json.loads(item["proposal"])["previous_changes"]], item["proposal"]
 print("Adoption", step, "OK: PR", item["pr"], item["sha"][:12])
 PY
 }

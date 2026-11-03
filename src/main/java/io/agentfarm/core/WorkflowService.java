@@ -562,6 +562,12 @@ public class WorkflowService {
             for (String key :
                 List.of("summary", "acceptance", "as_is", "to_be", "unit_test", "integration_test"))
               text(p, key);
+            ((com.fasterxml.jackson.databind.node.ObjectNode) p)
+                .set(
+                    "previous_changes",
+                    ProposalShape.changes(
+                        parse(one(c, "SELECT proposal FROM work_items WHERE id=?", id).get("proposal").toString()),
+                        p));
             exec(c, "UPDATE work_items SET proposal=?,version=version+1 WHERE id=?", encode(p), id);
           }
           if (n.has("evidence"))
