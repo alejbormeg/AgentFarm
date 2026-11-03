@@ -4,6 +4,10 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — ejecutor con más pruebas
+
+- Las decisiones del ejecutor que no dependen de procesos pasan a `ExecutorWork`, con pruebas de módulo. Se retira su código de integración, que un ejecutor con credencial de nodo nunca recibía: integra el panel.
+
 ## Sin publicar — menos ruido en la CI
 
 - Cada PR corre la CI una sola vez, y un push nuevo cancela la ejecución anterior. Antes, cada fallo llegaba dos veces.
