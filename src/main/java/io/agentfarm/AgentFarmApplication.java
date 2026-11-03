@@ -37,6 +37,7 @@ public class AgentFarmApplication {
                 "import",
                 "doctor",
                 "github-check",
+                "sandbox-profile",
                 "profile",
                 "memory",
                 "backup",

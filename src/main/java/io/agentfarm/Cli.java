@@ -28,6 +28,16 @@ public final class Cli {
                 Path.of(options.getOrDefault("repo", ".")),
                 options.getOrDefault("panel", "http://localhost:8080"),
                 Boolean.parseBoolean(options.getOrDefault("run-tests", "false")));
+      } else if (mode.equals("sandbox-profile")) {
+        result =
+            AgentSandbox.codexConfig(
+                AgentSandbox.filesystem(
+                    Path.of(System.getProperty("user.home")).toRealPath(),
+                    Path.of(required(options, "state")).toRealPath(),
+                    Path.of("/mnt"),
+                    Path.of(required(options, "checkout")).toRealPath(),
+                    Boolean.parseBoolean(options.getOrDefault("write", "false")),
+                    AgentSandbox.hostSockets(System.getenv(), required(options, "uid"))));
       } else if (mode.equals("github-check")) {
         var credentials =
             new GitHubCredentials(
