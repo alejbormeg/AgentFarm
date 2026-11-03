@@ -184,9 +184,18 @@ try {
   }
 } finally {
   socket.close();
-  chrome.kill();
-  await sleep(300);
-  rmSync(profile, { recursive: true, force: true, maxRetries: 5 });
+  await new Promise((done) => {
+    chrome.once("exit", done);
+    chrome.kill("SIGKILL");
+    setTimeout(done, 5000);
+  });
+  // Chrome's helpers can outlive it and keep writing to the profile: a leftover directory in /tmp
+  // must not turn a run whose checks all passed into a failure.
+  try {
+    rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  } catch (e) {
+    console.warn(`Could not remove the Chrome profile ${profile}: ${e.code}`);
+  }
 }
 if (failures.length) {
   console.error(`UI smoke FAILED: ${failures.length} check(s)`);

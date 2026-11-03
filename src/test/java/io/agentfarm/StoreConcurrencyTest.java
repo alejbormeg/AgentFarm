@@ -4,23 +4,47 @@ import static io.agentfarm.core.Store.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 import io.agentfarm.core.Store;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class StoreConcurrencyTest {
   @TempDir Path dir;
+  Path memoryDir;
+
+  /**
+   * 4000 durable commits take 24 s on an idle ext4 disk and 1.6 s in memory: the cost is fsync. This
+   * test is about atomicity and the connection lifecycle, so a slow CI disk must not fail it.
+   */
+  Path database() throws Exception {
+    Path shm = Path.of("/dev/shm");
+    if (!Files.isWritable(shm)) return dir.resolve("db");
+    memoryDir = Files.createTempDirectory(shm, "agentfarm-store-");
+    return memoryDir.resolve("db");
+  }
+
+  @AfterEach
+  void removeMemoryDir() throws Exception {
+    if (memoryDir == null) return;
+    try (var files = Files.list(memoryDir)) {
+      for (Path file : files.toList()) Files.deleteIfExists(file);
+    }
+    Files.deleteIfExists(memoryDir);
+  }
 
   @Test
   void repeatedConnectionLifecyclesAcrossStoresPreserveTransactionsUnderLoad() {
     assertTimeoutPreemptively(
         Duration.ofSeconds(45),
         () -> {
-          var first = new Store(dir.resolve("db").toString());
-          var second = new Store(dir.resolve("db").toString());
+          Path db = database();
+          var first = new Store(db.toString());
+          var second = new Store(db.toString());
           first.tx(
               c -> {
                 statement(c, "CREATE TABLE counter(value INTEGER)");
