@@ -41,7 +41,7 @@ public class IntegrationPublisher {
   private JsonNode github(String repo, String path, Object body) throws Exception {
     String secret = credentials.token();
     var request =
-        HttpRequest.newBuilder(URI.create("https://api.github.com/repos/" + repo + path))
+        HttpRequest.newBuilder(URI.create(GitHubApi.base() + "/repos/" + repo + path))
             .timeout(Duration.ofSeconds(20))
             .header("Authorization", "Bearer " + secret)
             .header("Accept", "application/vnd.github+json");

@@ -56,8 +56,15 @@ git clone -q --bare "$work/seed" "$work/remote.git"
 observer_password=e2e-observer-password
 printf '[{"username":"oscar","role":"observer","password_hash":"{bcrypt}%s"}]' \
   '$2b$10$1MgguADStmenKvMf9iRFiO0xWOluuogO3fCgW2i0mzVITaw6kMlty' > "$work/users.json"
+# GitHub as the panel sees it, sharing the PR state with the gh double the executor uses.
+api_port=$((port + 1))
+echo '{"issues": {}, "pulls": {}}' > "$work/gh.json"
+python3 "$e2e/fake_github_api.py" "$api_port" "$work/gh.json" "$work/remote.git" > "$work/api.log" 2>&1 &
+pids+=($!)
+echo e2e-panel-token > "$work/github-token"
 AGENTFARM_PASSWORD="$password" AGENTFARM_DB="$work/panel/agentfarm.db" PORT="$port" \
   AGENTFARM_USERS_FILE="$work/users.json" \
+  AGENTFARM_GITHUB_TOKEN_FILE="$work/github-token" AGENTFARM_GITHUB_API="http://127.0.0.1:$api_port" \
   java -jar "$root/target/agentfarm.jar" > "$work/panel.log" 2>&1 &
 pids+=($!)
 for _ in $(seq 1 60); do curl -fs -o /dev/null "$panel/api/health" && break; sleep 1; done
@@ -218,6 +225,23 @@ sleep 3
 wait_for review 150
 adoption corrected || fail "corrected adoption candidate"
 
+# The last stretch: the panel verifies the candidate, refuses another SHA and integrates this one.
+item=e2e-request-adopt
+sha=$(curl -fs -u "admin:$password" "$panel/api/work" | python3 -c 'import json,sys;print([x for x in json.load(sys.stdin) if x["id"]=="e2e-request-adopt"][0]["sha"])')
+ready=false
+for _ in $(seq 1 60); do
+  ready=$(curl -fs -u "admin:$password" "$panel/api/evidence/$item" | python3 -c 'import json,sys;print(str(json.load(sys.stdin)["ready"]).lower())')
+  [[ "$ready" == true ]] && break
+  sleep 2
+done
+[[ "$ready" == true ]] || fail "acceptance never ready: $(curl -fs -u "admin:$password" "$panel/api/evidence/$item" | python3 -c 'import json,sys;print(json.load(sys.stdin)["blockers"])')"
+if owner "/work/$item/actions/merge" "{\"sha\":\"$(printf '0%.0s' $(seq 1 40))\"}" > /dev/null 2>&1; then fail "merged another SHA"; fi
+owner "/work/$item/actions/merge" "{\"sha\":\"$sha\"}" > /dev/null
+wait_for integrated 30
+git -C "$work/remote.git" show main:agentfarm.yaml > /dev/null || fail "integration did not reach main"
+git -C "$work/remote.git" show main:adopted.txt > /dev/null || fail "integration did not reach main"
+python3 -c 'import json,sys;assert json.load(open(sys.argv[1]))["pulls"]["3"]["merged"] is True' "$work/gh.json" || fail "PR not merged"
+echo "Integrated from the panel by SHA: $sha"
 # A task whose branch the base has moved past starts over from the base on the same PR.
 item=e2e-request-0001
 old_head=$(git -C "$work/remote.git" rev-parse "$branch")
