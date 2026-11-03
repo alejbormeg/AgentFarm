@@ -14,11 +14,16 @@ public class WorkflowApi {
   private final InsightsService insights;
   private final DigestService digest;
 
+  private final io.agentfarm.core.TwoFactor twoFactor;
+
   public WorkflowApi(
       WorkflowService work,
       IntegrationPublisher publisher,
       GitHubReader github,
-      InsightsService insights, DigestService digest) {
+      InsightsService insights,
+      DigestService digest,
+      io.agentfarm.core.TwoFactor twoFactor) {
+    this.twoFactor = twoFactor;
     this.work = work;
     this.publisher = publisher;
     this.github = github;
@@ -93,6 +98,7 @@ public class WorkflowApi {
 
   @PostMapping("/batch/merge")
   public Object approveBatch(@RequestBody JsonNode n, Principal p) {
+    twoFactor.checkIntegration(p.getName());
     if (!publisher.configured())
       throw new IllegalArgumentException(
           "Falta configurar el publicador de integración del panel; sin él no se puede fusionar.");
@@ -102,6 +108,7 @@ public class WorkflowApi {
   @PostMapping("/{id}/actions/{action}")
   public Object action(
       @PathVariable String id, @PathVariable String action, @RequestBody JsonNode n, Principal p) {
+    if (action.equals("merge")) twoFactor.checkIntegration(p.getName());
     if (action.equals("merge") && !publisher.configured())
       throw new IllegalArgumentException(
           "Falta configurar el publicador de integración del panel; sin él no se puede fusionar.");

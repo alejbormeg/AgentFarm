@@ -8,6 +8,9 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 - Instalación, operación y evidencias tienen versión en inglés, enlazada desde `README.en.md`.
 - `docs/OPERATIONS.md` deja de citar una contraseña en `panel-password` y un `install-service.sh` sin argumentos que ya no existen.
+## Sin publicar — segundo factor
+
+- Cada persona puede activar un segundo factor (TOTP) en Gobierno, y un propietario puede exigirlo para integrar. `./agentfarm 2fa-reset <usuario>` lo restablece desde el equipo del panel. El servidor MCP acepta `--user`, porque una cuenta con segundo factor no puede usar HTTP Basic.
 ## Sin publicar — Claude Code con reglas de bloqueo
 
 - Claude Code recibe las rutas ocultas como reglas de bloqueo de `Read` y `Edit`, e ignora los ajustes del repositorio, que podían concederle herramientas o ejecutar hooks. Estas reglas no se han probado con una cuenta real, y el panel lo avisa mientras un rol lo use.

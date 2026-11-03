@@ -484,6 +484,9 @@ class FarmConsole extends HTMLElement {
     const adoption = this.drawer("Adoptar repositorio");
     this.adoptDrawer = adoption.dialog;
     adoption.body.append(this.adoptionForm());
+    const secondFactor = this.drawer("Segundo factor");
+    this.secondFactorDrawer = secondFactor.dialog;
+    secondFactor.body.append(this.secondFactorForm());
     const task = this.drawer("Tarea");
     this.taskDrawer = task.dialog;
     this.taskTitle = task.title;
@@ -501,7 +504,7 @@ class FarmConsole extends HTMLElement {
     });
     const linked = new URLSearchParams(location.search).get("tarea");
     if (linked) this.pendingTask = linked;
-    this.content.append(this.newDrawer, this.adoptDrawer, this.taskDrawer);
+    this.content.append(this.newDrawer, this.adoptDrawer, this.secondFactorDrawer, this.taskDrawer);
   }
   drawer(name) {
     const dialog = E("dialog", "", "drawer"),
@@ -535,6 +538,81 @@ class FarmConsole extends HTMLElement {
     } catch (e) {
       this.error.textContent = e.message;
     }
+  }
+  // Built once, like the other drawers, so a code being typed survives polling.
+  secondFactorForm() {
+    const section = E("section");
+    const problem = E("p", "", "error");
+    problem.setAttribute("role", "alert");
+    const state = E("p");
+    const enrollment = E("div");
+    const code = E("input");
+    code.inputMode = "numeric";
+    code.autocomplete = "one-time-code";
+    const label = E("label", "Código de seis cifras");
+    label.append(code);
+    const actions = E("div", "", "actions");
+    const run = async (path, body) => {
+      try {
+        const result = await api(path, body);
+        problem.textContent = "";
+        code.value = "";
+        this.signature = "";
+        return result;
+      } catch (e) {
+        problem.textContent = e.message;
+        return null;
+      }
+    };
+    const refresh = async () => {
+      const status = await api("/me/2fa");
+      const owner = this.data.me?.role === "owner";
+      state.textContent =
+        (status.active ? "Activo en tu cuenta." : "Sin activar en tu cuenta.") +
+        (status.required_to_integrate ? " Hace falta para integrar." : " No hace falta para integrar.");
+      actions.replaceChildren();
+      if (status.active) {
+        enrollment.replaceChildren();
+        actions.append(
+          button("Desactivar", async () => {
+            if (await run("/me/2fa/disable", { code: code.value.trim() })) await refresh();
+          }, "quiet"),
+        );
+        if (owner)
+          actions.append(
+            button(status.required_to_integrate ? "Dejar de exigir para integrar" : "Exigir para integrar", async () => {
+              if (await run("/governance/two-factor-to-integrate/" + !status.required_to_integrate, {})) await refresh();
+            }, "quiet"),
+          );
+      } else {
+        actions.append(
+          button("Generar clave", async () => {
+            const created = await run("/me/2fa/setup", {});
+            if (!created) return;
+            const uri = E("a", "Abrir en la aplicación");
+            uri.href = created.uri;
+            enrollment.replaceChildren(
+              E("p", "Añade esta clave a tu aplicación de autenticación y escribe el código que te muestre. Solo se enseña ahora."),
+              E("pre", created.secret),
+              uri,
+            );
+          }, "quiet"),
+          button("Confirmar código", async () => {
+            if (await run("/me/2fa/confirm", { code: code.value.trim() })) await refresh();
+          }, true),
+        );
+      }
+    };
+    this.refreshSecondFactor = refresh;
+    section.append(
+      E("p", "Pide un código además de la contraseña. Si pierdes el teléfono, se restablece con ./agentfarm 2fa-reset desde el equipo del panel.", "muted"),
+      state,
+      problem,
+      enrollment,
+      label,
+      actions,
+    );
+    return section;
   }
   // Adopting is an ordinary task: its proposal, with agentfarm.yaml, waits for approval as any other.
   adoptionForm() {
@@ -1079,6 +1157,12 @@ class FarmConsole extends HTMLElement {
           ),
           link("Conectar ejecutor", "/setup.html"),
         );
+      controls.append(
+        button("Segundo factor", async () => {
+          await this.refreshSecondFactor();
+          this.secondFactorDrawer.showModal();
+        }, "quiet"),
+      );
       control.append(
         E("h2", "Control de ejecución"),
         E(

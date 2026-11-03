@@ -25,6 +25,7 @@ public class AgentFarmApplication {
       for (int i = 1; i + 1 < args.length; i += 2) options.put(args[i], args[i + 1]);
       McpServer.main(
           options.getOrDefault("--panel", "http://localhost:8080"),
+          options.getOrDefault("--user", "admin"),
           java.nio.file.Path.of(
               options.getOrDefault("--password-file", "data/admin-password.txt")));
       return;
