@@ -184,6 +184,9 @@ try {
     await go("/overview");
     check(await until(() => visible("La cosecha de esta semana")), "the inbox shows the week");
     check(await visible("Adoptar repositorio"), "an owner can adopt a repository");
+    await go("/governance");
+    check(await until(() => visible("Conectar GitHub")), "an owner can connect GitHub");
+    await go("/overview");
     await go("/agents");
     await until(() => visible("Nodos dirigentes"));
     await sleep(11000);
@@ -206,6 +209,7 @@ try {
       check(!(await visible("Pausar agentes")), "an observer sees no pause button");
       check(!(await visible("Nueva tarea")), "an observer cannot start a task");
       check(!(await visible("Adoptar repositorio")), "an observer cannot adopt a repository");
+    check(!(await visible("Conectar GitHub")), "an observer cannot connect GitHub");
       check(exceptions.length === 0, "observer view throws nothing");
 
     // The second factor, from the drawer to the next sign-in.

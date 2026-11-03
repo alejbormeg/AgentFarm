@@ -50,7 +50,8 @@ public final class Cli {
                 env("AGENTFARM_GITHUB_TOKEN_FILE"),
                 env("AGENTFARM_GITHUB_APP_ID"),
                 env("AGENTFARM_GITHUB_APP_KEY_FILE"),
-                env("AGENTFARM_GITHUB_INSTALLATION_ID"));
+                env("AGENTFARM_GITHUB_INSTALLATION_ID"),
+                env("AGENTFARM_DB"));
         if (!credentials.configured())
           throw new IllegalArgumentException("El panel no tiene credencial de GitHub: ./agentfarm github-token");
         var check =
