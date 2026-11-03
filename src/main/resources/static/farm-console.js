@@ -1505,6 +1505,14 @@ class FarmConsole extends HTMLElement {
         ci === "failed" || ci === "unavailable" ? "warning" : "muted",
       ),
     );
+    for (const other of d.overlaps || [])
+      box.append(
+        E(
+          "p",
+          "Toca los mismos archivos que «" + other.title + "» (PR #" + other.pr + "): " + other.files.join(", "),
+          "warning",
+        ),
+      );
     if (d.scope_missing) {
       box.append(
         E(

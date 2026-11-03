@@ -30,6 +30,30 @@ public class EvidenceService {
         });
   }
 
+  /** Other tasks in review on this repository that change the same files as this one. */
+  static List<Map<String, Object>> overlaps(
+      Connection c, Map<String, Object> item, Map<String, Object> verification) throws Exception {
+    var result = new ArrayList<Map<String, Object>>();
+    if (verification == null) return result;
+    var mine = new HashSet<String>();
+    parse(verification.get("detail").toString()).path("files").forEach(f -> mine.add(f.asText()));
+    for (var other :
+        rows(
+            c,
+            "SELECT w.id,w.title,w.pr,v.detail FROM work_items w JOIN evidence_verifications v"
+                + " ON v.item=w.id WHERE w.repo=? AND w.state='review' AND w.id<>?",
+            item.get("repo"),
+            item.get("id"))) {
+      var shared = new ArrayList<String>();
+      parse(other.get("detail").toString())
+          .path("files")
+          .forEach(f -> { if (mine.contains(f.asText())) shared.add(f.asText()); });
+      if (!shared.isEmpty())
+        result.add(obj("item", other.get("id"), "title", other.get("title"), "pr", other.get("pr"), "files", shared));
+    }
+    return result;
+  }
+
   static void schema(Connection c) throws Exception {
     statement(
         c,
@@ -411,6 +435,9 @@ public class EvidenceService {
               latest));
     }
     if (!scopeMatches) blockers.add("Approved scope changed");
+    if (verification != null && parse(verification.get("detail").toString()).path("pull_conflict").asBoolean())
+      blockers.add("La PR tiene conflictos con la rama base");
+    result.put("overlaps", overlaps(c, item, verification));
     var recipe = one(c, "SELECT snapshot FROM work_recipes WHERE item=?", item.get("id"));
     var commandments =
         Commandments.assess(
