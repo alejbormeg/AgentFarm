@@ -130,7 +130,7 @@ assert len(item["sha"]) == 40 and item["branch"].startswith("agentfarm/"), item
 assert evidence["passed"] is True, evidence
 assert evidence["unit"]["status"] == "passed" and evidence["integration"]["status"] == "passed", evidence
 assert evidence["review"]["passed"] is True
-assert evidence["prompts"]["review"]["id"] == "review.v2"
+assert evidence["prompts"]["review"]["id"] == "review.v3"
 pulls = json.load(open(gh))["pulls"]
 assert pulls["1"]["draft"] is False and pulls["1"]["head"] == item["branch"], pulls
 print("E2E OK:", item["state"], "PR", item["pr"], item["sha"][:12], "sandbox", evidence["unit"].get("sandbox", {}).get("mode", "host"))
@@ -211,6 +211,7 @@ if step == "invalid":
 else:
     assert evidence["profile_validation"]["status"] == "passed", evidence["profile_validation"]
     assert evidence["passed"] is True and pull["draft"] is False, (evidence["passed"], pull)
+    assert "summary" in [c["field"] for c in json.loads(item["proposal"])["previous_changes"]], item["proposal"]
 print("Adoption", step, "OK: PR", item["pr"], item["sha"][:12])
 PY
 }
@@ -240,3 +241,24 @@ git -C "$work/remote.git" show main:agentfarm.yaml > /dev/null || fail "integrat
 git -C "$work/remote.git" show main:adopted.txt > /dev/null || fail "integration did not reach main"
 python3 -c 'import json,sys;assert json.load(open(sys.argv[1]))["pulls"]["3"]["merged"] is True' "$work/gh.json" || fail "PR not merged"
 echo "Integrated from the panel by SHA: $sha"
+# A task whose branch the base has moved past starts over from the base on the same PR.
+item=e2e-request-0001
+old_head=$(git -C "$work/remote.git" rev-parse "$branch")
+owner /work/e2e-request-0001/actions/correct '{"feedback":"La base ha cambiado: actualiza la propuesta."}' > /dev/null
+sleep 3
+wait_for proposed 60
+owner /work/e2e-request-0001/actions/implement '{"version":2}' > /dev/null
+sleep 3
+wait_for review 150
+python3 - "$panel" "$password" "$adopt_main" <<'PY' || fail "stale branch was not rebuilt"
+import base64, json, sys, urllib.request
+panel, password, main = sys.argv[1:]
+req = urllib.request.Request(panel + "/api/work", headers={"Authorization": "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()})
+item = [x for x in json.load(urllib.request.urlopen(req)) if x["id"] == "e2e-request-0001"][0]
+evidence = json.loads(item["evidence"])
+assert evidence["base_sha"] == main, evidence["base_sha"]
+assert evidence["passed"] is True and item["pr"] == 1, item
+print("Stale branch rebuilt on the base: PR", item["pr"], item["sha"][:12])
+PY
+git -C "$work/remote.git" merge-base --is-ancestor "$adopt_main" "$branch" || fail "rebuilt branch does not contain the base"
+[[ "$(git -C "$work/remote.git" rev-parse "$branch")" != "$old_head" ]] || fail "branch not replaced"

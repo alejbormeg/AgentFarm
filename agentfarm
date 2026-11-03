@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-command="${1:-up}"
-usage="Uso: ./agentfarm {up|demo|password|stop|logs|status|doctor|profile|backup [destino]|restore [--yes] <copia>}"
+command="${1:-help}"
+usage="Uso: ./agentfarm {help|up|demo|password|stop|logs|status|doctor|profile|backup [destino]|restore [--yes] <copia>}"
 java_in_image=(java -Dorg.sqlite.lib.path=/app/native -jar /app/agentfarm.jar)
 
 run_jar() {
@@ -192,6 +192,7 @@ restore_command() {
 }
 
 case "$command" in
+  help|-h|--help) echo "$usage"; exit ;;
   doctor|profile) run_jar "$@"; exit ;;
   demo) exec bash "$root/runtime/demo.sh" ;;
   backup) shift; backup_command "$@"; exit ;;

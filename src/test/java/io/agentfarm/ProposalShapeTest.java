@@ -27,6 +27,18 @@ class ProposalShapeTest {
   }
 
   @Test
+  void changesListOnlyWhatAnOperatorApproves() {
+    var before = Json.parse("{\"summary\":\"a\",\"allowed_paths\":[\"src/\"],\"prompt\":{\"id\":\"x\"}}");
+    var after = Json.parse("{\"summary\":\"a\",\"allowed_paths\":[\"lib/\"],\"prompt\":{\"id\":\"y\"}}");
+    var changes = ProposalShape.changes(before, after);
+    assertEquals(1, changes.size());
+    assertEquals("allowed_paths", changes.get(0).path("field").asText());
+    assertEquals("[\"src/\"]", changes.get(0).path("before").toString());
+    assertEquals("[\"lib/\"]", changes.get(0).path("after").toString());
+    assertEquals(0, ProposalShape.changes(Json.parse("{}"), after).size(), "a first version has nothing to compare");
+  }
+
+  @Test
   void researchPromptShowsTheChecksShape() {
     assertTrue(Prompts.template(Prompts.CURRENT.get("research")).contains("\"checks\": [\"unit\"]"));
   }
