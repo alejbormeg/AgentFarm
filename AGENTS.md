@@ -1,3 +1,60 @@
-# Reglas de desarrollo
+# AgentFarm: reglas de desarrollo
 
-Lee docs/PLAN.md y la especificación de la tarea. No amplíes alcance ni cambies contratos sin aprobación. Distingue capacidad implementada, simulada y planificada. Nunca incorpores secretos, sesiones ni logs privados. No publiques ni fusiones automáticamente. Una aprobación se vincula al commit exacto. Prueba las invariantes de coordinación antes de añadir proveedores.
+Panel (Spring Boot y Mateu) y ejecutor (`runtime/FarmDaemon.java`) para que un equipo de agentes mantenga
+repositorios y un humano decida qué se integra. Lee [PRODUCT.md](PRODUCT.md) antes de decidir algo de producto,
+[DESIGN.md](DESIGN.md) antes de tocar la interfaz y la especificación de la tarea antes de empezar.
+
+## Reglas que no se negocian
+
+- No amplíes alcance ni cambies contratos sin aprobación.
+- Una aprobación se vincula al commit exacto. No publiques ni fusiones sin autorización explícita del propietario; aun autorizado, solo con todas las comprobaciones en verde sobre el head actual.
+- Nunca incorpores ni muestres secretos, sesiones ni logs privados. Eso incluye la salida de una orden: no imprimas tokens ni la contraseña del panel.
+- Distingue capacidad implementada, simulada y planificada. Probado con dobles no es probado en real, y hay que decirlo.
+- Una issue se cierra solo si se cumple su aceptación. Lo que no puedas acreditar se queda abierto, con un comentario de lo que falta.
+- Un fallo se corrige en el producto y con su prueba, no reescribiendo el criterio que lo detectó.
+- Prueba las invariantes de coordinación antes de añadir proveedores.
+
+## Mapa
+
+| Ruta | Qué es |
+| --- | --- |
+| `src/main/java/io/agentfarm/core` | Dominio: flujo, evidencias, presupuesto, sandbox, GitHub, migraciones |
+| `src/main/java/io/agentfarm/web` | API y seguridad |
+| `src/main/java/io/agentfarm/ui`, `src/main/resources/static/farm-console.js` | Shell Mateu y componente web compartido |
+| `src/main/resources/{prompts,skills,recipes.json}` | Instrucciones de los agentes, versionadas |
+| `runtime/` | Ejecutor. `FarmDaemon.java` se compila aparte y usa las clases de `core` |
+| `agentfarm`, `compose.yaml`, `Dockerfile` | Instalación y operación |
+| `tests/` | e2e, navegador y operación. Las pruebas unitarias están en `src/test` |
+| `docs/ROADMAP.md`, `CHANGELOG.md` | Qué falta y qué se hizo |
+
+`docs/PLAN.md` y `runtime/README.md` tienen partes históricas: si contradicen al código, manda el código.
+Lo pendiente vive en las issues de GitHub, no en listas de la documentación.
+
+## Comprobar un cambio
+
+| Si tocas | Ejecuta |
+| --- | --- |
+| Cualquier cosa de Java | `./mvnw -B -ntp verify` |
+| `runtime/` o una clase de `core` que use el ejecutor | además `bash runtime/verify.sh` y `bash tests/e2e/run.sh` |
+| Interfaz | además `E2E_CHROME=google-chrome bash tests/e2e/run.sh`, que lanza el smoke de `tests/ui/smoke.mjs`, y mírala en un navegador |
+| `agentfarm`, credenciales | además `bash tests/credentials.sh` y `bash tests/ops.sh` |
+| `compose.yaml`, `Dockerfile`, copias | además `bash tests/compose_backup.sh`, en un proyecto de Compose desechable |
+| `.claude/skills/resolver-issue/merge-gate.sh` | además `bash tests/merge_gate.sh` |
+| Aislamiento de los agentes | además `bash tests/codex_sandbox.sh`, sin inferencia, contra el Codex instalado |
+
+`tests/e2e/run.sh` necesita Docker y la imagen `bash:5.2`; con `E2E_SANDBOX=host` corre sin contenedor. `tests/eval/run.sh` y los
+pilotos reales de `docs/PILOTS.md` gastan cuota: no los lances sin que te lo pidan.
+
+La CI ejecuta todo esto en `.github/workflows/java.yml`, con Java 21 y 25. Un cambio de documentación también pasa por ella.
+
+## Entregar
+
+- Rama desde `main`, PR en español y squash con título `[#issue] Qué cambia`.
+- Una PR por issue, con la prueba que falla sin el cambio.
+- Cada cambio visible añade una línea a `CHANGELOG.md`. Si completa una fila de `docs/ROADMAP.md`, actualízala.
+- `core.filemode` está a `false` en este clon: un script nuevo no queda ejecutable al añadirlo. Usa `git add --chmod=+x`, o invócalo con `bash`.
+
+## Estilo
+
+Español en la interfaz, la documentación, las issues y los commits; inglés en el código y sus comentarios. Copia el estilo del
+archivo que tocas. Sin dependencias nuevas salvo que no haya alternativa razonable.
