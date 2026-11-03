@@ -721,7 +721,8 @@ public class FarmDaemon extends CodexRunner {
                     STATE.toRealPath(),
                     Path.of("/mnt"),
                     checkout.toRealPath(),
-                    write)));
+                    write,
+                    io.agentfarm.core.AgentSandbox.hostSockets(System.getenv(), hostUser().split(":")[0]))));
     config.put("web_search", "live");
     if (mcpTurn)
       config.put("mcp_servers", io.agentfarm.core.McpCatalog.codexConfig(mcpServers, System.getenv()));

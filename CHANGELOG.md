@@ -26,6 +26,11 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 - `GET /api/version` indica el commit del panel, que avisa si un ejecutor corre otro distinto, y `doctor` explica cómo arrancar Docker.
 - `docs/PILOTS.md`: cuándo repetir un piloto real, cómo recorrerlo y qué medir.
 
+## Sin publicar — Docker fuera del alcance de los agentes
+
+- El perfil de los agentes oculta los sockets de contenedores y el directorio de sesión del usuario, y fija la red apagada. Antes, el socket de Docker solo estaba bloqueado porque no había red.
+- `tests/codex_sandbox.sh` comprueba estos bloqueos contra el sandbox real de Codex.
+
 ## Sin publicar — adopción probada en un repositorio real
 
 - Un `agentfarm.yaml` que el parser rechaza deja la PR en borrador, en vez de romper las tareas siguientes.

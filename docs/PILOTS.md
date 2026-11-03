@@ -15,6 +15,7 @@ en una mañana fallos que el e2e no veía, así que repite un piloto:
 ```bash
 ./agentfarm doctor
 ./agentfarm github-check owner/repo-de-pilotos
+bash tests/codex_sandbox.sh
 ```
 
 ## Recorrido
