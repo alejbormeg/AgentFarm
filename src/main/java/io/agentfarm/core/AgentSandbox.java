@@ -77,6 +77,16 @@ public final class AgentSandbox {
     return role.equals("research") ? "live" : "disabled";
   }
 
+  /** What a profile hides, for the checks and for providers that take rules instead of a profile. */
+  @SuppressWarnings("unchecked")
+  public static List<String> hiddenPaths(Map<String, Object> config) {
+    var permissions = (Map<String, Object>) ((Map<String, Object>) config.get("permissions")).get(PROFILE);
+    var hidden = new ArrayList<String>();
+    ((Map<String, Object>) permissions.get("filesystem"))
+        .forEach((path, access) -> { if (access.equals("none")) hidden.add(path); });
+    return hidden;
+  }
+
   /** The config entries a Codex thread needs to apply the profile. */
   public static Map<String, Object> codexConfig(Map<String, Object> filesystem) {
     return obj(

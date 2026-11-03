@@ -15,6 +15,15 @@ class AgentSandboxTest {
   }
 
   @Test
+  void hiddenPathsAreOnlyThoseTheProfileDenies() {
+    var filesystem = new java.util.LinkedHashMap<String, Object>();
+    filesystem.put(":root", "read");
+    filesystem.put("/home/a/.ssh", "none");
+    filesystem.put("/work", "write");
+    assertEquals(java.util.List.of("/home/a/.ssh"), AgentSandbox.hiddenPaths(AgentSandbox.codexConfig(filesystem)));
+  }
+
+  @Test
   void onlyResearchSearchesTheWeb() {
     assertEquals("live", AgentSandbox.webSearch("research"));
     assertEquals("disabled", AgentSandbox.webSearch("implement"));

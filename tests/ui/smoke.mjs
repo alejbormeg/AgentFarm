@@ -115,6 +115,7 @@ const checkNotices = async () => {
     await until(() => visible("El ejecutor e2e-node-s9 no acepta trabajo: el aislamiento de los agentes no funciona")),
     "the inbox warns about a broken sandbox",
   );
+  check(await until(() => visible("Claude Code solo tiene reglas de bloqueo.")), "the inbox warns that Claude Code has no system sandbox");
   await go("/overview?tarea=e2e-request-overlap");
   check(await until(() => visible("Toca los mismos archivos que")), "a task warns about another one on the same files");
   await go("/overview?tarea=e2e-request-adopt");

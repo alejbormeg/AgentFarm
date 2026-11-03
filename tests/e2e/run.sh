@@ -296,7 +296,7 @@ if [[ -n "${E2E_CHROME:-}" ]]; then
       curl -fs -o /dev/null -H "Authorization: Bearer $(cat "$work/state/node-token")" -H "X-CSRF-TOKEN: $node_csrf" \
         -c "$node_jar" -b "$node_jar" -H 'Content-Type: application/json' \
         -X POST "$panel/api/runtime/observations" \
-        -d '{"snapshot":{"node":"e2e-node","executor":"e2e-node-s9","build":"deadbeef","sandbox_failure":"EXPUESTO /ruta"},"events":[]}' || true
+        -d '{"snapshot":{"node":"e2e-node","executor":"e2e-node-s9","build":"deadbeef","sandbox_failure":"EXPUESTO /ruta","isolation_notice":"Claude Code solo tiene reglas de bloqueo."},"events":[]}' || true
       sleep 3
     done
   ) &

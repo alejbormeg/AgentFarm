@@ -912,6 +912,8 @@ class FarmConsole extends HTMLElement {
             "warning",
           ),
         );
+      for (const x of r.isolation_notices || [])
+        map.append(E("p", x.executor + ": " + x.notice + " Revisa docs/PROVIDERS.md antes de darle un repositorio.", "warning"));
       const split = E("div", "", "split"),
         main = E("section"),
         side = E("aside");
