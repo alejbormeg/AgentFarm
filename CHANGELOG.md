@@ -7,6 +7,10 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 ## Sin publicar — el ejecutor comprueba el aislamiento
 
 - Antes de aceptar trabajo, y cada diez minutos, el ejecutor comprueba con el sandbox real de Codex que las rutas ocultas no se alcanzan. Si falla o no puede saberlo, no acepta tareas y el panel lo avisa.
+## Sin publicar — tests estables
+
+- `StoreConcurrencyTest` agotaba su tiempo cuando el disco era lento: hacía 4000 commits con `fsync`. Ahora corre en memoria.
+- El smoke de navegador fallaba al limpiar el perfil de Chrome, con todas sus comprobaciones superadas. La limpieza ya no puede romper la prueba.
 
 ## Sin publicar — búsqueda web solo al investigar
 
