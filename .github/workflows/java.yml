@@ -69,6 +69,7 @@ jobs:
       - run: docker compose up --build --wait -d
       - run: curl --fail http://localhost:8080/login
       - run: python3 tests/container_http.py
+      - run: bash tests/dedicated_user.sh
       - name: Backup and restore through ./agentfarm against Compose
         run: bash tests/compose_backup.sh
       - if: always()

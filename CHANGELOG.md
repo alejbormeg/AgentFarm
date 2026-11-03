@@ -4,6 +4,10 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — usuario propio para el ejecutor
+
+- `runtime/install-dedicated-user.sh` crea un usuario sin privilegios para el ejecutor y comprueba que no pueda leer la home del operador. Solo se ha probado en un contenedor.
+
 ## Sin publicar — Claude Code con reglas de bloqueo
 
 - Claude Code recibe las rutas ocultas como reglas de bloqueo de `Read` y `Edit`, e ignora los ajustes del repositorio, que podían concederle herramientas o ejecutar hooks. Estas reglas no se han probado con una cuenta real, y el panel lo avisa mientras un rol lo use.
