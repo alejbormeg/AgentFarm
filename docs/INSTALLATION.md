@@ -67,6 +67,18 @@ herramientas, ignora la configuración del repositorio y no tiene `Bash`, pero e
 han probado con una cuenta real** y son más débiles que un aislamiento del sistema. El panel lo
 avisa mientras un rol lo use.
 
+**Usuario propio:** para que un agente no alcance tu home aunque falle el perfil, instala el ejecutor con
+un usuario dedicado, con su propia sesión de `gh` y de Codex:
+
+```bash
+bash runtime/package.sh
+sudo bash runtime/install-dedicated-user.sh target/agentfarm-executor-linux.tar.gz
+```
+
+El instalador crea el usuario, no copia ninguna de tus credenciales, comprueba que no pueda leer tu home y
+te indica los pasos que faltan. Ese usuario no tiene Docker, así que las pruebas en contenedor necesitan
+[Docker sin root](SECURITY.md#docker-en-el-ejecutor). **Esta vía aún no se ha recorrido entera en un equipo real.**
+
 **Límite importante:** gh y Codex siguen ejecutándose con la identidad Linux
 del servicio. Las pruebas ya se aíslan en contenedor (ver más abajo), pero el
 sandbox de escritura de Codex sobre el checkout no es una frontera de seguridad. Se necesita una identidad/entorno de trabajador separado y
