@@ -10,7 +10,8 @@ if sys.argv[1:2] == ["sandbox"]:
     leaked = ["/etc/passwd"] if os.environ.get("E2E_SANDBOX_BROKEN") else []
     sys.exit(subprocess.call(command[:5] + leaked))
 
-RESETS = int(time.time()) + 3 * 86400
+# Fixed across restarts of the executor, like the real quota window.
+RESETS = int(os.environ.get("E2E_QUOTA_RESETS", int(time.time()) + 3 * 86400))
 threads = {}
 
 

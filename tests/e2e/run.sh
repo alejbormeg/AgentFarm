@@ -87,6 +87,7 @@ owner /work '{"request_id":"e2e-request-0001","repository":"e2e/demo","title":"A
 cp="$root/target/classes:$(find "$HOME/.m2/repository/com/fasterxml/jackson/core" "$HOME/.m2/repository/org/yaml/snakeyaml" -name '*.jar' | paste -sd:)"
 mkdir -p "$work/classes"
 javac -nowarn -cp "$cp" -d "$work/classes" "$root/runtime/CodexRunner.java" "$root/runtime/FarmDaemon.java"
+export E2E_QUOTA_RESETS=$(($(date +%s) + 3 * 86400))
 start_executor() {
   E2E_GH_STATE="$work/gh.json" E2E_REMOTE="$work/remote.git" \
     java -cp "$work/classes:$cp" \
