@@ -45,7 +45,9 @@ MVN_MESSAGE="Could not transfer artifact a:b" bash "$root/runtime/mvn-retry.sh" 
 [[ "$(wc -l < "$work/mvn.log")" == 2 ]] || fail "unexpected attempts"
 rm "$work/mvn.log"
 MVN_MESSAGE="wget: Failed to fetch https://repo.maven.apache.org/x.zip" bash "$root/runtime/mvn-retry.sh" verify > /dev/null 2>&1 \
-  || { echo "FAIL: a cut Maven wrapper download was not retried" >&2; exit 1; }
+  || fail "no retry after a cut Maven wrapper download"
+[[ "$(wc -l < "$work/mvn.log")" == 2 ]] || fail "unexpected attempts"
+rm "$work/mvn.log"
 if MVN_MESSAGE="Tests run: 1, Failures: 1" bash "$root/runtime/mvn-retry.sh" verify > /dev/null; then fail "a failing test passed"; fi
 [[ "$(wc -l < "$work/mvn.log")" == 1 ]] || fail "repeated after a failing test"
 echo "Ops OK"
