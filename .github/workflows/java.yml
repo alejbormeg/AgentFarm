@@ -1,10 +1,18 @@
 name: Java verification
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
 permissions:
   contents: read
+# A newer push to a PR replaces its run: the old one could only send a stale failure.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   java:
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -18,10 +26,13 @@ jobs:
           distribution: temurin
           java-version: ${{ matrix.java }}
           cache: maven
-      - run: ./mvnw -B -ntp verify
+      - run: bash runtime/mvn-retry.sh -B -ntp verify
+        env:
+          MVN: ./mvnw
       - run: bash tests/credentials.sh
       - run: bash tests/ops.sh
       - run: bash tests/merge_gate.sh
+      - run: bash tests/pre_push.sh
       - run: python3 -I tests/pilot/test_run.py
       - run: java -jar target/agentfarm.jar memory --file examples/project-memory.json --repository owner/example
       - run: java -jar target/agentfarm.jar memory --file agentfarm-memory.json --repository alejbormeg/AgentFarm
@@ -39,6 +50,7 @@ jobs:
             NOTICE
   e2e:
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -48,7 +60,9 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - run: ./mvnw -B -ntp -DskipTests package
+      - run: bash runtime/mvn-retry.sh -B -ntp -DskipTests package
+        env:
+          MVN: ./mvnw
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -63,6 +77,7 @@ jobs:
           AGENTFARM_DEMO_ONCE: '1'
   container:
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:

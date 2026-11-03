@@ -4,6 +4,27 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — menos ruido en la CI
+
+- Cada PR corre la CI una sola vez, y un push nuevo cancela la ejecución anterior. Antes, cada fallo llegaba dos veces.
+- Una descarga de Maven cortada ya no pone en rojo un job, y `comprobar.sh` ejecuta en local lo que correría la CI según lo que cambia la rama.
+
+## Sin publicar — github-check comprueba la escritura
+
+- `./agentfarm github-check` avisa si la credencial no puede escribir en el repositorio, sin fusionar ni escribir nada.
+
+## Sin publicar — guías en inglés
+
+- Instalación, operación y evidencias tienen versión en inglés, enlazada desde `README.en.md`.
+- `docs/OPERATIONS.md` deja de citar una contraseña en `panel-password` y un `install-service.sh` sin argumentos que ya no existen.
+## Sin publicar — piloto con una orden
+
+- `tests/pilot/run.py` recorre el flujo sobre un repositorio desechable e informa de las medidas de `docs/PILOTS.md`, con un límite de cuota. Solo se ha probado contra un panel simulado.
+
+## Sin publicar — usuario propio para el ejecutor
+
+- `runtime/install-dedicated-user.sh` crea un usuario sin privilegios para el ejecutor y comprueba que no pueda leer la home del operador. Solo se ha probado en un contenedor.
+
 ## Sin publicar — modelo de amenazas
 
 - `docs/SECURITY.md` recoge qué se protege, los riesgos que quedan y por qué el camino para Docker es ejecutarlo sin root. Falta una revisión independiente.

@@ -6,7 +6,7 @@ for attempt in 1 2 3; do
   "${MVN:-mvn}" "$@" 2>&1 | tee "$log"
   status=${PIPESTATUS[0]}
   [[ "$status" == 0 ]] && exit 0
-  grep -qE 'Could not transfer artifact|Premature end of|Connection reset|Read timed out' "$log" || exit "$status"
+  grep -qE 'Could not transfer artifact|Premature end of|Connection reset|Read timed out|Failed to fetch' "$log" || exit "$status"
   echo "Descarga interrumpida; reintento $attempt de 3" >&2
   sleep $((attempt * ${MVN_RETRY_DELAY:-5}))
 done

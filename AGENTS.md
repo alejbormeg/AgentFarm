@@ -39,6 +39,7 @@ Lo pendiente vive en las issues de GitHub, no en listas de la documentación.
 | `runtime/` o una clase de `core` que use el ejecutor | además `bash runtime/verify.sh`, `bash runtime/package.sh` y `bash tests/e2e/run.sh` |
 | Interfaz | además `E2E_CHROME=google-chrome bash tests/e2e/run.sh`, que lanza el smoke de `tests/ui/smoke.mjs`, y mírala en un navegador |
 | `agentfarm`, credenciales | además `bash tests/credentials.sh` y `bash tests/ops.sh` |
+| `comprobar.sh` o el hook de `.claude/hooks/` | además `bash tests/pre_push.sh` |
 | `compose.yaml`, `Dockerfile`, copias | además `bash tests/compose_backup.sh`, en un proyecto de Compose desechable |
 | `.claude/skills/resolver-issue/merge-gate.sh` | además `bash tests/merge_gate.sh` |
 | `tests/pilot/run.py` | además `python3 -I tests/pilot/test_run.py` |
@@ -49,6 +50,8 @@ Lo pendiente vive en las issues de GitHub, no en listas de la documentación.
 pilotos reales de `docs/PILOTS.md` gastan cuota: no los lances sin que te lo pidan.
 
 La CI ejecuta todo esto en `.github/workflows/java.yml`, con Java 21 y 25. Un cambio de documentación también pasa por ella.
+
+**Antes de publicar,** ejecuta `bash .claude/skills/resolver-issue/comprobar.sh`. Elige qué correr según lo que cambia la rama y registra que ese commit pasó. Casi todos los rojos de la CI venían de publicar algo que nunca se había ejecutado en local.
 
 ## Entregar
 
