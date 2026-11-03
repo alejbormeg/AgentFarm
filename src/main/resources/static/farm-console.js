@@ -549,7 +549,7 @@ class FarmConsole extends HTMLElement {
               repository,
               title: "Adoptar " + repository,
               request: "Adopta este repositorio para que los agentes lo mantengan.",
-              recipe: { id: "adopt-repo", version: 1 },
+              recipe: { id: "adopt-repo", version: 2 },
             });
             await api("/automation/triggers", {
               repository,

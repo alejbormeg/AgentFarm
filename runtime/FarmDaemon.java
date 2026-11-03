@@ -599,18 +599,27 @@ public class FarmDaemon extends CodexRunner {
   }
 
   /** Whether the agent's new profile will load, since the executor reads it on every later task. */
-  static Map<String, Object> candidateProfile(String baseSha, String sha) throws Exception {
+  static Map<String, Object> candidateProfile(JsonNode p, String baseSha, String sha) throws Exception {
     if (gitAt("diff", "--name-only", baseSha, sha, "--", "agentfarm.yaml").isBlank())
       return obj("status", "not_applicable");
-    try {
-      var profile = io.agentfarm.core.ProjectProfile.parse(gitAt("show", sha + ":agentfarm.yaml"));
-      profile.requireSupportedExecution();
-      if (!profile.repository().equals(repo))
-        throw new IllegalArgumentException("Profile repository mismatch");
-      return obj("status", "passed", "hash", profile.hash());
-    } catch (IllegalArgumentException e) {
-      return obj("status", "failed", "error", e.getMessage());
-    }
+    return io.agentfarm.core.ProfileCheck.validate(
+        gitAt("show", sha + ":agentfarm.yaml"),
+        repo,
+        p.path("unit_test").asText(),
+        p.path("integration_test").asText(),
+        gitAt("ls-tree", "-d", "--name-only", sha).lines().toList());
+  }
+
+  /** An adopted profile's gates run here, since no earlier proposal could carry them. */
+  static JsonNode withCandidateGates(JsonNode p, Map<String, Object> validation) {
+    if (p.has("profile_hash") || !validation.containsKey("quality")) return p;
+    var copy = (com.fasterxml.jackson.databind.node.ObjectNode) p.deepCopy();
+    copy.set("quality", JSON.valueToTree(validation.get("quality")));
+    return copy;
+  }
+
+  static boolean anyFailed(Map<String, Object> quality) {
+    return JSON.valueToTree(quality).findValuesAsText("status").stream().anyMatch(s -> s.equals("failed"));
   }
 
   static String adoptionContract(JsonNode item) {
@@ -1064,10 +1073,10 @@ public class FarmDaemon extends CodexRunner {
     var integration = results.get(1);
     if (!gitAt("status", "--porcelain").isBlank())
       throw new IOException("Las pruebas han cambiado el checkout; revisar antes de publicar");
-    var quality = runQuality(p, baseSha, sha);
-    var regression = proveRegression(item, p, baseSha, sha, unit, integration);
     // Before the review, so the reviewer judges what the platform checked rather than asking for it.
-    var profileValidation = candidateProfile(baseSha, sha);
+    var profileValidation = candidateProfile(p, baseSha, sha);
+    var quality = runQuality(withCandidateGates(p, profileValidation), baseSha, sha);
+    var regression = proveRegression(item, p, baseSha, sha, unit, integration);
     active = REVIEWER;
     phase = "reviewing";
     var reviewSkills = skills("review", namedSkills(p));
@@ -1137,6 +1146,9 @@ public class FarmDaemon extends CodexRunner {
     if (profileValidation.get("status").equals("failed")) {
       pass = false;
       event("error", "agentfarm.yaml no es válido: " + profileValidation.get("error"));
+    } else if (profileValidation.containsKey("quality") && anyFailed(quality)) {
+      pass = false;
+      event("error", "Las puertas del nuevo agentfarm.yaml no pasan");
     }
     if (!gitAt("rev-parse", "HEAD").equals(sha) || !gitAt("status", "--porcelain").isBlank())
       throw new IOException("El candidato cambió durante la revisión");

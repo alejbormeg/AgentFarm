@@ -184,7 +184,7 @@ git -C "$work/seed" rm -q agentfarm.yaml
 git -C "$work/seed" -c user.name=e2e -c user.email=e2e@localhost commit -q -m "Sin perfil"
 git -C "$work/seed" push -q "$work/remote.git" HEAD:main
 adopt_main=$(git -C "$work/seed" rev-parse HEAD)
-owner /work '{"request_id":"e2e-request-adopt","repository":"e2e/demo","title":"Adoptar","request":"Adopta este repositorio.","recipe":{"id":"adopt-repo","version":1}}' > /dev/null
+owner /work '{"request_id":"e2e-request-adopt","repository":"e2e/demo","title":"Adoptar","request":"Adopta este repositorio.","recipe":{"id":"adopt-repo","version":2}}' > /dev/null
 item=e2e-request-adopt
 wait_for proposed 60
 owner /work/e2e-request-adopt/actions/implement '{"version":1}' > /dev/null
@@ -204,6 +204,7 @@ if step == "invalid":
 else:
     assert evidence["profile_validation"]["status"] == "passed", evidence["profile_validation"]
     assert evidence["passed"] is True and pull["draft"] is False, (evidence["passed"], pull)
+    assert evidence["quality"]["checks"][0]["status"] == "passed", evidence["quality"]
     assert "summary" in [c["field"] for c in json.loads(item["proposal"])["previous_changes"]], item["proposal"]
 print("Adoption", step, "OK: PR", item["pr"], item["sha"][:12])
 PY
