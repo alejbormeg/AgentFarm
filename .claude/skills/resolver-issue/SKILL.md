@@ -13,8 +13,8 @@ description: Lleva una issue de AgentFarm de principio a fin. Rama, prueba que f
    ```
 
 4. Escribe la prueba y mira cómo falla. Después haz el cambio.
-5. Ejecuta las comprobaciones de la tabla de `AGENTS.md` según lo que hayas tocado.
-6. Añade la línea de `CHANGELOG.md` y actualiza `docs/ROADMAP.md` si procede.
+5. Añade la línea de `CHANGELOG.md` y actualiza `docs/ROADMAP.md` si procede. Si hay más PR abiertas, deja esa línea para la última: todas la escriben en el mismo sitio.
+6. Haz commit y comprueba: `bash .claude/skills/resolver-issue/comprobar.sh && git push -u origin HEAD`. Si falla, corrige y repite. No abras la PR hasta que pase.
 7. Abre la PR con título `[#n] Qué cambia` y `Closes #n` en el cuerpo solo si se cumple toda la aceptación; si no, `Refs #n`. Di qué se ha probado en real y qué con dobles.
 8. Con autorización del propietario para fusionar, usa la puerta:
 

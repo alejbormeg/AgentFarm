@@ -15,7 +15,9 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - run: ./mvnw -B -ntp verify
+      - run: bash runtime/mvn-retry.sh -B -ntp verify
+        env:
+          MVN: ./mvnw
       - run: bash runtime/verify.sh
       - run: bash runtime/package.sh
       - run: ./mvnw -B -ntp dependency:list -DoutputFile=target/dependencies.txt
