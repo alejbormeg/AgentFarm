@@ -148,11 +148,14 @@ for line in sys.stdin:
         filesystem = params["config"]["permissions"]["agentfarm"]["filesystem"]
         assert filesystem[":root"] == "read" and "sandbox" not in params, params
         writes = filesystem.get(os.path.realpath(params["cwd"])) == "write"
-        threads[tid] = {"cwd": params["cwd"], "sandbox": "workspace-write" if writes else "read-only"}
+        threads[tid] = {"cwd": params["cwd"], "sandbox": "workspace-write" if writes else "read-only", "web_search": params["config"].get("web_search")}
         send({"id": mid, "result": {"thread": {"id": tid}, "model": "fake-codex"}})
     elif method == "turn/start":
         thread = threads[params["threadId"]]
-        text = json.dumps(answer(thread, params["input"][0]["text"]), ensure_ascii=False)
+        prompt = params["input"][0]["text"]
+        researching = thread["sandbox"] == "read-only" and not prompt.startswith("Revisión independiente")
+        assert thread["web_search"] == ("live" if researching else "disabled"), thread
+        text = json.dumps(answer(thread, prompt), ensure_ascii=False)
         send({"id": mid, "result": {"turn": {"id": "u-" + params["threadId"]}}})
         send({"method": "item/agentMessage/delta", "params": {"threadId": params["threadId"], "delta": text}})
         send({"method": "turn/completed", "params": {"threadId": params["threadId"], "turn": {"status": "completed"}}})

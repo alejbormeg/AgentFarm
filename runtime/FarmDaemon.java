@@ -279,7 +279,7 @@ public class FarmDaemon extends CodexRunner {
     try {
       return provider.equals("claude-code")
           ? claudeTurn(role, prompt)
-          : turn(prompt, role.equals("implement"));
+          : turn(prompt, role);
     } finally {
       provider = "codex";
     }
@@ -362,7 +362,7 @@ public class FarmDaemon extends CodexRunner {
     }
   }
 
-  static String turn(String prompt, boolean write) throws Exception {
+  static String turn(String prompt, String role) throws Exception {
     subscriptionIdentity();
     guard();
     events.clear();
@@ -375,7 +375,7 @@ public class FarmDaemon extends CodexRunner {
                 "approvalPolicy",
                 "never",
                 "config",
-                threadConfig(write, mcpTurn)));
+                threadConfig(role, mcpTurn)));
     thread = t.path("thread").path("id").asText();
     session = thread;
     model = t.path("model").asText();
@@ -712,7 +712,7 @@ public class FarmDaemon extends CodexRunner {
   }
 
   /** What a Codex thread may touch: see docs/INSTALLATION.md for what this does not cover. */
-  static Map<String, Object> threadConfig(boolean write, boolean mcpTurn) throws Exception {
+  static Map<String, Object> threadConfig(String role, boolean mcpTurn) throws Exception {
     var config =
         new LinkedHashMap<>(
             io.agentfarm.core.AgentSandbox.codexConfig(
@@ -721,9 +721,9 @@ public class FarmDaemon extends CodexRunner {
                     STATE.toRealPath(),
                     Path.of("/mnt"),
                     checkout.toRealPath(),
-                    write,
+                    role.equals("implement"),
                     io.agentfarm.core.AgentSandbox.hostSockets(System.getenv(), hostUser().split(":")[0]))));
-    config.put("web_search", "live");
+    config.put("web_search", io.agentfarm.core.AgentSandbox.webSearch(role));
     if (mcpTurn)
       config.put("mcp_servers", io.agentfarm.core.McpCatalog.codexConfig(mcpServers, System.getenv()));
     return config;
