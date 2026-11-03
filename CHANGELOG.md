@@ -4,6 +4,10 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — avisos del panel comprobados en navegador
+
+- El smoke comprueba los avisos de ejecutor con otra versión, de ejecutor sin aislamiento y de tareas sobre los mismos archivos, y los cambios entre versiones de una propuesta.
+
 ## Sin publicar — el ejecutor comprueba el aislamiento
 
 - Antes de aceptar trabajo, y cada diez minutos, el ejecutor comprueba con el sandbox real de Codex que las rutas ocultas no se alcanzan. Si falla o no puede saberlo, no acepta tareas y el panel lo avisa.

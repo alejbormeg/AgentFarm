@@ -62,10 +62,13 @@ echo '{"issues": {}, "pulls": {}}' > "$work/gh.json"
 python3 "$e2e/fake_github_api.py" "$api_port" "$work/gh.json" "$work/remote.git" > "$work/api.log" 2>&1 &
 pids+=($!)
 echo e2e-panel-token > "$work/github-token"
+# A known commit for the panel, as an image build gives it, so it can tell an executor is outdated.
+mkdir "$work/build"
+echo e2e-panel-commit > "$work/build/build-commit.txt"
 AGENTFARM_PASSWORD="$password" AGENTFARM_DB="$work/panel/agentfarm.db" PORT="$port" \
   AGENTFARM_USERS_FILE="$work/users.json" \
   AGENTFARM_GITHUB_TOKEN_FILE="$work/github-token" AGENTFARM_GITHUB_API="http://127.0.0.1:$api_port" \
-  java -jar "$root/target/agentfarm.jar" > "$work/panel.log" 2>&1 &
+  java -Xbootclasspath/a:"$work/build" -jar "$root/target/agentfarm.jar" > "$work/panel.log" 2>&1 &
 pids+=($!)
 for _ in $(seq 1 60); do curl -fs -o /dev/null "$panel/api/health" && break; sleep 1; done
 curl -fs "$panel/api/health" > /dev/null || fail "panel did not start"
@@ -270,6 +273,44 @@ print("Stale branch rebuilt on the base: PR", item["pr"], item["sha"][:12])
 PY
 git -C "$work/remote.git" merge-base --is-ancestor "$adopt_main" "$branch" || fail "rebuilt branch does not contain the base"
 [[ "$(git -C "$work/remote.git" rev-parse "$branch")" != "$old_head" ]] || fail "branch not replaced"
+
+# The panel's notices, in the browser. They need the state this run has reached.
+if [[ -n "${E2E_CHROME:-}" ]]; then
+  item=e2e-request-overlap
+  owner /work '{"request_id":"e2e-request-overlap","repository":"e2e/demo","title":"Añadir otro saludo","request":"Crea greeting.txt con otro saludo."}' > /dev/null
+  wait_for proposed 60
+  owner /work/$item/actions/implement '{"version":1}' > /dev/null
+  wait_for review 150
+  overlaps=0
+  for _ in $(seq 1 45); do
+    overlaps=$(curl -fs -u "admin:$password" "$panel/api/evidence/$item" | python3 -c 'import json,sys;print(len(json.load(sys.stdin)["overlaps"]))')
+    [[ "$overlaps" != 0 ]] && break
+    sleep 2
+  done
+  [[ "$overlaps" != 0 ]] || fail "the panel did not see two tasks on the same files"
+  # A slot of this node with another commit and a broken sandbox; a warning only lasts while it reports.
+  node_jar="$work/node-cookies"
+  node_csrf=$(curl -fs -H "Authorization: Bearer $(cat "$work/state/node-token")" -c "$node_jar" -b "$node_jar" "$panel/api/csrf" | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
+  (
+    while :; do
+      curl -fs -o /dev/null -H "Authorization: Bearer $(cat "$work/state/node-token")" -H "X-CSRF-TOKEN: $node_csrf" \
+        -c "$node_jar" -b "$node_jar" -H 'Content-Type: application/json' \
+        -X POST "$panel/api/runtime/observations" \
+        -d '{"snapshot":{"node":"e2e-node","executor":"e2e-node-s9","build":"deadbeef","sandbox_failure":"EXPUESTO /ruta"},"events":[]}' || true
+      sleep 3
+    done
+  ) &
+  reporter=$!
+  pids+=($reporter)
+  for _ in $(seq 1 10); do
+    curl -fs -u "admin:$password" "$panel/api/runtime" | python3 -c 'import json,sys;sys.exit(0 if json.load(sys.stdin)["unisolated_executors"] else 1)' && break
+    sleep 1
+  done
+  SMOKE_NOTICES=1 CHROME="$E2E_CHROME" node "$root/tests/ui/smoke.mjs" "$panel" "$password" || fail "browser notices"
+  kill "$reporter" 2>/dev/null || true
+else
+  echo "Browser notices skipped: set E2E_CHROME to a Chrome binary"
+fi
 
 # The last stretch: the panel verifies the candidate, refuses another SHA and integrates this one.
 item=e2e-request-adopt

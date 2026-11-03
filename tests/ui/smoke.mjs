@@ -105,57 +105,82 @@ const views = {
   governance: "Los Siete Mandamientos",
 };
 
-try {
+// The notices need a state only the end of the e2e reaches: an outdated executor, one with a broken
+// sandbox, two tasks on the same files and a corrected proposal.
+const checkNotices = async () => {
   await login("admin", password);
-  for (const [view, marker] of Object.entries(views)) {
-    exceptions.length = 0;
-    await go("/" + view);
-    check(await until(() => visible(marker)), `${view} shows "${marker}"`);
-    check(exceptions.length === 0, `${view} throws nothing ${exceptions.slice(0, 2).join(" | ")}`);
-    const errors = await shownErrors();
-    check(errors.length === 0, `${view} shows no error ${errors.join(" | ")}`);
-  }
-
-  // A card opens its task in the drawer, by deep link too, and closing returns the address.
   await go("/overview");
-  const opened = await until(() =>
-    js(`(()=>{const c=${all}.find(e=>e.tagName==='BUTTON'&&e.dataset.task);if(!c)return false;c.click();return true})()`),
+  check(await until(() => visible("Ejecutor con otra versión que el panel: e2e-node-s9")), "the inbox warns about an outdated executor");
+  check(
+    await until(() => visible("El ejecutor e2e-node-s9 no acepta trabajo: el aislamiento de los agentes no funciona")),
+    "the inbox warns about a broken sandbox",
   );
-  check(opened, "the inbox lists a task card");
-  check(await until(() => js(`location.search.includes('tarea=')`)), "opening a card sets ?tarea=");
-  check(await until(() => js(`${all}.some(e=>e.tagName==='DIALOG'&&e.open)`)), "the task opens in the drawer");
-  const link = await js("location.pathname+location.search");
-  await go(link);
-  check(await until(() => js(`${all}.some(e=>e.tagName==='DIALOG'&&e.open)`)), "the deep link reopens the task");
-  check(await until(() => visible("Mandamientos")), "the task shows its commandments");
-  check(await until(() => visible("La CI del commit pasó entera.")), "the task reports the CI the panel read");
+  await go("/overview?tarea=e2e-request-overlap");
+  check(await until(() => visible("Toca los mismos archivos que")), "a task warns about another one on the same files");
+  await go("/overview?tarea=e2e-request-adopt");
+  check(await until(() => visible("Cambios respecto a la versión anterior")), "a corrected proposal lists what changed");
+  await js(`${all}.find(e=>e.tagName==='SUMMARY'&&e.textContent.startsWith('Cambios respecto')).click()`);
+  check(await until(() => visible("Antes:")), "opening the changes shows the earlier value");
+  const errors = await shownErrors();
+  check(errors.length === 0, `the notices show no error ${errors.join(" | ")}`);
+  check(exceptions.length === 0, `the notices throw nothing ${exceptions.slice(0, 2).join(" | ")}`);
+};
 
-  // Agentes re-fetches itself; each render must not add another poll.
-  await go("/overview");
-  check(await until(() => visible("La cosecha de esta semana")), "the inbox shows the week");
-  check(await visible("Adoptar repositorio"), "an owner can adopt a repository");
-  await go("/agents");
-  await until(() => visible("Nodos dirigentes"));
-  await sleep(11000);
-  posts = [];
-  await sleep(16000);
-  const polls = posts.filter((p) => p.includes("agent-status")).length;
-  check(polls >= 2 && polls <= 5, `agents polls about every 5 s (${polls} in 16 s)`);
-  await go("/tasks");
-  await sleep(1000);
-  posts = [];
-  await sleep(6000);
-  check(!posts.some((p) => p.includes("agent-status")), "polling stops after leaving agents");
+try {
+  if (process.env.SMOKE_NOTICES) {
+    await checkNotices();
+  } else {
+    await login("admin", password);
+    for (const [view, marker] of Object.entries(views)) {
+      exceptions.length = 0;
+      await go("/" + view);
+      check(await until(() => visible(marker)), `${view} shows "${marker}"`);
+      check(exceptions.length === 0, `${view} throws nothing ${exceptions.slice(0, 2).join(" | ")}`);
+      const errors = await shownErrors();
+      check(errors.length === 0, `${view} shows no error ${errors.join(" | ")}`);
+    }
 
-  if (observerPassword) {
-    await login("oscar", observerPassword);
-    exceptions.length = 0;
-    await go("/governance");
-    check(await until(() => visible("Los Siete Mandamientos")), "an observer can read governance");
-    check(!(await visible("Pausar agentes")), "an observer sees no pause button");
-    check(!(await visible("Nueva tarea")), "an observer cannot start a task");
-    check(!(await visible("Adoptar repositorio")), "an observer cannot adopt a repository");
-    check(exceptions.length === 0, "observer view throws nothing");
+    // A card opens its task in the drawer, by deep link too, and closing returns the address.
+    await go("/overview");
+    const opened = await until(() =>
+      js(`(()=>{const c=${all}.find(e=>e.tagName==='BUTTON'&&e.dataset.task);if(!c)return false;c.click();return true})()`),
+    );
+    check(opened, "the inbox lists a task card");
+    check(await until(() => js(`location.search.includes('tarea=')`)), "opening a card sets ?tarea=");
+    check(await until(() => js(`${all}.some(e=>e.tagName==='DIALOG'&&e.open)`)), "the task opens in the drawer");
+    const link = await js("location.pathname+location.search");
+    await go(link);
+    check(await until(() => js(`${all}.some(e=>e.tagName==='DIALOG'&&e.open)`)), "the deep link reopens the task");
+    check(await until(() => visible("Mandamientos")), "the task shows its commandments");
+    check(await until(() => visible("La CI del commit pasó entera.")), "the task reports the CI the panel read");
+
+    // Agentes re-fetches itself; each render must not add another poll.
+    await go("/overview");
+    check(await until(() => visible("La cosecha de esta semana")), "the inbox shows the week");
+    check(await visible("Adoptar repositorio"), "an owner can adopt a repository");
+    await go("/agents");
+    await until(() => visible("Nodos dirigentes"));
+    await sleep(11000);
+    posts = [];
+    await sleep(16000);
+    const polls = posts.filter((p) => p.includes("agent-status")).length;
+    check(polls >= 2 && polls <= 5, `agents polls about every 5 s (${polls} in 16 s)`);
+    await go("/tasks");
+    await sleep(1000);
+    posts = [];
+    await sleep(6000);
+    check(!posts.some((p) => p.includes("agent-status")), "polling stops after leaving agents");
+
+    if (observerPassword) {
+      await login("oscar", observerPassword);
+      exceptions.length = 0;
+      await go("/governance");
+      check(await until(() => visible("Los Siete Mandamientos")), "an observer can read governance");
+      check(!(await visible("Pausar agentes")), "an observer sees no pause button");
+      check(!(await visible("Nueva tarea")), "an observer cannot start a task");
+      check(!(await visible("Adoptar repositorio")), "an observer cannot adopt a repository");
+      check(exceptions.length === 0, "observer view throws nothing");
+    }
   }
 } finally {
   socket.close();

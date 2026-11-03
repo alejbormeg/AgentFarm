@@ -35,7 +35,7 @@ Lo pendiente vive en las issues de GitHub, no en listas de la documentación.
 | Si tocas | Ejecuta |
 | --- | --- |
 | Cualquier cosa de Java | `./mvnw -B -ntp verify` |
-| `runtime/` o una clase de `core` que use el ejecutor | además `bash runtime/verify.sh` y `bash tests/e2e/run.sh` |
+| `runtime/` o una clase de `core` que use el ejecutor | además `bash runtime/verify.sh`, `bash runtime/package.sh` y `bash tests/e2e/run.sh` |
 | Interfaz | además `E2E_CHROME=google-chrome bash tests/e2e/run.sh`, que lanza el smoke de `tests/ui/smoke.mjs`, y mírala en un navegador |
 | `agentfarm`, credenciales | además `bash tests/credentials.sh` y `bash tests/ops.sh` |
 | `compose.yaml`, `Dockerfile`, copias | además `bash tests/compose_backup.sh`, en un proyecto de Compose desechable |
