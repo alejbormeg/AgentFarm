@@ -1060,6 +1060,8 @@ public class FarmDaemon extends CodexRunner {
       throw new IOException("Las pruebas han cambiado el checkout; revisar antes de publicar");
     var quality = runQuality(p, baseSha, sha);
     var regression = proveRegression(item, p, baseSha, sha, unit, integration);
+    // Before the review, so the reviewer judges what the platform checked rather than asking for it.
+    var profileValidation = candidateProfile(baseSha, sha);
     active = REVIEWER;
     phase = "reviewing";
     var reviewSkills = skills("review", namedSkills(p));
@@ -1077,6 +1079,15 @@ public class FarmDaemon extends CodexRunner {
                                 sha,
                                 "proposal",
                                 p.toString(),
+                                "platform",
+                                JSON.writeValueAsString(
+                                    obj(
+                                        "profile_validation",
+                                        profileValidation,
+                                        "quality",
+                                        quality,
+                                        "regression",
+                                        regression)),
                                 "tests",
                                 unit + " " + integration)))
                     .text()
@@ -1117,7 +1128,6 @@ public class FarmDaemon extends CodexRunner {
       pass = false;
       event("error", "El candidato cambia las reglas del proyecto: " + protectedFiles);
     }
-    var profileValidation = candidateProfile(baseSha, sha);
     if (profileValidation.get("status").equals("failed")) {
       pass = false;
       event("error", "agentfarm.yaml no es válido: " + profileValidation.get("error"));
