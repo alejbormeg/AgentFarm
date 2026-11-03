@@ -7,6 +7,9 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 ## Sin publicar — avisos del panel comprobados en navegador
 
 - El smoke comprueba los avisos de ejecutor con otra versión, de ejecutor sin aislamiento y de tareas sobre los mismos archivos, y los cambios entre versiones de una propuesta.
+## Sin publicar — evidencias legibles
+
+- El expediente muestra el resultado, el comando y la salida de cada prueba, y los comentarios de la revisión, en vez de JSON. El registro completo sigue a un clic.
 
 ## Sin publicar — el ejecutor comprueba el aislamiento
 
