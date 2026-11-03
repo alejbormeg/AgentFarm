@@ -35,7 +35,7 @@ public class GitHubReader {
   }
 
   public JsonNode get(String repo, String path) throws Exception {
-    if (!repo.matches("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+") || !path.startsWith("/"))
+    if (!repo.matches("[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+") || !(path.isEmpty() || path.startsWith("/")))
       throw new IllegalArgumentException("Invalid GitHub path");
     var response =
         http.send(
