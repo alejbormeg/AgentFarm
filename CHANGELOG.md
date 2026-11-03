@@ -4,6 +4,11 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — criterios acreditables y revisión informada
+
+- Los agentes proponen solo criterios que la plataforma puede acreditar (`research.v4`).
+- El revisor recibe las comprobaciones de la plataforma y no bloquea por criterios manuales (`review.v3`).
+
 ## Sin publicar — adopción probada en un repositorio real
 
 - Un `agentfarm.yaml` que el parser rechaza deja la PR en borrador, en vez de romper las tareas siguientes.

@@ -123,7 +123,7 @@ assert len(item["sha"]) == 40 and item["branch"].startswith("agentfarm/"), item
 assert evidence["passed"] is True, evidence
 assert evidence["unit"]["status"] == "passed" and evidence["integration"]["status"] == "passed", evidence
 assert evidence["review"]["passed"] is True
-assert evidence["prompts"]["review"]["id"] == "review.v2"
+assert evidence["prompts"]["review"]["id"] == "review.v3"
 pulls = json.load(open(gh))["pulls"]
 assert pulls["1"]["draft"] is False and pulls["1"]["head"] == item["branch"], pulls
 print("E2E OK:", item["state"], "PR", item["pr"], item["sha"][:12], "sandbox", evidence["unit"].get("sandbox", {}).get("mode", "host"))

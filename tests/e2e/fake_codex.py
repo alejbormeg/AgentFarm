@@ -85,6 +85,7 @@ def adoption(thread, prompt):
             f.write("adoptado\n")
         return {"summary": "Adoptado", "as_is": ADOPT["as_is"], "to_be": ADOPT["to_be"], "limitations": "Ninguna"}
     if prompt.startswith("Revisión independiente"):
+        assert '"profile_validation"' in prompt and "los decide el operador" in prompt, "the reviewer sees the platform checks"
         return {"passed": True, "findings": "Sin hallazgos bloqueantes."}
     return dict(ADOPT, summary="Perfil corregido") if "usa el formato real" in prompt else ADOPT
 
