@@ -93,6 +93,8 @@ public class SecurityConfig {
             a ->
                 a.requestMatchers("/login", "/error", "/api/health")
                     .permitAll()
+                    .requestMatchers("/github-app/**")
+                    .hasRole("OWNER")
                     // Executor (node credential) operations; NodeTokenFilter narrows them further.
                     .requestMatchers(
                         HttpMethod.POST,

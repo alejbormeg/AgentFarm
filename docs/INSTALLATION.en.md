@@ -36,7 +36,7 @@ The IDs must match the panel's records. `./executor` tries it in the foreground 
 
 The executor uses a revocable node token and keeps CSRF. Its API can't approve, create credentials, change policies or claim merge orders.
 
-Set the panel's GitHub credential with `./agentfarm github-token` or `github-app` ([which one to use](TEAM.md)). The panel performs merges with it, so never mount it in a worker directory. Without it, merge orders are not processed.
+Set the panel's GitHub credential in **Governance → Connect GitHub**, or with `./agentfarm github-token` or `github-app` ([which one to use](TEAM.md)). The panel performs merges with it, so never mount it in a worker directory. Without it, merge orders are not processed.
 
 **What agents can read:** Codex's read-only mode reaches the whole disk. The executor applies a permission profile that hides `~/.config`, `~/.ssh`, `~/.aws`, `~/.docker`, `~/.codex/auth.json`, the executor's state, backups, other workspaces, `/mnt`, container sockets and your user's session directory, and turns the network off. Before accepting work, and every ten minutes, the executor checks with the real sandbox that those paths can't be reached. If that fails or it can't tell, it accepts no tasks and the panel says so. `bash tests/codex_sandbox.sh` is a fuller check, useful when you update Codex. This is a deny list: the rest of your files, such as other projects in your home, stay readable. Needs Codex CLI 0.166 or later. A dedicated user for the executor is still safer: see the [threat model](SECURITY.md).
 
