@@ -4,6 +4,11 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — correcciones sobre una base que ha cambiado
+
+- Si la rama base avanzó, corregir una tarea rehace el candidato desde la base y reemplaza su rama, sobre la misma PR.
+- El workflow de plataforma no cuenta como cambio fuera del perfil.
+
 ## Sin publicar — adopción probada en un repositorio real
 
 - Un `agentfarm.yaml` que el parser rechaza deja la PR en borrador, en vez de romper las tareas siguientes.
