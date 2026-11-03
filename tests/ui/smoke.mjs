@@ -2,6 +2,7 @@
 // Drives the real panel in headless Chrome: unit tests can't see a view that renders blank.
 // Usage: CHROME=/path/to/chrome node tests/ui/smoke.mjs <panel-url> <admin-password> [observer-password]
 import { spawn } from "node:child_process";
+import { createHmac } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -97,6 +98,20 @@ const login = async (user, secret) => {
 const shownErrors = () =>
   js(`${all}.filter(e=>e.tagName==='P'&&e.classList.contains('error')&&e.getBoundingClientRect().width>0).map(e=>e.textContent).filter(Boolean)`);
 
+// RFC 6238, independently of the panel's own code.
+const totp = (secret, step) => {
+  let bits = "";
+  for (const c of secret) bits += "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567".indexOf(c).toString(2).padStart(5, "0");
+  const key = Buffer.from(bits.match(/.{8}/g).map((b) => parseInt(b, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(step));
+  const hash = createHmac("sha1", key).update(counter).digest();
+  const offset = hash[hash.length - 1] & 15;
+  return String((hash.readUInt32BE(offset) & 0x7fffffff) % 1000000).padStart(6, "0");
+};
+const clickButton = (text) =>
+  js(`(()=>{const b=${all}.find(e=>e.tagName==='BUTTON'&&e.textContent.trim()===${JSON.stringify(text)}&&e.getBoundingClientRect().width>0);if(!b)return false;b.click();return true})()`);
+
 const views = {
   overview: "Espera tu decisión",
   tasks: "Molinos · iniciativas",
@@ -177,10 +192,32 @@ try {
       exceptions.length = 0;
       await go("/governance");
       check(await until(() => visible("Los Siete Mandamientos")), "an observer can read governance");
+    check(await visible("Segundo factor"), "an observer can protect their own account");
       check(!(await visible("Pausar agentes")), "an observer sees no pause button");
       check(!(await visible("Nueva tarea")), "an observer cannot start a task");
       check(!(await visible("Adoptar repositorio")), "an observer cannot adopt a repository");
       check(exceptions.length === 0, "observer view throws nothing");
+
+    // The second factor, from the drawer to the next sign-in.
+    await clickButton("Segundo factor");
+    check(await until(() => visible("Sin activar en tu cuenta.")), "the second factor starts inactive");
+    await clickButton("Generar clave");
+    check(await until(() => visible("Solo se enseña ahora")), "enrolling shows the key once");
+    const secret = await js(`${all}.find(e=>e.tagName==='PRE'&&/^[A-Z2-7]{32}$/.test(e.textContent)).textContent`);
+    const step = Math.floor(Date.now() / 30000);
+    const typeCode = (code) =>
+      js(`(()=>{const i=${all}.find(e=>e.tagName==='INPUT'&&e.autocomplete==='one-time-code'&&e.getBoundingClientRect().width>0);i.value=${JSON.stringify(code)};return true})()`);
+    await typeCode(totp(secret, step));
+    await clickButton("Confirmar código");
+    check(await until(() => visible("Activo en tu cuenta.")), "a code from the app activates it");
+    await login("oscar", observerPassword);
+    check(await until(() => visible("Escribe el código de seis cifras")), "the next sign-in asks for the code");
+    await go("/governance");
+    check(await until(() => js(`location.pathname==='/login/2fa'`)), "the panel stays closed without the code");
+    await js(`document.querySelector('[name=code]').value=${JSON.stringify(totp(secret, step + 1))};document.querySelector('form').submit()`);
+    await until(() => js(`location.pathname!=='/login/2fa'`));
+    await go("/governance");
+    check(await until(() => visible("Los Siete Mandamientos")), "the right code opens the panel");
     }
   }
 } finally {
