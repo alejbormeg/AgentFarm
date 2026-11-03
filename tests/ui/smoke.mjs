@@ -125,6 +125,7 @@ const checkNotices = async () => {
   );
   await go("/overview?tarea=e2e-request-overlap");
   check(await until(() => visible("Toca los mismos archivos que")), "a task warns about another one on the same files");
+  check(await until(() => visible("AC-3 quizá no se pueda acreditar")), "a doubtful criterion is flagged before approving");
   await go("/overview?tarea=e2e-request-adopt");
   check(await until(() => visible("Cambios respecto a la versión anterior")), "a corrected proposal lists what changed");
   await js(`${all}.find(e=>e.tagName==='SUMMARY'&&e.textContent.startsWith('Cambios respecto')).click()`);

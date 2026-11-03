@@ -10,6 +10,9 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 ## Sin publicar — evidencias legibles
 
 - El expediente muestra el resultado, el comando y la salida de cada prueba, y los comentarios de la revisión, en vez de JSON. El registro completo sigue a un clic.
+## Sin publicar — avisos de criterios dudosos
+
+- Al recibir una propuesta, el panel avisa de los criterios de test que piden algo que las pruebas quizá no puedan demostrar, como la identidad de un binario, o que se cierran con un comando que siempre pasa. Avisa sin rechazar, para no perder un turno de investigación.
 
 ## Sin publicar — el ejecutor comprueba el aislamiento
 
