@@ -38,7 +38,7 @@ public class TelemetryService {
     var snapshot=n.path("snapshot");
     if(!snapshot.isObject())throw new IllegalArgumentException("Snapshot required");
     var accepted=MAPPER.createObjectNode();
-    for(String k:List.of("provider","account","node","executor","host","distro","repository","branch","run_state","phase","cli_version","build","sandbox_failure","model","session","observed_at","last_event_at","supervisor_pid","codex_pid","code_host_pid","implementation_done","review_done","quota","changed_files","files_count","source","active_worker","executor_available","task_id","task_title","github_error")) {
+    for(String k:List.of("provider","account","node","executor","host","distro","repository","branch","run_state","phase","cli_version","build","sandbox_failure","isolation_notice","model","session","observed_at","last_event_at","supervisor_pid","codex_pid","code_host_pid","implementation_done","review_done","quota","changed_files","files_count","source","active_worker","executor_available","task_id","task_title","github_error")) {
       var v=snapshot.get(k);if(v==null)continue;
       if(encode(v).length()>50000)throw new IllegalArgumentException("Snapshot field too large");
       if(v.isTextual())accepted.put(k,clean(v.asText()));else accepted.set(k,v);
@@ -80,12 +80,16 @@ public class TelemetryService {
         if(BuildInfo.mismatch(BuildInfo.commit(),parse(r.get("payload").toString()).path("build").asText(null)))outdated.add(r.get("executor"));
       }
       var unisolated=new ArrayList<Object>();
+      var notices=new ArrayList<Object>();
       for(var r:rows(c,"SELECT * FROM runtime_executors ORDER BY executor")){
         long age=now-((Number)r.get("received_at")).longValue();
-        String problem=parse(r.get("payload").toString()).path("sandbox_failure").asText("");
+        var reported=parse(r.get("payload").toString());
+        String problem=reported.path("sandbox_failure").asText("");
         if(age>=0&&age<=12&&!problem.isBlank())unisolated.add(obj("executor",r.get("executor"),"problem",problem));
+        String notice=reported.path("isolation_notice").asText("");
+        if(age>=0&&age<=12&&!notice.isBlank())notices.add(obj("executor",r.get("executor"),"notice",notice));
       }
-      var result=obj("connected",false,"fresh",false,"age_seconds",null,"snapshot",Map.of(),"outdated_executors",outdated,"unisolated_executors",unisolated,"executors",executors,"events",rows(c,"SELECT * FROM (SELECT id,at,worker,kind,text FROM runtime_events ORDER BY id DESC LIMIT 200) ORDER BY id"));
+      var result=obj("connected",false,"fresh",false,"age_seconds",null,"snapshot",Map.of(),"outdated_executors",outdated,"unisolated_executors",unisolated,"isolation_notices",notices,"executors",executors,"events",rows(c,"SELECT * FROM (SELECT id,at,worker,kind,text FROM runtime_events ORDER BY id DESC LIMIT 200) ORDER BY id"));
       if(row!=null){
         long age=clock.instant().getEpochSecond()-((Number)row.get("received_at")).longValue();
         result.put("connected",true);result.put("fresh",age>=0&&age<=12);

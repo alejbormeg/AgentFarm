@@ -316,7 +316,12 @@ public class FarmDaemon extends CodexRunner {
       var b =
           new ProcessBuilder(
                   io.agentfarm.core.ClaudeCodeAdapter.command(
-                      CLAUDE, role, CLAUDE_MODEL, names, mcpConfig == null ? null : mcpConfig.toString()))
+                      CLAUDE,
+                      role,
+                      CLAUDE_MODEL,
+                      names,
+                      mcpConfig == null ? null : mcpConfig.toString(),
+                      io.agentfarm.core.AgentSandbox.hiddenPaths(agentProfile(checkout, role.equals("implement")))))
               .directory(checkout.toFile())
               .redirectErrorStream(false);
       for (String k : List.of("OPENAI_API_KEY", "CODEX_API_KEY", "GH_TOKEN", "GITHUB_TOKEN"))
@@ -722,6 +727,13 @@ public class FarmDaemon extends CodexRunner {
             write,
             io.agentfarm.core.AgentSandbox.hostSockets(System.getenv(), hostUser().split(":")[0])));
   }
+
+  /** Rules, not a sandbox, and never exercised against a real account: the owner should know. */
+  static final java.util.function.Supplier<String> CLAUDE_NOTICE =
+      () ->
+          List.of("research", "implement", "review").stream().anyMatch(r -> providerFor(r).equals("claude-code"))
+              ? "Claude Code solo tiene reglas de bloqueo, sin aislamiento del sistema, y no se han probado con una cuenta real."
+              : "";
 
   static volatile String sandboxFailure = "";
   static long sandboxCheckedAt;
@@ -1607,6 +1619,8 @@ public class FarmDaemon extends CodexRunner {
             io.agentfarm.core.BuildInfo.commit(),
             "sandbox_failure",
             sandboxFailure,
+            "isolation_notice",
+            CLAUDE_NOTICE.get(),
             "supervisor_pid",
             ProcessHandle.current().pid(),
             "executor_available",

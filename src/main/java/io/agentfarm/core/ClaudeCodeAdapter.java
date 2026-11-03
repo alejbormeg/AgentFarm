@@ -80,9 +80,28 @@ public final class ClaudeCodeAdapter implements AgentAdapter {
     return command(binary, role, model, List.of(), null);
   }
 
-  /** With MCP servers (research and review only): their tools are allowed by server prefix. */
+  /**
+   * Claude Code has no system sandbox here: its tools are only held back by these rules, the same
+   * paths the Codex profile hides. They also cover what its tools can edit.
+   */
+  public static String denyRules(List<String> hidden) {
+    var deny = new ArrayList<String>();
+    for (String path : hidden)
+      for (String tool : List.of("Read", "Edit")) {
+        deny.add(tool + "(/" + path + ")");
+        deny.add(tool + "(/" + path + "/**)");
+      }
+    return Json.encode(Map.of("permissions", Map.of("deny", deny)));
+  }
+
   public static List<String> command(
       String binary, String role, String model, List<String> mcp, String mcpConfig) {
+    return command(binary, role, model, mcp, mcpConfig, List.of());
+  }
+
+  /** With MCP servers (research and review only): their tools are allowed by server prefix. */
+  public static List<String> command(
+      String binary, String role, String model, List<String> mcp, String mcpConfig, List<String> hidden) {
     String tools = TOOLS.get(role);
     if (tools == null) throw new IllegalArgumentException("Unknown Claude Code role");
     if (!mcp.isEmpty()) {
@@ -103,6 +122,11 @@ public final class ClaudeCodeAdapter implements AgentAdapter {
                 tools,
                 "--disallowedTools",
                 "Bash",
+                // A repository's own settings could grant tools or run hooks: they are agents' files.
+                "--setting-sources",
+                "user",
+                "--settings",
+                denyRules(hidden),
                 "--max-turns",
                 "80"));
     if (!mcp.isEmpty()) argv.addAll(List.of("--mcp-config", mcpConfig, "--strict-mcp-config"));
