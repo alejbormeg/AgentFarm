@@ -21,6 +21,14 @@ class SchemaMigrationsTest {
         new NodeCredentials(store, Clock.systemUTC()));
     int latest = SchemaMigrations.ALL.getLast().version();
     assertEquals(latest, SchemaMigrations.version(store));
+    // The services' baseline runs on every start, also over a schema that later versions changed.
+    var reopened = new Store(dir.resolve("db").toString());
+    new SchemaMigrations(
+        reopened,
+        new WorkflowService(reopened, Clock.systemUTC()),
+        new TelemetryService(reopened, Clock.systemUTC()),
+        new NodeCredentials(reopened, Clock.systemUTC()));
+    assertEquals(latest, SchemaMigrations.version(reopened));
     assertEquals(latest, SchemaMigrations.apply(store, SchemaMigrations.ALL), "idempotent");
     var newer = new java.util.ArrayList<>(SchemaMigrations.ALL);
     newer.add(new Migration(latest + 1, "future", List.of("CREATE TABLE future(x)")));
