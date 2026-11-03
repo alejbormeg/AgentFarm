@@ -4,6 +4,10 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — modelo de amenazas
+
+- `docs/SECURITY.md` recoge qué se protege, los riesgos que quedan y por qué el camino para Docker es ejecutarlo sin root. Falta una revisión independiente.
+
 ## Sin publicar — avisos del panel comprobados en navegador
 
 - El smoke comprueba los avisos de ejecutor con otra versión, de ejecutor sin aislamiento y de tareas sobre los mismos archivos, y los cambios entre versiones de una propuesta.
