@@ -37,6 +37,11 @@ public class HealthApi {
     return Map.of("user", auth.getName(), "role", role, "demo", demo);
   }
 
+  @GetMapping("/api/version")
+  public Map<String, Object> version() {
+    return Map.of("commit", io.agentfarm.core.BuildInfo.commit());
+  }
+
   @GetMapping("/api/health")
   public ResponseEntity<Object> health(java.security.Principal p) {
     Map<String, Object> counts;

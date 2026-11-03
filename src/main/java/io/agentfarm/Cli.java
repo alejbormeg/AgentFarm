@@ -28,6 +28,22 @@ public final class Cli {
                 Path.of(options.getOrDefault("repo", ".")),
                 options.getOrDefault("panel", "http://localhost:8080"),
                 Boolean.parseBoolean(options.getOrDefault("run-tests", "false")));
+      } else if (mode.equals("github-check")) {
+        var credentials =
+            new GitHubCredentials(
+                env("AGENTFARM_GITHUB_TOKEN_FILE"),
+                env("AGENTFARM_GITHUB_APP_ID"),
+                env("AGENTFARM_GITHUB_APP_KEY_FILE"),
+                env("AGENTFARM_GITHUB_INSTALLATION_ID"));
+        if (!credentials.configured())
+          throw new IllegalArgumentException("El panel no tiene credencial de GitHub: ./agentfarm github-token");
+        var check =
+            GitHubAccess.check(credentials.kind(), required(options, "repo"), new GitHubReader(credentials)::get);
+        result = check;
+        if (check.get("state").equals("failed")) {
+          System.out.println(encode(result));
+          return 1;
+        }
       } else if (mode.equals("profile")) {
         result = ProjectProfile.load(Path.of(required(options, "file"))).summary();
       } else if (mode.equals("memory")) {
@@ -120,5 +136,9 @@ public final class Cli {
     String value = options.get(key);
     if (value == null) throw new IllegalArgumentException("Required option: --" + key);
     return value;
+  }
+
+  private static String env(String name) {
+    return System.getenv().getOrDefault(name, "");
   }
 }

@@ -24,6 +24,18 @@ La auditoría registra el nombre de cada persona. El panel oculta las acciones
 que tu rol no permite (`GET /api/me`); el servidor las rechaza igualmente.
 El fichero solo contiene hashes bcrypt. 2FA queda pendiente.
 
+## Credencial de GitHub del panel
+Comprueba cualquiera de ellas con `./agentfarm github-check owner/repo`.
+
+| Credencial | Sirve | Alcance |
+| --- | --- | --- |
+| GitHub App | Sí, recomendada | Solo los repositorios donde la instales; credenciales de corta duración |
+| Token clásico con `repo` | Sí | **Todos** tus repositorios privados |
+| Token de grano fino | **No** | No puede leer check runs: GitHub no ofrece `checks=read` a los tokens, y el panel no podría integrar |
+
+Un token se guarda con `./agentfarm github-token`, que lo pide sin mostrarlo. No lo pegues en
+chats ni en comandos. Queda en el volumen del panel, fuera del alcance de los agentes.
+
 ## GitHub App (recomendado)
 El panel usa GitHub para disparadores, diffs e integración. En vez de un token
 personal (`AGENTFARM_GITHUB_TOKEN_FILE`), crea una GitHub App instalada solo en
@@ -33,12 +45,20 @@ tus repositorios con permisos de repositorio:
   Issues: read, Actions: read, Checks: read, Commit statuses: read,
   Dependabot alerts: read.
 
+Pasos:
+
+1. En [GitHub Apps](https://github.com/settings/apps/new) crea la App, desactiva **Webhook → Active** y marca los permisos anteriores.
+2. Apunta el **App ID** y pulsa **Generate a private key**.
+3. Con **Install App**, instálala solo en los repositorios que quieras. El número final de esa URL es el **installation ID**.
+4. Convierte la clave y configúrala:
+
 ```bash
 openssl pkcs8 -topk8 -nocrypt -in app.private-key.pem -out app-pkcs8.pem && chmod 600 app-pkcs8.pem
-AGENTFARM_GITHUB_APP_ID=123456
-AGENTFARM_GITHUB_APP_KEY_FILE=/ruta/app-pkcs8.pem
-AGENTFARM_GITHUB_INSTALLATION_ID=7890123
+./agentfarm github-app 123456 7890123 app-pkcs8.pem
+./agentfarm github-check owner/repo
 ```
+
+Sin Compose, define `AGENTFARM_GITHUB_APP_ID`, `AGENTFARM_GITHUB_APP_KEY_FILE` y `AGENTFARM_GITHUB_INSTALLATION_ID`.
 
 El panel firma un JWT RS256 de 10 minutos, obtiene un token de instalación y lo
 reutiliza hasta 5 minutos antes de caducar. El ejecutor WSL sigue usando su
