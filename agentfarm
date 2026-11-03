@@ -2,7 +2,7 @@
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 command="${1:-help}"
-usage="Uso: ./agentfarm {help|github-token|github-app <id> <instalación> <clave.pem>|github-check <owner/repo>|up|demo|password|stop|logs|status|doctor|profile|backup [destino]|restore [--yes] <copia>}"
+usage="Uso: ./agentfarm {help|github-token|github-app <id> <instalación> <clave.pem>|github-check <owner/repo>|2fa-reset <usuario>|up|demo|password|stop|logs|status|doctor|profile|backup [destino]|restore [--yes] <copia>}"
 java_in_image=(java -Dorg.sqlite.lib.path=/app/native -jar /app/agentfarm.jar)
 
 run_jar() {
@@ -224,6 +224,11 @@ case "$command" in
       "$app_id" "$installation" >> .env
     docker compose up -d --wait --no-build agentfarm
     echo "GitHub App configurada. Compruébala con: ./agentfarm github-check owner/repo"
+    ;;
+  2fa-reset)
+    [[ -n "${2:-}" ]] || { echo "Uso: ./agentfarm 2fa-reset <usuario>" >&2; exit 2; }
+    docker compose exec -T agentfarm "${java_in_image[@]}" 2fa-reset --user "$2"
+    printf '\n'
     ;;
   github-check)
     [[ -n "${2:-}" ]] || { echo "Uso: ./agentfarm github-check owner/repo" >&2; exit 2; }

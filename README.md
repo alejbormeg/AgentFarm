@@ -62,7 +62,7 @@ esperado antes de aprobar. [Equipo](docs/TEAM.md)
 Señales de producción: errores nuevos de Sentry abren propuestas, y cada proyecto
 puede dar a sus agentes herramientas MCP aprobadas por el operador. [Automatización](docs/AUTOMATION.md)
 
-**Todavía no:** coordinación entre varios nodos y 2FA. Ver la [segunda auditoría](docs/AUDIT-2026-11.md).
+**Todavía no:** coordinación entre varios nodos. Ver la [segunda auditoría](docs/AUDIT-2026-11.md).
 La hoja de ruta está en [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Empezar en 3 pasos

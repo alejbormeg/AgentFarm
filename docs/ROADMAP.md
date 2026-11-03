@@ -62,7 +62,7 @@ Origen: [segunda auditoría](AUDIT-2026-11.md).
 
 | # | Entrega | Criterio de salida |
 | --- | --- | --- |
-| 6.1 ✅ (sin 2FA) | Roles propietario, revisor y observador; 2FA opcional. | Un revisor aprueba propuestas pero no integra. |
+| 6.1 ✅ | Roles propietario, revisor y observador; 2FA opcional. | Un revisor aprueba propuestas pero no integra. |
 | 6.2 ✅ | GitHub App con permisos mínimos por repositorio. | El panel funciona sin token personal. |
 | 6.3 ✅ | Coste esperado por receta antes de aprobar, desde el histórico. | La propuesta muestra el rango de coste observado. |
 
