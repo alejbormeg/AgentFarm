@@ -12,6 +12,25 @@ import java.util.*;
 public final class ProposalShape {
   private ProposalShape() {}
 
+  private static final List<String> COMPARED =
+      List.of(
+          "summary", "acceptance", "unit_test", "integration_test", "setup", "allowed_paths",
+          "criteria", "risks");
+
+  /** What a new version changes in the fields an operator approves, for review at a glance. */
+  public static ArrayNode changes(JsonNode before, JsonNode after) {
+    var result = new ArrayNode(JsonNodeFactory.instance);
+    if (before == null || before.isEmpty()) return result;
+    for (String field : COMPARED) {
+      if (before.path(field).equals(after.path(field))) continue;
+      var change = result.addObject();
+      change.put("field", field);
+      change.set("before", before.path(field));
+      change.set("after", after.path(field));
+    }
+    return result;
+  }
+
   public static void normalize(JsonNode proposal) {
     for (var criterion : proposal.path("criteria")) {
       if (!(criterion instanceof ObjectNode c) || !c.path("method").asText().equals("test")) continue;

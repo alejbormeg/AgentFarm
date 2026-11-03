@@ -4,11 +4,9 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — credenciales y versiones comprobables
+## Sin publicar — los agentes no leen credenciales
 
-- `./agentfarm github-token` y `github-app` guardan la credencial sin mostrarla, y `github-check` prueba los permisos que necesita la integración.
-- `GET /api/version` indica el commit del panel, y el panel avisa si un ejecutor corre otro distinto.
-- `doctor` explica cómo arrancar Docker.
+- Los turnos de Codex ocultan las credenciales del usuario, el estado del ejecutor, las copias, los demás workspaces y los discos montados en `/mnt`.
 
 ## Sin publicar — adopción probada en un repositorio real
 

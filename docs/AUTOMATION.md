@@ -45,6 +45,8 @@ de hasta tres mejoras. Es una tarea normal: la propuesta espera tu aprobación y
 Es la única receta que puede añadir `agentfarm.yaml`; ninguna puede modificarlo.
 El perfil propuesto pasa por el mismo parser que usa el ejecutor: si no carga, la PR queda en borrador.
 Pedir correcciones rehace la adopción desde la rama base y reemplaza su rama.
+Las puertas del nuevo perfil se ejecutan en el contenedor, y sus comandos de pruebas deben ser los aprobados.
+Si el repositorio aún no tiene código, la propuesta usa `N/A: motivo`. El informe avisa de los directorios sin cubrir.
 
 ## Aprobar por lotes y resumen semanal
 **Esta semana**, en la Bandeja, resume lo integrado, lo que está en curso, lo que espera y lo

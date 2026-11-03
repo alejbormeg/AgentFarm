@@ -549,7 +549,7 @@ class FarmConsole extends HTMLElement {
               repository,
               title: "Adoptar " + repository,
               request: "Adopta este repositorio para que los agentes lo mantengan.",
-              recipe: { id: "adopt-repo", version: 1 },
+              recipe: { id: "adopt-repo", version: 2 },
             });
             await api("/automation/triggers", {
               repository,
@@ -1513,6 +1513,14 @@ class FarmConsole extends HTMLElement {
         ci === "failed" || ci === "unavailable" ? "warning" : "muted",
       ),
     );
+    for (const other of d.overlaps || [])
+      box.append(
+        E(
+          "p",
+          "Toca los mismos archivos que «" + other.title + "» (PR #" + other.pr + "): " + other.files.join(", "),
+          "warning",
+        ),
+      );
     if (d.scope_missing) {
       box.append(
         E(
@@ -1989,6 +1997,18 @@ class FarmConsole extends HTMLElement {
       );
     const p = json(w.proposal),
       ev = json(w.evidence);
+    if (p.previous_changes?.length) {
+      const changes = E("details");
+      changes.dataset.key = "changes-" + w.id;
+      changes.append(E("summary", "Cambios respecto a la versión anterior · " + p.previous_changes.length));
+      const text = (value) => (typeof value === "string" ? value : JSON.stringify(value));
+      for (const change of p.previous_changes) {
+        changes.append(E("strong", change.field));
+        changes.append(E("p", "Antes: " + text(change.before), "muted"));
+        changes.append(E("p", "Ahora: " + text(change.after)));
+      }
+      task.append(changes);
+    }
     if (p.project_memory) {
       const memory = p.project_memory,
         box = E("details");

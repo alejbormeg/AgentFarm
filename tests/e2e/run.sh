@@ -56,8 +56,15 @@ git clone -q --bare "$work/seed" "$work/remote.git"
 observer_password=e2e-observer-password
 printf '[{"username":"oscar","role":"observer","password_hash":"{bcrypt}%s"}]' \
   '$2b$10$1MgguADStmenKvMf9iRFiO0xWOluuogO3fCgW2i0mzVITaw6kMlty' > "$work/users.json"
+# GitHub as the panel sees it, sharing the PR state with the gh double the executor uses.
+api_port=$((port + 1))
+echo '{"issues": {}, "pulls": {}}' > "$work/gh.json"
+python3 "$e2e/fake_github_api.py" "$api_port" "$work/gh.json" "$work/remote.git" > "$work/api.log" 2>&1 &
+pids+=($!)
+echo e2e-panel-token > "$work/github-token"
 AGENTFARM_PASSWORD="$password" AGENTFARM_DB="$work/panel/agentfarm.db" PORT="$port" \
   AGENTFARM_USERS_FILE="$work/users.json" \
+  AGENTFARM_GITHUB_TOKEN_FILE="$work/github-token" AGENTFARM_GITHUB_API="http://127.0.0.1:$api_port" \
   java -jar "$root/target/agentfarm.jar" > "$work/panel.log" 2>&1 &
 pids+=($!)
 for _ in $(seq 1 60); do curl -fs -o /dev/null "$panel/api/health" && break; sleep 1; done
@@ -123,7 +130,7 @@ assert len(item["sha"]) == 40 and item["branch"].startswith("agentfarm/"), item
 assert evidence["passed"] is True, evidence
 assert evidence["unit"]["status"] == "passed" and evidence["integration"]["status"] == "passed", evidence
 assert evidence["review"]["passed"] is True
-assert evidence["prompts"]["review"]["id"] == "review.v2"
+assert evidence["prompts"]["review"]["id"] == "review.v3"
 pulls = json.load(open(gh))["pulls"]
 assert pulls["1"]["draft"] is False and pulls["1"]["head"] == item["branch"], pulls
 print("E2E OK:", item["state"], "PR", item["pr"], item["sha"][:12], "sandbox", evidence["unit"].get("sandbox", {}).get("mode", "host"))
@@ -184,7 +191,7 @@ git -C "$work/seed" rm -q agentfarm.yaml
 git -C "$work/seed" -c user.name=e2e -c user.email=e2e@localhost commit -q -m "Sin perfil"
 git -C "$work/seed" push -q "$work/remote.git" HEAD:main
 adopt_main=$(git -C "$work/seed" rev-parse HEAD)
-owner /work '{"request_id":"e2e-request-adopt","repository":"e2e/demo","title":"Adoptar","request":"Adopta este repositorio.","recipe":{"id":"adopt-repo","version":1}}' > /dev/null
+owner /work '{"request_id":"e2e-request-adopt","repository":"e2e/demo","title":"Adoptar","request":"Adopta este repositorio.","recipe":{"id":"adopt-repo","version":2}}' > /dev/null
 item=e2e-request-adopt
 wait_for proposed 60
 owner /work/e2e-request-adopt/actions/implement '{"version":1}' > /dev/null
@@ -204,6 +211,8 @@ if step == "invalid":
 else:
     assert evidence["profile_validation"]["status"] == "passed", evidence["profile_validation"]
     assert evidence["passed"] is True and pull["draft"] is False, (evidence["passed"], pull)
+    assert evidence["quality"]["checks"][0]["status"] == "passed", evidence["quality"]
+    assert "summary" in [c["field"] for c in json.loads(item["proposal"])["previous_changes"]], item["proposal"]
 print("Adoption", step, "OK: PR", item["pr"], item["sha"][:12])
 PY
 }
@@ -215,3 +224,42 @@ owner /work/e2e-request-adopt/actions/implement '{"version":2}' > /dev/null
 sleep 3
 wait_for review 150
 adoption corrected || fail "corrected adoption candidate"
+
+# The last stretch: the panel verifies the candidate, refuses another SHA and integrates this one.
+item=e2e-request-adopt
+sha=$(curl -fs -u "admin:$password" "$panel/api/work" | python3 -c 'import json,sys;print([x for x in json.load(sys.stdin) if x["id"]=="e2e-request-adopt"][0]["sha"])')
+ready=false
+for _ in $(seq 1 60); do
+  ready=$(curl -fs -u "admin:$password" "$panel/api/evidence/$item" | python3 -c 'import json,sys;print(str(json.load(sys.stdin)["ready"]).lower())')
+  [[ "$ready" == true ]] && break
+  sleep 2
+done
+[[ "$ready" == true ]] || fail "acceptance never ready: $(curl -fs -u "admin:$password" "$panel/api/evidence/$item" | python3 -c 'import json,sys;print(json.load(sys.stdin)["blockers"])')"
+if owner "/work/$item/actions/merge" "{\"sha\":\"$(printf '0%.0s' $(seq 1 40))\"}" > /dev/null 2>&1; then fail "merged another SHA"; fi
+owner "/work/$item/actions/merge" "{\"sha\":\"$sha\"}" > /dev/null
+wait_for integrated 30
+git -C "$work/remote.git" show main:agentfarm.yaml > /dev/null || fail "integration did not reach main"
+git -C "$work/remote.git" show main:adopted.txt > /dev/null || fail "integration did not reach main"
+python3 -c 'import json,sys;assert json.load(open(sys.argv[1]))["pulls"]["3"]["merged"] is True' "$work/gh.json" || fail "PR not merged"
+echo "Integrated from the panel by SHA: $sha"
+# A task whose branch the base has moved past starts over from the base on the same PR.
+item=e2e-request-0001
+old_head=$(git -C "$work/remote.git" rev-parse "$branch")
+owner /work/e2e-request-0001/actions/correct '{"feedback":"La base ha cambiado: actualiza la propuesta."}' > /dev/null
+sleep 3
+wait_for proposed 60
+owner /work/e2e-request-0001/actions/implement '{"version":2}' > /dev/null
+sleep 3
+wait_for review 150
+python3 - "$panel" "$password" "$adopt_main" <<'PY' || fail "stale branch was not rebuilt"
+import base64, json, sys, urllib.request
+panel, password, main = sys.argv[1:]
+req = urllib.request.Request(panel + "/api/work", headers={"Authorization": "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()})
+item = [x for x in json.load(urllib.request.urlopen(req)) if x["id"] == "e2e-request-0001"][0]
+evidence = json.loads(item["evidence"])
+assert evidence["base_sha"] == main, evidence["base_sha"]
+assert evidence["passed"] is True and item["pr"] == 1, item
+print("Stale branch rebuilt on the base: PR", item["pr"], item["sha"][:12])
+PY
+git -C "$work/remote.git" merge-base --is-ancestor "$adopt_main" "$branch" || fail "rebuilt branch does not contain the base"
+[[ "$(git -C "$work/remote.git" rev-parse "$branch")" != "$old_head" ]] || fail "branch not replaced"

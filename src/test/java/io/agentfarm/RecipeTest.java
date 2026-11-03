@@ -58,12 +58,13 @@ class RecipeTest {
     assertEquals(
         Set.of(
             "bugfix@1",
-            "adopt-repo@1",
+            "adopt-repo@2",
             "dependency-update@1",
             "test-improvement@1",
             "migration@1",
             "project-memory@1"),
         ids);
+    assertEquals(1, RecipeCatalog.snapshot("adopt-repo", 1).path("version").asLong(), "published versions stay");
     var mutable =
         (com.fasterxml.jackson.databind.node.ObjectNode) RecipeCatalog.snapshot("bugfix", 1);
     mutable.put("title", "tampered");
