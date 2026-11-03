@@ -4,10 +4,6 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — github-check comprueba la escritura
-
-- `./agentfarm github-check` avisa si la credencial no puede escribir en el repositorio, sin fusionar ni escribir nada.
-
 ## Sin publicar — modelo de amenazas
 
 - `docs/SECURITY.md` recoge qué se protege, los riesgos que quedan y por qué el camino para Docker es ejecutarlo sin root. Falta una revisión independiente.
