@@ -4,6 +4,11 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — adopción útil para el trabajo futuro
+
+- Al adoptar, las puertas del nuevo `agentfarm.yaml` se ejecutan y su fallo deja la PR en borrador; sus comandos de pruebas deben coincidir con los aprobados.
+- `adopt-repo` v2: los comandos cubren todo el repositorio, las rutas permiten el trabajo futuro y un repositorio sin código usa `N/A: motivo`. Avisa de los directorios sin cubrir.
+
 ## Sin publicar — adopción probada en un repositorio real
 
 - Un `agentfarm.yaml` que el parser rechaza deja la PR en borrador, en vez de romper las tareas siguientes.

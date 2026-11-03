@@ -68,6 +68,9 @@ environment: container
 container: {image: 'bash:5.2', network: setup, timeout_minutes: 5}
 review: independent
 secret_refs: {}
+quality:
+  checks:
+    lint: "true"
 """
 ADOPT = dict(PROPOSAL, summary="Adoptar", acceptance="Perfil válido", unit_test="test -f adopted.txt",
              integration_test="grep -qs adoptado adopted.txt",
