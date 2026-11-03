@@ -73,6 +73,17 @@ pids+=($!)
 for _ in $(seq 1 60); do curl -fs -o /dev/null "$panel/api/health" && break; sleep 1; done
 curl -fs "$panel/api/health" > /dev/null || fail "panel did not start"
 
+# The credential check, through the real client and against what GitHub answers.
+AGENTFARM_GITHUB_TOKEN_FILE="$work/github-token" AGENTFARM_GITHUB_API="http://127.0.0.1:$api_port" \
+  java -jar "$root/target/agentfarm.jar" github-check --repo e2e/demo > "$work/github-check.json" \
+  || fail "github-check refused the credential: $(cat "$work/github-check.json")"
+python3 - "$work/github-check.json" <<'PY' || fail "github-check did not read the write permission"
+import json, sys
+checks = {c["id"]: c["state"] for c in json.load(open(sys.argv[1]))["checks"]}
+assert checks["write"] == "passed", checks
+print("github-check OK:", checks)
+PY
+
 jar="$work/cookies"
 csrf=$(curl -fs -u "admin:$password" -c "$jar" -b "$jar" "$panel/api/csrf" | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
 owner() { curl -fsS -u "admin:$password" -c "$jar" -b "$jar" -H "X-CSRF-TOKEN: $csrf" -H 'Content-Type: application/json' -X POST "$panel/api$1" -d "$2"; }

@@ -14,6 +14,23 @@ public final class GitHubAccess {
 
   private GitHubAccess() {}
 
+  /**
+   * What GitHub says this credential may do, without writing anything. It is not proof that a merge
+   * will work: branch protection can still refuse it. Not being told is no failure, only unknown.
+   */
+  private static Map<String, Object> writeAccess(String repo, GitHubReader.Source github) {
+    try {
+      var push = github.get(repo, "").path("permissions").path("push");
+      if (push.isMissingNode())
+        return obj("id", "write", "state", "unknown", "detail", "GitHub no informa de los permisos de esta credencial.");
+      return push.asBoolean()
+          ? obj("id", "write", "state", "passed")
+          : obj("id", "write", "state", "failed", "detail", "Sin permiso de escritura: el panel no podrá integrar.");
+    } catch (Exception e) {
+      return obj("id", "write", "state", "failed", "detail", e.getMessage());
+    }
+  }
+
   public static Map<String, Object> check(String kind, String repo, GitHubReader.Source github) {
     var checks = new ArrayList<Map<String, Object>>();
     boolean passed = true;
@@ -26,6 +43,9 @@ public final class GitHubAccess {
         checks.add(obj("id", read.getKey(), "state", "failed", "detail", e.getMessage()));
       }
     }
+    var write = writeAccess(repo, github);
+    checks.add(write);
+    passed &= !write.get("state").equals("failed");
     var result = obj("state", passed ? "passed" : "failed", "credential", kind, "repository", repo, "checks", checks);
     if (kind.equals("fine-grained-token"))
       result.put(

@@ -33,6 +33,7 @@ jobs:
       - run: bash tests/ops.sh
       - run: bash tests/merge_gate.sh
       - run: bash tests/pre_push.sh
+      - run: python3 -I tests/pilot/test_run.py
       - run: java -jar target/agentfarm.jar memory --file examples/project-memory.json --repository owner/example
       - run: java -jar target/agentfarm.jar memory --file agentfarm-memory.json --repository alejbormeg/AgentFarm
       - run: bash runtime/verify.sh
@@ -84,6 +85,7 @@ jobs:
       - run: docker compose up --build --wait -d
       - run: curl --fail http://localhost:8080/login
       - run: python3 tests/container_http.py
+      - run: bash tests/dedicated_user.sh
       - name: Backup and restore through ./agentfarm against Compose
         run: bash tests/compose_backup.sh
       - if: always()
