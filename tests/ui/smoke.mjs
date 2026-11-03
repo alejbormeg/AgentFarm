@@ -115,6 +115,7 @@ const checkNotices = async () => {
     await until(() => visible("El ejecutor e2e-node-s9 no acepta trabajo: el aislamiento de los agentes no funciona")),
     "the inbox warns about a broken sandbox",
   );
+  check(await until(() => visible("Claude Code solo tiene reglas de bloqueo.")), "the inbox warns that Claude Code has no system sandbox");
   await go("/overview?tarea=e2e-request-0001");
   check(await until(() => visible("Squealer dice · unitarias: Superadas")), "test results are in plain words");
   await js(`${all}.find(e=>e.tagName==='SUMMARY'&&e.textContent.startsWith('Squealer dice · unitarias')).click()`);

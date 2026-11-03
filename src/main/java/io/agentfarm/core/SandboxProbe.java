@@ -30,12 +30,7 @@ public final class SandboxProbe {
     var filesystem = (Map<String, Object>) permissions.get("filesystem");
     var network = (Map<String, Object>) permissions.get("network");
     var entries = new StringJoiner(",");
-    var hidden = new ArrayList<String>();
-    filesystem.forEach(
-        (path, access) -> {
-          entries.add(Json.encode(path) + "=" + Json.encode(access));
-          if (access.equals("none")) hidden.add(path);
-        });
+    filesystem.forEach((path, access) -> entries.add(Json.encode(path) + "=" + Json.encode(access)));
     var argv =
         new ArrayList<>(
             List.of(
@@ -53,7 +48,7 @@ public final class SandboxProbe {
                 SCRIPT,
                 "agentfarm-sandbox-probe",
                 checkout.toString()));
-    argv.addAll(hidden);
+    argv.addAll(AgentSandbox.hiddenPaths(config));
     return argv;
   }
 
