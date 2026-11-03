@@ -15,11 +15,14 @@ import org.springframework.stereotype.Component;
 
 /**
  * GitHub token for the control plane: a GitHub App installation token (preferred, minted and
- * cached here) or a personal token file. Tokens are never logged or returned by the API.
+ * cached here) or a personal token file. The App comes from the environment or from what
+ * GitHubAppSetup stored beside the database. Tokens are never logged or returned by the API.
  */
 @Component
 public class GitHubCredentials {
+  static final String STORED_APP = "github-app.json", STORED_KEY = "github-app.pem";
   private final String tokenFile, appId, keyFile, installation;
+  private final Path storedDir;
   private final Exchange exchange;
   private final Clock clock;
 
@@ -28,6 +31,7 @@ public class GitHubCredentials {
   public interface Exchange {
     String tokenResponse(String installation, String jwt) throws Exception;
   }
+  private record App(String id, String key, String installation) {}
   private String cached;
   private Instant expires = Instant.EPOCH;
 
@@ -36,12 +40,26 @@ public class GitHubCredentials {
       @Value("${agentfarm.github-token-file:}") String tokenFile,
       @Value("${agentfarm.github-app-id:}") String appId,
       @Value("${agentfarm.github-app-key-file:}") String keyFile,
-      @Value("${agentfarm.github-installation-id:}") String installation) {
-    this(tokenFile, appId, keyFile, installation, GitHubCredentials::github, Clock.systemUTC());
+      @Value("${agentfarm.github-installation-id:}") String installation,
+      @Value("${agentfarm.db:}") String db) {
+    this(
+        tokenFile,
+        appId,
+        keyFile,
+        installation,
+        GitHubCredentials::github,
+        Clock.systemUTC(),
+        db == null || db.isBlank() ? null : Path.of(db).toAbsolutePath().getParent());
   }
 
   public GitHubCredentials(
       String tokenFile, String appId, String keyFile, String installation, Exchange exchange, Clock clock) {
+    this(tokenFile, appId, keyFile, installation, exchange, clock, null);
+  }
+
+  private GitHubCredentials(
+      String tokenFile, String appId, String keyFile, String installation, Exchange exchange, Clock clock, Path storedDir) {
+    this.storedDir = storedDir;
     if (!appId.isBlank() && (!appId.matches("[0-9]{1,12}") || !installation.matches("[0-9]{1,15}")))
       throw new IllegalArgumentException("GitHub App id and installation id must be numeric");
     this.tokenFile = tokenFile;
@@ -56,17 +74,26 @@ public class GitHubCredentials {
     return new GitHubCredentials(tokenFile, "", "", "", GitHubCredentials::github, Clock.systemUTC());
   }
 
-  boolean app() {
-    return !appId.isBlank();
+  /** The operator's environment wins. A stored App counts once it has its installation. */
+  private App app() {
+    if (!appId.isBlank()) return new App(appId, keyFile, installation);
+    if (storedDir == null || !Files.isReadable(storedDir.resolve(STORED_APP))) return null;
+    try {
+      var stored = parse(Files.readString(storedDir.resolve(STORED_APP)));
+      String id = stored.path("app_id").asText(), at = stored.path("installation_id").asText();
+      return id.isBlank() || at.isBlank() ? null : new App(id, storedDir.resolve(STORED_KEY).toString(), at);
+    } catch (java.io.IOException | IllegalArgumentException e) {
+      return null;
+    }
   }
 
   public String mode() {
-    return app() ? "github-app" : configured() ? "token-file" : "none";
+    return app() != null ? "github-app" : configured() ? "token-file" : "none";
   }
 
   /** The kind of credential, for advice; never its value. */
   public String kind() {
-    if (app()) return "github-app";
+    if (app() != null) return "github-app";
     if (!configured()) return "none";
     try {
       String token = Files.readString(Path.of(tokenFile)).trim();
@@ -79,17 +106,25 @@ public class GitHubCredentials {
   }
 
   public boolean configured() {
-    if (app()) return Files.isReadable(Path.of(keyFile));
+    var app = app();
+    if (app != null) return Files.isReadable(Path.of(app.key()));
     return !tokenFile.isBlank() && Files.isReadable(Path.of(tokenFile));
   }
 
   public synchronized String token() throws Exception {
-    if (!app()) return Files.readString(Path.of(tokenFile)).trim();
+    var app = app();
+    if (app == null) return Files.readString(Path.of(tokenFile)).trim();
     if (cached != null && clock.instant().isBefore(expires.minusSeconds(300))) return cached;
-    var body = parse(exchange.tokenResponse(installation, jwt()));
+    var body = parse(exchange.tokenResponse(app.installation(), jwtFor(app.id(), app.key())));
     cached = body.path("token").asText();
     expires = Instant.parse(body.path("expires_at").asText());
     return cached;
+  }
+
+  /** A token minted for another App must not outlive the change to this one. */
+  synchronized void forgetToken() {
+    cached = null;
+    expires = Instant.EPOCH;
   }
 
   static String github(String installation, String jwt) throws Exception {
@@ -97,8 +132,7 @@ public class GitHubCredentials {
         HttpClient.newHttpClient()
             .send(
                 HttpRequest.newBuilder(
-                        URI.create(
-                            "https://api.github.com/app/installations/" + installation + "/access_tokens"))
+                        URI.create(GitHubApi.base() + "/app/installations/" + installation + "/access_tokens"))
                     .timeout(Duration.ofSeconds(20))
                     .header("Authorization", "Bearer " + jwt)
                     .header("Accept", "application/vnd.github+json")
@@ -112,6 +146,11 @@ public class GitHubCredentials {
 
   /** RS256 app JWT; GitHub allows at most 10 minutes, so it is backdated for clock skew. */
   String jwt() throws Exception {
+    var app = app();
+    return jwtFor(app.id(), app.key());
+  }
+
+  String jwtFor(String appId, String keyFile) throws Exception {
     long now = clock.instant().getEpochSecond();
     var url = Base64.getUrlEncoder().withoutPadding();
     String header = url.encodeToString("{\"alg\":\"RS256\",\"typ\":\"JWT\"}".getBytes(StandardCharsets.UTF_8));

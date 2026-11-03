@@ -44,7 +44,7 @@ el servicio de usuario no configura arranque de Windows ni linger.
 
 El ejecutor usa un token revocable de nodo y conserva CSRF. Su API no permite
 aprobar, crear credenciales, cambiar políticas ni reclamar órdenes de integración.
-Configura la credencial con `./agentfarm github-token` o `github-app` ([qué credencial usar](TEAM.md)).
+Configura la credencial en **Gobierno → Conectar GitHub**, o con `./agentfarm github-token` o `github-app` ([qué credencial usar](TEAM.md)).
 La integración se procesa en el panel con `AGENTFARM_GITHUB_TOKEN_FILE`,
 un archivo privado de credenciales GitHub leído por Spring, accesible solo al
 operador del panel. Nunca lo montes en un directorio del trabajador.

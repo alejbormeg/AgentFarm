@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """GitHub REST double for the panel: as strict as GitHub about drafts, SHAs and conflicts."""
-import json, re, subprocess, sys
+import json, os, re, subprocess, sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 port, state, remote = int(sys.argv[1]), sys.argv[2], sys.argv[3]
@@ -39,6 +39,8 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if not self.headers.get("Authorization", "").startswith("Bearer "):
             return self.reply(401, {"message": "Bad credentials"})
+        if re.fullmatch(r"/app/installations/\d+", path):
+            return self.reply(200, {"id": int(path.rsplit("/", 1)[1])})
         if path == "/repos/e2e/demo":
             return self.reply(200, {"permissions": {"push": True, "pull": True}})
         if path == "/repos/e2e/demo/pulls":
@@ -65,6 +67,17 @@ class Handler(BaseHTTPRequestHandler):
             files = [{"filename": l.split("\t")[1], "status": names.get(l[0], "modified"), "patch": ""} for l in lines]
             return self.reply(200, {"files": files})
         self.reply(404, {"message": path})
+
+    def do_POST(self):
+        self.rfile.read(int(self.headers.get("Content-Length", 0) or 0))
+        if re.fullmatch(r"/app-manifests/\w+/conversions", self.path):
+            # GitHub answers this one without credentials: the code is the secret.
+            return self.reply(201, {"id": 4242, "slug": "agentfarm-e2e", "pem": open(os.environ["E2E_APP_PEM"]).read()})
+        if not self.headers.get("Authorization", "").startswith("Bearer "):
+            return self.reply(401, {"message": "Bad credentials"})
+        if re.fullmatch(r"/app/installations/\d+/access_tokens", self.path):
+            return self.reply(201, {"token": "ghs_e2e", "expires_at": "2099-01-01T00:00:00Z"})
+        self.reply(404, {"message": self.path})
 
     def do_PUT(self):
         m = re.fullmatch(r"/repos/e2e/demo/pulls/(\d+)/merge", self.path)

@@ -1156,6 +1156,23 @@ class FarmConsole extends HTMLElement {
             o.paused ? "" : "danger",
           ),
           link("Conectar ejecutor", "/setup.html"),
+          button("Conectar GitHub", async () => {
+            try {
+              const { action, manifest } = await api("/github-app/start", {});
+              const form = E("form");
+              form.method = "post";
+              form.action = action;
+              const field = E("input");
+              field.type = "hidden";
+              field.name = "manifest";
+              field.value = manifest;
+              form.append(field);
+              document.body.append(form);
+              form.submit();
+            } catch (e) {
+              this.error.textContent = e.message;
+            }
+          }, "quiet"),
         );
       controls.append(
         button("Segundo factor", async () => {

@@ -59,7 +59,8 @@ printf '[{"username":"oscar","role":"observer","password_hash":"{bcrypt}%s"}]' \
 # GitHub as the panel sees it, sharing the PR state with the gh double the executor uses.
 api_port=$((port + 1))
 echo '{"issues": {}, "pulls": {}}' > "$work/gh.json"
-python3 "$e2e/fake_github_api.py" "$api_port" "$work/gh.json" "$work/remote.git" > "$work/api.log" 2>&1 &
+openssl genrsa -traditional -out "$work/app.pem" 2048 2>/dev/null
+E2E_APP_PEM="$work/app.pem" python3 "$e2e/fake_github_api.py" "$api_port" "$work/gh.json" "$work/remote.git" > "$work/api.log" 2>&1 &
 pids+=($!)
 echo e2e-panel-token > "$work/github-token"
 # A known commit for the panel, as an image build gives it, so it can tell an executor is outdated.
@@ -340,3 +341,23 @@ git -C "$work/remote.git" show main:agentfarm.yaml > /dev/null || fail "integrat
 git -C "$work/remote.git" show main:adopted.txt > /dev/null || fail "integration did not reach main"
 python3 -c 'import json,sys;assert json.load(open(sys.argv[1]))["pulls"]["3"]["merged"] is True' "$work/gh.json" || fail "PR not merged"
 echo "Integrated from the panel by SHA: $sha"
+
+# Connecting GitHub from the panel: the manifest flow, then a real credential check with what it stored.
+location() { curl -s -o /dev/null -w '%{redirect_url}' -u "admin:$password" "$1"; }
+state_of() { python3 -c 'import json,sys;print(json.loads(sys.stdin.read())["action"].split("state=")[1])'; }
+first=$(owner /github-app/start '{}' | state_of)
+[[ "$(curl -s -o /dev/null -w '%{http_code}' -u "oscar:$observer_password" "$panel/github-app/created?code=abc&state=$first")" == 403 ]] \
+  || fail "an observer reached the GitHub App flow"
+[[ "$(curl -s -o /dev/null -w '%{http_code}' -u "admin:$password" "$panel/github-app/created?code=abc&state=forged")" == 400 ]] \
+  || fail "a forged state was accepted"
+install=$(location "$panel/github-app/created?code=abc&state=$first")
+[[ "$install" == */apps/agentfarm-e2e/installations/new\?state=* ]] || fail "no installation page: $install"
+done_at=$(location "$panel/github-app/installed?installation_id=99&state=${install##*state=}")
+[[ "$done_at" == */governance ]] || fail "installation not recorded: $done_at"
+[[ "$(stat -c %a "$work/panel/github-app.pem")" == 600 ]] || fail "the App key is not private"
+AGENTFARM_DB="$work/panel/agentfarm.db" AGENTFARM_GITHUB_API="http://127.0.0.1:$api_port" \
+  java -jar "$root/target/agentfarm.jar" github-check --repo e2e/demo > "$work/app-check.json" \
+  || fail "github-check refused the stored App: $(cat "$work/app-check.json")"
+python3 -c 'import json,sys;r=json.load(open(sys.argv[1]));assert r["credential"]=="github-app",r;print("GitHub App connected from the panel:",r["state"])' "$work/app-check.json" \
+  || fail "the stored App was not used"
+

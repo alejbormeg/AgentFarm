@@ -53,9 +53,15 @@ Un token se guarda con `./agentfarm github-token`, que lo pide sin mostrarlo. No
 chats ni en comandos. Queda en el volumen del panel, fuera del alcance de los agentes.
 
 ## GitHub App (recomendado)
-El panel usa GitHub para disparadores, diffs e integración. En vez de un token
-personal (`AGENTFARM_GITHUB_TOKEN_FILE`), crea una GitHub App instalada solo en
-tus repositorios con permisos de repositorio:
+El panel usa GitHub para disparadores, diffs e integración.
+
+**Con un clic:** en **Gobierno → Conectar GitHub**, GitHub te pide confirmar la App y elegir en qué
+repositorios instalarla, y vuelves al panel. No copias ninguna clave: se guarda en el volumen del panel,
+junto a la base de datos y con permisos 600, y entra en sus copias. **Este flujo aún no se ha probado
+contra GitHub real**, solo contra un doble.
+
+**A mano,** si prefieres crearla tú, en vez de un token personal
+(`AGENTFARM_GITHUB_TOKEN_FILE`), con permisos de repositorio:
 
 - Contents: read & write (integración), Pull requests: read & write,
   Issues: read, Actions: read, Checks: read, Commit statuses: read,
