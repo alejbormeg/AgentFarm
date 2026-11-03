@@ -25,7 +25,9 @@ que tu rol no permite (`GET /api/me`); el servidor las rechaza igualmente.
 El fichero solo contiene hashes bcrypt. 2FA queda pendiente.
 
 ## Credencial de GitHub del panel
-Comprueba cualquiera de ellas con `./agentfarm github-check owner/repo`.
+Comprueba cualquiera de ellas con `./agentfarm github-check owner/repo`. No escribe nada: lee lo que necesita la
+integración y lo que GitHub dice que puede hacer esa credencial. Una regla de protección de rama aún podría
+rechazar una fusión.
 
 | Credencial | Sirve | Alcance |
 | --- | --- | --- |

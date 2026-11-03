@@ -4,6 +4,10 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — github-check comprueba la escritura
+
+- `./agentfarm github-check` avisa si la credencial no puede escribir en el repositorio, sin fusionar ni escribir nada.
+
 ## Sin publicar — Claude Code con reglas de bloqueo
 
 - Claude Code recibe las rutas ocultas como reglas de bloqueo de `Read` y `Edit`, e ignora los ajustes del repositorio, que podían concederle herramientas o ejecutar hooks. Estas reglas no se han probado con una cuenta real, y el panel lo avisa mientras un rol lo use.

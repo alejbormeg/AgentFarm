@@ -27,6 +27,25 @@ class GitHubAccessTest {
   }
 
   @Test
+  void reportsWhetherTheCredentialMayWriteWithoutWritingAnything() throws Exception {
+    var denied = mapper.readTree("{\"permissions\":{\"push\":false,\"pull\":true}}");
+    var allowed = mapper.readTree("{\"permissions\":{\"push\":true}}");
+    var calls = new java.util.ArrayList<String>();
+    var refused =
+        GitHubAccess.check("github-app", "o/r", (repo, path) -> {
+          calls.add(path);
+          return denied;
+        });
+    assertEquals("failed", refused.get("state"));
+    assertTrue(refused.toString().contains("Sin permiso de escritura"), refused.toString());
+    assertTrue(calls.contains(""), "reads the repository itself");
+    assertEquals("passed", GitHubAccess.check("github-app", "o/r", (repo, path) -> allowed).get("state"));
+    var unknown = GitHubAccess.check("github-app", "o/r", (repo, path) -> mapper.createObjectNode());
+    assertEquals("passed", unknown.get("state"), "not being told is not a failure");
+    assertTrue(unknown.toString().contains("unknown"), unknown.toString());
+  }
+
+  @Test
   void aClassicTokenWorksButIsFlaggedAsBroad() {
     var result = GitHubAccess.check("classic-token", "o/r", (repo, path) -> mapper.createObjectNode());
     assertEquals("passed", result.get("state"));
