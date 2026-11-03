@@ -8,6 +8,24 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 - Los turnos de Codex ocultan las credenciales del usuario, el estado del ejecutor, las copias, los demás workspaces y los discos montados en `/mnt`.
 
+## Sin publicar — lo aprendido en el piloto sobre forja
+
+- `./agentfarm` sin argumentos muestra la ayuda en vez de lanzar un build.
+- Instalar el ejecutor reinicia el servicio y conserva solo la copia actual, la anterior y las que usa otra unidad.
+- Con el panel caído, el ejecutor espera con pausas crecientes, sin salir ni llenar el registro.
+- El build de la imagen repite Maven solo si se cortó una descarga.
+- Los agentes proponen solo criterios que la plataforma puede acreditar (`research.v4`), y el revisor recibe las comprobaciones de la plataforma y no bloquea por criterios manuales (`review.v3`).
+- Al adoptar, las puertas del nuevo `agentfarm.yaml` se ejecutan y su fallo deja la PR en borrador; sus comandos de pruebas deben coincidir con los aprobados.
+- `adopt-repo` v2: los comandos cubren todo el repositorio, las rutas permiten el trabajo futuro y un repositorio sin código usa `N/A: motivo`. Avisa de los directorios sin cubrir.
+- Si la rama base avanzó, corregir una tarea rehace el candidato desde la base y reemplaza su rama, sobre la misma PR.
+- Una PR fusionada fuera del panel cierra la tarea e indica que no pasó por sus puertas. Una PR con conflictos bloquea la integración, y el expediente avisa de otras tareas que tocan los mismos archivos.
+- Cada versión de una propuesta muestra qué cambia respecto a la anterior.
+- Los turnos de Codex ocultan las credenciales del usuario, el estado del ejecutor, las copias, los demás workspaces y los discos montados en `/mnt`.
+- El e2e verifica la aceptación e integra por SHA desde el panel, contra un doble de GitHub que rechaza lo mismo que el real.
+- `./agentfarm github-token` y `github-app` guardan la credencial sin mostrarla, y `github-check` prueba los permisos que necesita la integración.
+- `GET /api/version` indica el commit del panel, que avisa si un ejecutor corre otro distinto, y `doctor` explica cómo arrancar Docker.
+- `docs/PILOTS.md`: cuándo repetir un piloto real, cómo recorrerlo y qué medir.
+
 ## Sin publicar — adopción probada en un repositorio real
 
 - Un `agentfarm.yaml` que el parser rechaza deja la PR en borrador, en vez de romper las tareas siguientes.

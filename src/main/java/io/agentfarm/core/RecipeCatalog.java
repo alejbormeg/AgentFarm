@@ -32,8 +32,15 @@ public final class RecipeCatalog {
   }
 
   public static Object list() {
+    // Old versions stay readable by id; only the newest of each recipe is offered for new tasks.
+    var newest = new LinkedHashMap<String, JsonNode>();
+    for (var recipe : CATALOG)
+      newest.merge(
+          text(recipe, "id"),
+          recipe,
+          (a, b) -> number(a, "version") > number(b, "version") ? a : b);
     var result = new ArrayList<JsonNode>();
-    for (var recipe : CATALOG) result.add(snapshot(text(recipe, "id"), number(recipe, "version")));
+    for (var recipe : newest.values()) result.add(snapshot(text(recipe, "id"), number(recipe, "version")));
     return result;
   }
 }

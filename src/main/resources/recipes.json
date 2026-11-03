@@ -119,5 +119,29 @@
       "No refactorizar ni corregir nada más: las mejoras se proponen como tareas aparte.",
       "Una afirmación del agente no acredita una comprobación. Cada criterio requiere evidencia o excepción visible."
     ]
+  },
+  {
+    "id": "adopt-repo",
+    "version": 2,
+    "title": "Adoptar un repositorio",
+    "purpose": "Dejar un repositorio listo para que los agentes lo mantengan con reglas verificables.",
+    "research_steps": [
+      "Leer el README, la CI y la estructura para identificar tecnología y cómo se instala y se prueba hoy.",
+      "Comprobar qué comandos de prueba unitaria y de integración existen. Los comandos del perfil deben ejecutar todas las pruebas del repositorio, no solo las añadidas por esta adopción.",
+      "Elegir allowed_paths que permitan el trabajo futuro: los directorios de código, pruebas y documentación, también los que el README anuncie. Ningún agente podrá cambiar el perfil después. No incluyas agentfarm.yaml ni .github/workflows/.",
+      "Si el repositorio aún no tiene código que probar, usa comandos \"N/A: motivo\". Es una excepción visible y preferible a inventar pruebas.",
+      "Elegir comprobaciones de calidad que el proyecto ya use (formateador, linter, tipos, auditoría) y una métrica que no deba empeorar.",
+      "Resumir en summary el estado de salud y hasta tres mejoras prioritarias con evidencia del repositorio."
+    ],
+    "required_evidence": [
+      "agentfarm.yaml válido con setup, tests, allowed_paths, environment, review y quality; la plataforma lo valida y ejecuta sus comandos en el contenedor.",
+      "Pruebas reales que ya existan en el repositorio, o comandos \"N/A: motivo\" si todavía no hay código."
+    ],
+    "restrictions": [
+      "Añadir agentfarm.yaml solo si no existe; no modificar uno existente.",
+      "No crees validadores del propio perfil ni pruebas cuyo único objeto sea esta adopción: los valida la plataforma.",
+      "No refactorizar ni corregir nada más: las mejoras se proponen como tareas aparte.",
+      "Una afirmación del agente no acredita una comprobación. Cada criterio requiere evidencia o excepción visible."
+    ]
   }
 ]

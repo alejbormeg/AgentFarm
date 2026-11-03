@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-command="${1:-up}"
-usage="Uso: ./agentfarm {up|demo|password|stop|logs|status|doctor|profile|backup [destino]|restore [--yes] <copia>}"
+command="${1:-help}"
+usage="Uso: ./agentfarm {help|github-token|github-app <id> <instalación> <clave.pem>|github-check <owner/repo>|up|demo|password|stop|logs|status|doctor|profile|backup [destino]|restore [--yes] <copia>}"
 java_in_image=(java -Dorg.sqlite.lib.path=/app/native -jar /app/agentfarm.jar)
 
 run_jar() {
@@ -192,6 +192,7 @@ restore_command() {
 }
 
 case "$command" in
+  help|-h|--help) echo "$usage"; exit ;;
   doctor|profile) run_jar "$@"; exit ;;
   demo) exec bash "$root/runtime/demo.sh" ;;
   backup) shift; backup_command "$@"; exit ;;
@@ -203,8 +204,34 @@ if ! command -v docker >/dev/null || ! docker compose version >/dev/null 2>&1; t
   exit 2
 fi
 case "$command" in
+  github-token)
+    # Read from the terminal, so the token reaches neither the screen, the history nor a command line.
+    if [[ -t 0 ]]; then read -rsp "Token de GitHub: " token; else read -r token || true; fi
+    [[ -t 0 ]] && echo
+    [[ -n "$token" ]] || { echo "Token vacío." >&2; exit 2; }
+    printf '%s' "$token" | docker compose exec -T agentfarm sh -c 'umask 077; cat > /data/github-token'
+    unset token
+    echo "Credencial guardada en el volumen del panel. Compruébala con: ./agentfarm github-check owner/repo"
+    ;;
+  github-app)
+    app_id="${2:-}" installation="${3:-}" key="${4:-}"
+    [[ "$app_id" =~ ^[0-9]+$ && "$installation" =~ ^[0-9]+$ && -f "$key" ]] \
+      || { echo "Uso: ./agentfarm github-app <id> <instalación> <clave-pkcs8.pem>" >&2; exit 2; }
+    docker compose exec -T agentfarm sh -c 'umask 077; cat > /data/github-app.pem' < "$key"
+    touch .env
+    sed -i '/^AGENTFARM_GITHUB_\(APP_ID\|APP_KEY_FILE\|INSTALLATION_ID\)=/d' .env
+    printf 'AGENTFARM_GITHUB_APP_ID=%s\nAGENTFARM_GITHUB_APP_KEY_FILE=/data/github-app.pem\nAGENTFARM_GITHUB_INSTALLATION_ID=%s\n' \
+      "$app_id" "$installation" >> .env
+    docker compose up -d --wait --no-build agentfarm
+    echo "GitHub App configurada. Compruébala con: ./agentfarm github-check owner/repo"
+    ;;
+  github-check)
+    [[ -n "${2:-}" ]] || { echo "Uso: ./agentfarm github-check owner/repo" >&2; exit 2; }
+    docker compose exec -T agentfarm "${java_in_image[@]}" github-check --repo "$2"
+    printf '\n'
+    ;;
   up)
-    docker compose up --build --wait -d
+    AGENTFARM_COMMIT="$(git rev-parse HEAD 2>/dev/null || echo unknown)" docker compose up --build --wait -d
     printf '\nAgentFarm: http://localhost:8080\nUsuario: admin\nConsulta tu contraseña con: ./agentfarm password\n'
     ;;
   password) docker compose exec -T agentfarm cat /data/admin-password.txt; printf '\n' ;;

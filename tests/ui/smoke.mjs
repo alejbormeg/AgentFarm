@@ -128,7 +128,7 @@ try {
   await go(link);
   check(await until(() => js(`${all}.some(e=>e.tagName==='DIALOG'&&e.open)`)), "the deep link reopens the task");
   check(await until(() => visible("Mandamientos")), "the task shows its commandments");
-  check(await until(() => visible("CI sin leer")), "the task says CI has not been read");
+  check(await until(() => visible("La CI del commit pasó entera.")), "the task reports the CI the panel read");
 
   // Agentes re-fetches itself; each render must not add another poll.
   await go("/overview");
