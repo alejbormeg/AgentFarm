@@ -4,10 +4,13 @@ import java.util.Collection;
 import java.util.Locale;
 import java.util.Set;
 
-/** What counts as tested. A test kind marked N/A only excuses changes no test could exercise. */
+/**
+ * What counts as tested. A test kind marked N/A only excuses changes no test could exercise. The
+ * profile is one: the platform validates it, and only an adoption may change it.
+ */
 public final class TestPolicy {
   private static final Set<String> DOCUMENTS =
-      Set.of("license", "notice", "agentfarm-memory.json", ".github/workflows/agentfarm.yml");
+      Set.of("license", "notice", "agentfarm-memory.json", ".github/workflows/agentfarm.yml", "agentfarm.yaml");
 
   private TestPolicy() {}
 

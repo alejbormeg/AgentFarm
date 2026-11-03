@@ -85,7 +85,7 @@ Objetivo: dejar de mantener un repositorio, sin perder el control de lo que se i
 | 8.1 ✅ | Prueba de navegador en la CI. | Una vista en blanco rompe la CI. |
 | 8.2 ✅ | [Verificador](EVIDENCE.md#verificador): las pruebas superadas cierran sus criterios. | Un criterio de test se cierra sin excepción manual. |
 | 8.3 ✅ | [Siete Mandamientos](COMMANDMENTS.md) como puertas. | Uno incumplido bloquea la integración. |
-| 8.4 (parcial) | [Skills](SKILLS.md) por rol y tecnología. | Falta comparar resultados con un agente real. |
+| 8.4 (parcial) | [Skills](SKILLS.md) por rol y tecnología. | Comparadas con un agente real sin diferencias en el resultado; faltan tareas más difíciles. |
 | 8.5 (parcial) | Adoptar un repo, resumen semanal y aprobación por lotes. | Falta probarlo con un repo real. |
 | 8.6 ✅ | Vocabulario y lenguaje llano. | Falta validarlo con usuarios. |
 | 8.7 (parcial) | Modo demo y página pública. | Falta publicarla y abrir el repositorio. |

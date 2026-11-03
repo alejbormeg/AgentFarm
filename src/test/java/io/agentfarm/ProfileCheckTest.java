@@ -85,4 +85,13 @@ class ProfileCheckTest {
     assertEquals("failed", refused.get("status"));
     assertTrue(refused.get("error").toString().contains("No-Vale"), refused.toString());
   }
+
+  @Test
+  void adoptingARepositoryWithoutCodeIsNotUntestedCode() {
+    var adoption = List.of("agentfarm.yaml", ".github/workflows/agentfarm.yml");
+    assertFalse(io.agentfarm.core.TestPolicy.untestedCode(adoption, "not_applicable", "not_applicable"));
+    assertTrue(
+        io.agentfarm.core.TestPolicy.untestedCode(List.of("agentfarm.yaml", "shop.py"), "not_applicable", "not_applicable"),
+        "the profile does not excuse real code");
+  }
 }

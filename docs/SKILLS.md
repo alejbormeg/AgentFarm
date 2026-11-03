@@ -53,4 +53,16 @@ detectan las pruebas), tamaño del cambio y hallazgos. Tres tareas son una seña
 conviene repetirlas antes de sacar conclusiones. En cualquier ejecutor, `-Dagentfarm.skills=off`
 desactiva las skills y la evidencia lo registra.
 
-Todavía no se ha ejecutado esta comparación con un agente real.
+### Resultado con Codex real (3 de noviembre de 2026)
+
+Dos rondas de las tres tareas, con y sin skills: 12 tareas en total, unos 14 minutos y un 1 % de cuota semanal por ronda.
+
+| Medida | Con skills | Sin skills |
+| --- | --- | --- |
+| Llegan a revisión con pruebas en verde | 6 de 6 | 6 de 6 |
+| Revisión sin bloqueos | 6 de 6 | 6 de 6 |
+| Mutación por tarea (cupón, impuestos, pruebas) | 66,7 / 100 / 100 | 66,7 / 100 / 100 |
+| Criterios por propuesta, de media | 5,7 | 4,7 |
+| Longitud de los hallazgos de la revisión, de media | 516 caracteres | 397 caracteres |
+
+**No muestra que las skills mejoren el resultado, ni que sobren.** Con skills las propuestas son algo más detalladas, pero ambas variantes resuelven todo y sacan la misma mutación: estas tareas son demasiado fáciles para distinguirlas. Por eso no se retira ninguna. Para decidirlo hacen falta tareas más difíciles, en un proyecto más grande. Más caracteres no significan mejor revisión.
