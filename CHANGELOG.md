@@ -4,9 +4,9 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — guía de pilotos
+## Sin publicar — los agentes no leen credenciales
 
-- `docs/PILOTS.md`: cuándo repetir un piloto real, cómo recorrerlo y qué medir.
+- Los turnos de Codex ocultan las credenciales del usuario, el estado del ejecutor, las copias, los demás workspaces y los discos montados en `/mnt`.
 
 ## Sin publicar — adopción probada en un repositorio real
 
