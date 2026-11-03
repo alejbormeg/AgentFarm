@@ -4,10 +4,6 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — piloto con una orden
-
-- `tests/pilot/run.py` recorre el flujo sobre un repositorio desechable e informa de las medidas de `docs/PILOTS.md`, con un límite de cuota. Solo se ha probado contra un panel simulado.
-
 ## Sin publicar — modelo de amenazas
 
 - `docs/SECURITY.md` recoge qué se protege, los riesgos que quedan y por qué el camino para Docker es ejecutarlo sin root. Falta una revisión independiente.
