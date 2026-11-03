@@ -32,7 +32,7 @@ public final class McpServer {
     this.panel = panel;
   }
 
-  public static Panel http(String base, String password) {
+  public static Panel http(String base, String user, String password) {
     var client =
         HttpClient.newBuilder()
             .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
@@ -41,7 +41,7 @@ public final class McpServer {
     String auth =
         "Basic "
             + Base64.getEncoder()
-                .encodeToString(("admin:" + password).getBytes(StandardCharsets.UTF_8));
+                .encodeToString((user + ":" + password).getBytes(StandardCharsets.UTF_8));
     return new Panel() {
       JsonNode csrf;
 
@@ -243,8 +243,8 @@ public final class McpServer {
     }
   }
 
-  public static void main(String panelUrl, Path passwordFile) throws IOException {
-    var server = new McpServer(http(panelUrl, Files.readString(passwordFile).trim()));
+  public static void main(String panelUrl, String user, Path passwordFile) throws IOException {
+    var server = new McpServer(http(panelUrl, user, Files.readString(passwordFile).trim()));
     server.serve(new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)), System.out);
   }
 }

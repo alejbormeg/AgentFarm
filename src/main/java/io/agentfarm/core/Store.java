@@ -34,7 +34,7 @@ public class Store {
               CREATE TABLE IF NOT EXISTS farm_workers(id TEXT PRIMARY KEY,node TEXT NOT NULL REFERENCES farm_nodes(id),enabled INTEGER NOT NULL DEFAULT 1,heartbeat INTEGER,reported_state TEXT NOT NULL DEFAULT 'unknown');
               CREATE TABLE IF NOT EXISTS task_runtime(project TEXT,id TEXT,worker TEXT,progress INTEGER,candidate_sha TEXT,cancel_requested INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(project,id),FOREIGN KEY(project,id) REFERENCES tasks(project,id));
               CREATE TABLE IF NOT EXISTS governance(id INTEGER PRIMARY KEY CHECK(id=1),paused INTEGER NOT NULL);
-              INSERT OR IGNORE INTO governance VALUES(1,0);
+              INSERT OR IGNORE INTO governance(id,paused) VALUES(1,0);
               CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY,at TEXT NOT NULL,actor TEXT NOT NULL,action TEXT NOT NULL,subject TEXT NOT NULL);
               """;
           for (String sql : schema.split(";")) if (!sql.isBlank()) statement(c, sql);

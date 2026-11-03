@@ -85,7 +85,8 @@ public class SecurityConfig {
   }
 
   @Bean
-  SecurityFilterChain security(HttpSecurity http, io.agentfarm.core.NodeCredentials nodes)
+  SecurityFilterChain security(
+      HttpSecurity http, io.agentfarm.core.NodeCredentials nodes, io.agentfarm.core.TwoFactor twoFactor)
       throws Exception {
     String[] people = {"OWNER", "REVIEWER", "OBSERVER"};
     http.authorizeHttpRequests(
@@ -113,6 +114,8 @@ public class SecurityConfig {
                         "/api/work/*/actions/cancel",
                         "/api/work/*/actions/retry")
                     .hasAnyRole("OWNER", "REVIEWER")
+                    .requestMatchers("/api/me/2fa/**")
+                    .hasAnyRole(people)
                     .requestMatchers(HttpMethod.GET, "/api/**")
                     .hasAnyRole(people)
                     .requestMatchers("/api/**")
@@ -123,6 +126,9 @@ public class SecurityConfig {
             new NodeTokenFilter(nodes),
             org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
                 .class)
+        .addFilterBefore(
+            new TwoFactorFilter(twoFactor),
+            org.springframework.security.web.access.intercept.AuthorizationFilter.class)
         .formLogin(f -> f.loginPage("/login"))
         .httpBasic(Customizer.withDefaults())
         .csrf(c -> c.ignoringRequestMatchers("/mateu/**"))
