@@ -44,3 +44,7 @@ They don't guarantee there are no bugs, and a passing test isn't always a good t
 - It runs on your machine, with your Codex subscription or your Claude Code key. Apache 2.0.
 - It's young: no multi-machine coordination yet.
 - Installing the real executor takes Docker, Java and the GitHub and Codex CLIs.
+
+## Guides
+
+[Installation](docs/INSTALLATION.en.md), [operations](docs/OPERATIONS.en.md) and [evidence](docs/EVIDENCE.en.md). The other guides are in Spanish.
