@@ -59,7 +59,8 @@ sandbox real que esas rutas no se alcanzan: si falla o no puede saberlo, no acep
 panel lo avisa. `bash tests/codex_sandbox.sh` hace una comprobación más completa, útil al
 actualizar Codex. Es una lista de exclusión: el resto de tus archivos, como otros
 proyectos en tu home, sigue siendo legible. Requiere Codex CLI 0.166 o posterior.
-Ejecutar el ejecutor con un usuario propio sigue siendo más seguro.
+Ejecutar el ejecutor con un usuario propio sigue siendo más seguro: consulta el
+[modelo de amenazas](SECURITY.md).
 
 Claude Code no corre en ese sandbox. Recibe las mismas rutas como reglas de bloqueo de sus
 herramientas, ignora la configuración del repositorio y no tiene `Bash`, pero esas reglas **no se
