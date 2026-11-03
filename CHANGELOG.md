@@ -4,9 +4,9 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
-## Sin publicar — el e2e llega hasta la integración
+## Sin publicar — los agentes no leen credenciales
 
-- El e2e verifica la aceptación e integra por SHA desde el panel, contra un doble de GitHub que rechaza lo mismo que el real.
+- Los turnos de Codex ocultan las credenciales del usuario, el estado del ejecutor, las copias, los demás workspaces y los discos montados en `/mnt`.
 
 ## Sin publicar — adopción probada en un repositorio real
 

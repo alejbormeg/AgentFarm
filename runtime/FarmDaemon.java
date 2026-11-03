@@ -374,16 +374,8 @@ public class FarmDaemon extends CodexRunner {
                 checkout.toString(),
                 "approvalPolicy",
                 "never",
-                "sandbox",
-                write ? "workspace-write" : "read-only",
                 "config",
-                mcpTurn
-                    ? obj(
-                        "web_search",
-                        "live",
-                        "mcp_servers",
-                        io.agentfarm.core.McpCatalog.codexConfig(mcpServers, System.getenv()))
-                    : obj("web_search", "live")));
+                threadConfig(write, mcpTurn)));
     thread = t.path("thread").path("id").asText();
     session = thread;
     model = t.path("model").asText();
@@ -702,6 +694,23 @@ public class FarmDaemon extends CodexRunner {
         .put("base_sha", gitAt("rev-parse", "HEAD"));
     github("PATCH", "repos/" + repo + "/issues/" + issue, obj("body", issueBody(item, p, issue)));
     report("proposed", "issue", issue, "proposal", p);
+  }
+
+  /** What a Codex thread may touch: see docs/INSTALLATION.md for what this does not cover. */
+  static Map<String, Object> threadConfig(boolean write, boolean mcpTurn) throws Exception {
+    var config =
+        new LinkedHashMap<>(
+            io.agentfarm.core.AgentSandbox.codexConfig(
+                io.agentfarm.core.AgentSandbox.filesystem(
+                    Path.of(System.getProperty("user.home")).toRealPath(),
+                    STATE.toRealPath(),
+                    Path.of("/mnt"),
+                    checkout.toRealPath(),
+                    write)));
+    config.put("web_search", "live");
+    if (mcpTurn)
+      config.put("mcp_servers", io.agentfarm.core.McpCatalog.codexConfig(mcpServers, System.getenv()));
+    return config;
   }
 
   static io.agentfarm.core.Prompts.Rendered implementPrompt, reviewPrompt;
