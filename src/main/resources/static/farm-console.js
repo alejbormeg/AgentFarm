@@ -904,6 +904,14 @@ class FarmConsole extends HTMLElement {
             "warning",
           ),
         );
+      for (const x of r.unisolated_executors || [])
+        map.append(
+          E(
+            "p",
+            "El ejecutor " + x.executor + " no acepta trabajo: el aislamiento de los agentes no funciona (" + x.problem + "). Ejecuta tests/codex_sandbox.sh y revisa la versión de Codex.",
+            "warning",
+          ),
+        );
       const split = E("div", "", "split"),
         main = E("section"),
         side = E("aside");

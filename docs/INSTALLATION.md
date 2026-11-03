@@ -54,8 +54,10 @@ Sin ese archivo, las órdenes de integración no se procesarán.
 ejecutor le aplica un perfil de permisos que oculta `~/.config`, `~/.ssh`, `~/.aws`,
 `~/.docker`, `~/.codex/auth.json`, el estado del ejecutor, las copias, los demás
 workspaces, `/mnt`, los sockets de contenedores y el directorio de sesión de tu usuario, y
-deja la red apagada. Comprueba que siga bloqueando con `bash tests/codex_sandbox.sh`, en
-especial al actualizar Codex. Es una lista de exclusión: el resto de tus archivos, como otros
+deja la red apagada. Antes de aceptar trabajo, y cada diez minutos, el ejecutor comprueba con el
+sandbox real que esas rutas no se alcanzan: si falla o no puede saberlo, no acepta tareas y el
+panel lo avisa. `bash tests/codex_sandbox.sh` hace una comprobación más completa, útil al
+actualizar Codex. Es una lista de exclusión: el resto de tus archivos, como otros
 proyectos en tu home, sigue siendo legible. Requiere Codex CLI 0.166 o posterior.
 Ejecutar el ejecutor con un usuario propio sigue siendo más seguro. No se aplica a
 Claude Code, cuya herramienta `Read` no tiene esta limitación.

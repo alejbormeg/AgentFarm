@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 """Minimal Codex app-server double for the end-to-end test (stdio JSON-RPC, no network)."""
-import json, os, sys, time
+import json, os, subprocess, sys, time
+
+# `codex sandbox`: every hidden path is masked, unless the test breaks the sandbox on purpose.
+if sys.argv[1:2] == ["sandbox"]:
+    args = sys.argv[2:]
+    assert 'permissions.agentfarm.network.enabled=false' in args and 'default_permissions="agentfarm"' in args, args
+    command = args[args.index("--") + 1:]
+    leaked = ["/etc/passwd"] if os.environ.get("E2E_SANDBOX_BROKEN") else []
+    sys.exit(subprocess.call(command[:5] + leaked))
 
 RESETS = int(time.time()) + 3 * 86400
 threads = {}
