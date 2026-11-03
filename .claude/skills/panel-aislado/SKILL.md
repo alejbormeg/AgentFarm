@@ -23,4 +23,10 @@ Para recorrer las vistas en un navegador sin interfaz:
 CHROME=google-chrome node tests/ui/smoke.mjs http://127.0.0.1:18095 "$(cat "$tmp/password")"
 ```
 
-El smoke necesita Chrome. Si este equipo no lo tiene, la CI lo ejecuta en el job `e2e`, y puedes mirar el panel desde el navegador del propietario. Di siempre en la PR cuál de las dos cosas has hecho.
+El smoke necesita Chrome. Si este equipo no lo tiene, descarga uno sin interfaz en un directorio temporal:
+
+```bash
+npx --yes @puppeteer/browsers install chrome-headless-shell@stable --path "$tmp/chrome"
+```
+
+Y pasa la ruta del binario en `CHROME`, o en `E2E_CHROME` para el e2e. La CI también lo ejecuta, en el job `e2e`. Di en la PR dónde lo has comprobado.
