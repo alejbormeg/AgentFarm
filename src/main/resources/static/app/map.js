@@ -121,8 +121,8 @@ export class FarmMap {
     this.root.setAttribute(
       "aria-label",
       "La granja ahora: " +
-        decisions + " cajas esperan tu decisión, " +
-        integrated + " sacos en el granero, " +
+        (decisions === 1 ? "1 caja espera" : decisions + " cajas esperan") + " tu decisión, " +
+        (integrated === 1 ? "1 saco" : integrated + " sacos") + " en el granero, " +
         (known ? Math.round(100 - usedPercent) + " % de cuota, " : "cuota desconocida, ") +
         (building ? "Boxer trabajando." : "Boxer libre."),
     );
