@@ -284,11 +284,81 @@ class WebTest {
   }
 
   @Test
-  void ownerGetsOverviewAndMateuAssets() throws Exception {
+  void ownerGetsOverviewAndTheApp() throws Exception {
     assertEquals(200, get("/api/overview", true).statusCode());
-    assertEquals(200, get("/", true).statusCode());
-    assertTrue(get("/", true).body().contains("mateu-ui"));
-    assertEquals(200, get("/assets/mateu-vaadin.js", true).statusCode());
+    assertEquals(302, get("/", true).statusCode());
+    for (String view : List.of("overview", "tasks", "agents", "budgets", "governance")) {
+      var page = get("/" + view, true);
+      assertEquals(200, page.statusCode(), view);
+      assertTrue(page.body().contains("<farm-app>"), view);
+    }
+    assertEquals(200, get("/app/main.js", true).statusCode());
+    assertFalse(
+        Set.of(200).contains(get("/overview", false).statusCode()), "the app needs a session");
+  }
+
+  @Test
+  void theLoginPageCanShowTheFarmButNothingElseIsPublic() throws Exception {
+    assertEquals(200, get("/art/granja-dia.png", false).statusCode());
+    assertEquals(200, get("/login", false).statusCode());
+    assertFalse(Set.of(200).contains(get("/app/main.js", false).statusCode()));
+  }
+
+  @Test
+  void everyPageCarriesAStrictContentSecurityPolicy() throws Exception {
+    String policy = get("/login", false).headers().firstValue("Content-Security-Policy").orElse("");
+    assertTrue(policy.contains("default-src 'none'"), policy);
+    assertTrue(policy.contains("script-src 'self'"), policy);
+    assertFalse(policy.contains("'unsafe-eval'"), policy);
+    assertTrue(policy.contains("frame-ancestors 'none'"), policy);
+  }
+
+  /** A team reaches the panel by name: nothing may depend on the address being local. */
+  @Test
+  void thePanelWorksAtAnAddressThatIsNotLocalhost() throws Exception {
+    String page = rawRequest("GET /tasks", "");
+    assertTrue(page.startsWith("HTTP/1.1 200"), page);
+    assertTrue(page.contains("<farm-app>"), page);
+
+    String answer = rawRequest("GET /api/csrf", "");
+    var csrf = Json.parse(answer.substring(answer.indexOf('{'), answer.lastIndexOf('}') + 1));
+    String cookie =
+        answer
+            .lines()
+            .filter(l -> l.startsWith("Set-Cookie: JSESSIONID="))
+            .findFirst()
+            .orElseThrow()
+            .substring("Set-Cookie: ".length())
+            .split(";")[0];
+    String posted =
+        rawRequest(
+            "POST /api/governance/paused/false",
+            "Origin: https://panel.example\r\nCookie: "
+                + cookie
+                + "\r\n"
+                + csrf.get("header").asText()
+                + ": "
+                + csrf.get("token").asText()
+                + "\r\nContent-Length: 0\r\n");
+    assertTrue(posted.startsWith("HTTP/1.1 200"), posted);
+  }
+
+  // HttpClient refuses to set Host, so this one speaks HTTP by hand.
+  private String rawRequest(String line, String headers) throws Exception {
+    try (var socket = new java.net.Socket("127.0.0.1", port)) {
+      socket
+          .getOutputStream()
+          .write(
+              (line
+                      + " HTTP/1.1\r\nHost: panel.example\r\nAuthorization: "
+                      + auth()
+                      + "\r\nConnection: close\r\n"
+                      + headers
+                      + "\r\n")
+                  .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      return new String(
+          socket.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+    }
   }
 
   @Test
@@ -314,18 +384,6 @@ class WebTest {
             .build();
     assertEquals(200, client.send(req, HttpResponse.BodyHandlers.ofString()).statusCode());
     assertTrue(get("/api/audit", true).body().contains("farm.pause"));
-  }
-
-  @Test
-  void mateuRejectsCrossOriginMutation() throws Exception {
-    var req =
-        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/mateu/v3/route"))
-            .header("Authorization", auth())
-            .header("Origin", "https://example.invalid")
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString("{}"))
-            .build();
-    assertEquals(403, client.send(req, HttpResponse.BodyHandlers.ofString()).statusCode());
   }
 
   @Test
@@ -678,7 +736,7 @@ class WebTest {
   }
 
   @Test
-  void onlyTheOwnerCanToggleAgentsFromTheMateuList() throws Exception {
+  void onlyTheOwnerCanToggleAgents() throws Exception {
     String node = "toggle-node";
     var csrf = Json.parse(get("/api/csrf", true).body());
     client.send(
@@ -691,12 +749,12 @@ class WebTest {
                     "{\"id\":\"" + node + "\",\"role\":\"napoleon\"}"))
             .build(),
         HttpResponse.BodyHandlers.ofString());
-    assertEquals(200, toggle("oscar", TEAM_PASSWORD, node).statusCode());
+    String toggle = "/api/entities/node/" + node + "/enabled/false";
+    assertEquals(403, as("oscar", "POST", toggle, "{}").statusCode());
     assertTrue(enabled(node), "an observer's toggle changes nothing");
-    assertEquals(200, toggle("rita", TEAM_PASSWORD, node).statusCode());
+    assertEquals(403, as("rita", "POST", toggle, "{}").statusCode());
     assertTrue(enabled(node), "a reviewer's toggle changes nothing");
-    String password = Files.readString(dir.resolve("admin-password.txt")).trim();
-    assertEquals(200, toggle("admin", password, node).statusCode());
+    assertEquals(200, as("paula", "POST", toggle, "{}").statusCode());
     assertFalse(enabled(node), "the owner's toggle applies");
     assertTrue(get("/api/audit", true).body().contains("node.disable"));
   }
@@ -705,28 +763,6 @@ class WebTest {
     for (var n : Json.parse(get("/api/nodes", true).body()))
       if (node.equals(n.path("id").asText())) return n.path("enabled").asInt() == 1;
     throw new AssertionError("Unknown node " + node);
-  }
-
-  private HttpResponse<String> toggle(String user, String secret, String node) throws Exception {
-    String basic =
-        "Basic "
-            + Base64.getEncoder()
-                .encodeToString((user + ":" + secret).getBytes(StandardCharsets.UTF_8));
-    return client.send(
-        HttpRequest.newBuilder(
-                URI.create("http://localhost:" + port + "/mateu/v3/sync/agent-status"))
-            .header("Authorization", basic)
-            .header("Origin", "http://localhost:" + port)
-            .header("Content-Type", "application/json")
-            .POST(
-                HttpRequest.BodyPublishers.ofString(
-                    "{\"serverSideType\":\"io.agentfarm.ui.AgentStatus\",\"appState\":{},"
-                        + "\"componentState\":{},\"parameters\":{\"_item\":\"node:"
-                        + node
-                        + ":false\"},\"consumedRoute\":\"\",\"route\":\"/agent-status\","
-                        + "\"actionId\":\"toggle\"}"))
-            .build(),
-        HttpResponse.BodyHandlers.ofString());
   }
 
   @Test

@@ -45,3 +45,14 @@ conn.execute(
     (time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "control-plane", "work.integrated", "demo-readme-00000004"),
 )
 conn.commit()
+# Eight weeks of simulated history, so the harvest and the granary show what a farm in use looks like.
+now = time.time()
+history = (4, 2, 3, 1, 2, 0, 1)
+for weeks_ago, integrated in enumerate(history, start=1):
+    for n in range(integrated + 1):
+        at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - weeks_ago * 7 * 86400 - n * 3600))
+        conn.execute("INSERT INTO audit(at,actor,action,subject) VALUES(?,?,?,?)", (at, "agent", "work.proposed", f"demo-history-{weeks_ago}-{n}"))
+        conn.execute("INSERT INTO audit(at,actor,action,subject) VALUES(?,?,?,?)", (at, "admin", "work.implement", f"demo-history-{weeks_ago}-{n}"))
+        if n < integrated:
+            conn.execute("INSERT INTO audit(at,actor,action,subject) VALUES(?,?,?,?)", (at, "control-plane", "work.integrated", f"demo-history-{weeks_ago}-{n}"))
+conn.commit()

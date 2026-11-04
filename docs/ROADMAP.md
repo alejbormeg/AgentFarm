@@ -68,13 +68,11 @@ Origen: [segunda auditoría](AUDIT-2026-11.md).
 
 ## Fase 7 — Señales de producción
 
-7.3 parcial: Mateu actualizado a 3.0-beta.32; el aviso de Lumo procede del Vaadin que empaqueta Mateu y requiere una versión de Mateu sobre Vaadin 26 o sustituir la shell.
-
 | # | Entrega | Criterio de salida |
 | --- | --- | --- |
 | 7.1 ✅ | Herramientas MCP por proyecto declaradas en `agentfarm.yaml` (antigua 4.4). | Visibles en la propuesta y limitadas por rol. |
 | 7.2 ✅ | Disparadores desde Sentry/Grafana. | Un error nuevo abre una propuesta `bugfix` enlazada. |
-| 7.3 (parcial) | Interfaz fuera de Mateu beta o actualizada a Vaadin 26. | Sin avisos de deprecación; mismas vistas. |
+| 7.3 ✅ | Interfaz fuera de Mateu. | Sin avisos de deprecación; mismas vistas. |
 
 ## Fase 8 — Mantener repos para desarrolladores
 

@@ -22,35 +22,31 @@ public class PageRoutes {
     this.twoFactor = twoFactor;
   }
 
-  private static final String HAT =
-      "<svg viewBox=\"0 0 64 64\" width=\"64\" height=\"64\" aria-hidden=\"true\">"
-          + "<path d=\"M15 27 8 19l13 3zM49 27l7-8-13 3z\" fill=\"#e5909f\"/><ellipse cx="
-          + "\"32\" cy=\"42\" rx=\"21\" ry=\"19\" fill=\"#f4b3bd\"/><ellipse cx=\"32\" cy"
-          + "=\"49\" rx=\"10\" ry=\"7.5\" fill=\"#e5909f\"/><ellipse cx=\"28\" cy=\"49\" "
-          + "rx=\"2\" ry=\"3\" fill=\"#7c3a48\"/><ellipse cx=\"36\" cy=\"49\" rx=\"2\" ry"
-          + "=\"3\" fill=\"#7c3a48\"/><circle cx=\"22.5\" cy=\"37\" r=\"3\" fill=\"#142d4"
-          + "e\"/><circle cx=\"41.5\" cy=\"37\" r=\"3\" fill=\"#142d4e\"/><path d=\"M2 25"
-          + "C11 23 19 7 32 5c13 2 21 18 30 20-9 7-51 7-60 0z\" fill=\"#142d4e\"/><path d"
-          + "=\"M4 25c12 6 44 6 56 0\" fill=\"none\" stroke=\"#e3ab3e\" stroke-width=\"3\""
-          + " stroke-linecap=\"round\"/><circle cx=\"32\" cy=\"17\" r=\"6.5\" fill=\"#fff"
-          + "\"/><circle cx=\"32\" cy=\"17\" r=\"4.2\" fill=\"#285bc5\"/><circle cx=\"32\""
-          + " cy=\"17\" r=\"2\" fill=\"#d23c3c\"/>"
-          + "</svg>";
+  private static final String SCENE =
+      "<picture><source srcset=\"/art/granja-atardecer.png\" media=\"(prefers-color-scheme: dark)\">"
+          + "<img class=\"scene\" src=\"/art/granja-dia.png\" alt=\"\"></picture>";
 
   private static final String STYLE =
-      "body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f6f7f9;"
-          + "color:#233345;font:16px/1.5 system-ui,sans-serif}"
-          + "main{width:min(380px,calc(100vw - 32px));background:#fff;border:1px solid #dce3e9;"
-          + "border-radius:12px;padding:32px;box-sizing:border-box}"
-          + "h1{margin:12px 0 4px;font-size:24px;color:#142d4e}p{margin:0 0 20px;color:#526477}"
-          + "label{display:grid;gap:6px;margin:0 0 16px;font-weight:600;font-size:14px}"
-          + "input{font:inherit;font-weight:400;padding:10px 12px;border:1px solid #8496a9;"
-          + "border-radius:6px;color:#142d4e}"
-          + "input:focus-visible,button:focus-visible{outline:3px solid #285bc5;outline-offset:2px}"
-          + "button{width:100%;font:inherit;font-weight:600;padding:11px;border:0;border-radius:6px;"
-          + "background:#285bc5;color:#fff;cursor:pointer}button:hover{background:#1f4ba6}"
-          + ".notice{padding:10px 12px;border-radius:6px;background:#fbe5e4;color:#922f2b}"
-          + ".notice.ok{background:#e1f0e8;color:#206444}";
+      "@font-face{font-family:Geist;src:url(/fonts/geist-latin-wght-normal.woff2) format(\"woff2\");font-weight:100 900}"
+          + ":root{color-scheme:light dark;--bg:#f6f5f1;--sheet:#fff;--line:#e6e3da;--ink:#1b2433;--text:#2e3744;"
+          + "--muted:#5f6875;--btn:#1b2433;--btn-text:#fff;--field:#fff;--bad:#9a2d22;--bad-bg:#fbe9e6;--ok:#24663a;--ok-bg:#e5f2e8}"
+          + "@media (prefers-color-scheme:dark){:root{--bg:#12131f;--sheet:#171926;--line:#2c3045;--ink:#f1eff6;--text:#dddbe6;"
+          + "--muted:#a5a8bb;--btn:#e9b94f;--btn-text:#241703;--field:#1d2030;--bad:#f09a8c;--bad-bg:#3a2020;--ok:#86cf9c;--ok-bg:#1b3026}}"
+          + "body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);"
+          + "color:var(--text);font:14px/20px Geist,system-ui,sans-serif}"
+          + "main{width:min(420px,100vw);background:var(--sheet);border:1px solid var(--line);border-radius:14px;overflow:hidden}"
+          + ".scene{display:block;width:100%;height:150px;object-fit:cover;object-position:50% 40%;image-rendering:pixelated}"
+          + "h1,p,form,.notice{margin-left:28px;margin-right:28px}"
+          + "h1{margin-top:20px;margin-bottom:2px;font-size:22px;line-height:28px;font-weight:600;color:var(--ink)}"
+          + "p{margin-top:0;margin-bottom:16px;color:var(--muted)}"
+          + "label{display:grid;gap:4px;margin:0 0 12px;font-weight:500;color:var(--ink)}"
+          + "input{font:inherit;font-weight:400;min-height:36px;padding:6px 10px;border:1px solid var(--line);"
+          + "border-radius:8px;color:var(--ink);background:var(--field)}"
+          + "input:focus-visible,button:focus-visible{outline:2px solid #1f5fbf;outline-offset:2px}"
+          + "button{width:100%;min-height:38px;margin-bottom:28px;font:inherit;font-weight:500;border:0;border-radius:8px;"
+          + "background:var(--btn);color:var(--btn-text);cursor:pointer}"
+          + ".notice{padding:8px 12px;border-radius:8px;background:var(--bad-bg);color:var(--bad)}"
+          + ".notice.ok{background:var(--ok-bg);color:var(--ok)}";
 
   @GetMapping(value = "/login", produces = MediaType.TEXT_HTML_VALUE + ";charset=UTF-8")
   public String login(HttpServletRequest request) {
@@ -69,7 +65,7 @@ public class PageRoutes {
         + "<title>Entrar · AgentFarm</title><style>"
         + STYLE
         + "</style></head><body><main>"
-        + HAT
+        + SCENE
         + "<h1>AgentFarm</h1><p>Entra para gobernar tu equipo de agentes.</p>"
         + notice
         + "<form method=\"post\" action=\"/login\"><label>Usuario"
@@ -95,7 +91,7 @@ public class PageRoutes {
         + "<title>Segundo factor · AgentFarm</title><style>"
         + STYLE
         + "</style></head><body><main>"
-        + HAT
+        + SCENE
         + "<h1>Segundo factor</h1><p>Escribe el código de seis cifras de tu aplicación.</p>"
         + notice
         + "<form method=\"post\" action=\"/login/2fa\"><label>Código"

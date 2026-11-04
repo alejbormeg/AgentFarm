@@ -52,4 +52,4 @@ These APIs need the operator's session or credential, and changes need CSRF. The
 
 ## Visual dependencies
 
-Mermaid 11.12.0 is served locally, with `securityLevel: strict` and an MIT license, and diagrams go to no external service. The UI uses the Mateu shell and a web component served by Spring, so installing needs no Node build.
+Mermaid 11.12.0 is served locally, with `securityLevel: strict` and an MIT license, and diagrams go to no external service. The interface is our own modules, served by the panel with nothing external.

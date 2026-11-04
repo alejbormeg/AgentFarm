@@ -1,6 +1,6 @@
 # AgentFarm: reglas de desarrollo
 
-Panel (Spring Boot y Mateu) y ejecutor (`runtime/FarmDaemon.java`) para que un equipo de agentes mantenga
+Panel (Spring Boot) y ejecutor (`runtime/FarmDaemon.java`) para que un equipo de agentes mantenga
 repositorios y un humano decida qué se integra. Lee [PRODUCT.md](PRODUCT.md) antes de decidir algo de producto,
 [DESIGN.md](DESIGN.md) antes de tocar la interfaz y la especificación de la tarea antes de empezar.
 
@@ -20,7 +20,8 @@ repositorios y un humano decida qué se integra. Lee [PRODUCT.md](PRODUCT.md) an
 | --- | --- |
 | `src/main/java/io/agentfarm/core` | Dominio: flujo, evidencias, presupuesto, sandbox, GitHub, migraciones |
 | `src/main/java/io/agentfarm/web` | API y seguridad |
-| `src/main/java/io/agentfarm/ui`, `src/main/resources/static/farm-console.js` | Shell Mateu y componente web compartido |
+| `src/main/resources/static/app` | Interfaz: módulos ES sin compilación |
+| `tools/pixelart/farm.py` | Genera los dibujos de la granja (`static/art`) |
 | `src/main/resources/{prompts,skills,recipes.json}` | Instrucciones de los agentes, versionadas |
 | `runtime/` | Ejecutor. `FarmDaemon.java` se compila aparte y usa las clases de `core` |
 | `agentfarm`, `compose.yaml`, `Dockerfile` | Instalación y operación |

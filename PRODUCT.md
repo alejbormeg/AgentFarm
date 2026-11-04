@@ -3,7 +3,7 @@
 ## Platform
 web
 ## Stack
-Java 21, Spring Boot 4, Mateu. Requested by the project owner. Ubuntu 24.04 LTS WSL development.
+Java 21, Spring Boot 4 and a panel without a framework or build step. The owner replaced Mateu on 2026-11-04. Ubuntu 24.04 LTS WSL development.
 ## Users
 Developers who want their repositories maintained without doing the maintenance themselves. People with ideas but no coding background are a later audience: they can't judge code, so automated gates and previews must come first.
 ## Product Purpose

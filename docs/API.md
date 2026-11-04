@@ -2,7 +2,7 @@
 
 Todas las rutas requieren autenticación del operador. No existen todavía
 credenciales por nodo ni permisos distintos para un trabajador externo.
-El panel Mateu utiliza los mismos servicios de dominio.
+El panel usa esta misma API.
 
 GET /api/csrf entrega el token CSRF y el nombre de su cabecera. Un cliente de
 la API debe mantener la cookie de sesión y enviar ese token en los POST.
