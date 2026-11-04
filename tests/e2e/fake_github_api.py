@@ -56,6 +56,8 @@ class Handler(BaseHTTPRequestHandler):
                 "mergeable": merged_tree(sha) is not None})
         if re.fullmatch(r"/repos/e2e/demo/pulls/\d+/reviews", path):
             return self.reply(200, [])
+        if re.fullmatch(r"/repos/e2e/demo/commits/\w+/check-runs", path) and os.path.exists(state + ".no-ci"):
+            return self.reply(200, {"total_count": 0, "check_runs": []})
         if re.fullmatch(r"/repos/e2e/demo/commits/\w+/check-runs", path):
             runs = [{"name": "AgentFarm " + k, "status": "completed", "conclusion": "success"} for k in ("unit", "integration")]
             return self.reply(200, {"total_count": len(runs), "check_runs": runs})

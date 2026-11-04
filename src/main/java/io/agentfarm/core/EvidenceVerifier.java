@@ -6,36 +6,39 @@ import static io.agentfarm.core.Store.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Clock;
 import java.util.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
 
 /**
  * Checks candidates in review from outside the executor: the panel reads GitHub's CI and the
  * changed files for the exact commit with its own credentials, so an executor report alone never
  * closes a criterion. It proves the approved commands passed, not that the tests are any good.
  */
-@Service
 public class EvidenceVerifier {
   private final Store db;
   private final Clock clock;
   private final GitHubReader.Source github;
   private final java.util.function.BooleanSupplier configured;
-
-  @Autowired
-  public EvidenceVerifier(Store db, Clock clock, GitHubReader reader) {
-    this(db, clock, reader::get, reader::configured);
-  }
+  private final long ciPatienceSeconds;
 
   public EvidenceVerifier(
       Store db,
       Clock clock,
       GitHubReader.Source github,
       java.util.function.BooleanSupplier configured) {
+    this(db, clock, github, configured, 600);
+  }
+
+  public EvidenceVerifier(
+      Store db,
+      Clock clock,
+      GitHubReader.Source github,
+      java.util.function.BooleanSupplier configured,
+      long ciPatienceSeconds) {
     this.db = db;
     this.clock = clock;
     this.github = github;
     this.configured = configured;
+    this.ciPatienceSeconds = ciPatienceSeconds;
   }
 
   public record Assessment(String state, String reason, Map<String, Object> detail) {}
@@ -108,6 +111,10 @@ public class EvidenceVerifier {
     @SuppressWarnings("unchecked")
     var scope = (Map<String, Object>) snapshot.get("scope");
     String repo = item.get("repo").toString(), sha = item.get("sha").toString();
+    long waited =
+        item.get("state_since") instanceof Number since
+            ? clock.instant().getEpochSecond() - since.longValue()
+            : 0;
     Assessment result;
     try {
       result =
@@ -116,6 +123,7 @@ public class EvidenceVerifier {
               github.get(repo, "/commits/" + sha + "/check-runs?per_page=100"),
               github.get(repo, "/commits/" + sha + "/status"),
               github.get(repo, "/compare/" + scope.get("base_sha") + "..." + sha));
+      result = explainDelay(result, waited > ciPatienceSeconds ? waited : 0);
     } catch (Exception e) {
       result = new Assessment("unavailable", "No se pudo leer GitHub: " + e.getMessage(), Map.of());
     }
@@ -143,6 +151,41 @@ public class EvidenceVerifier {
           clock.instant().getEpochSecond());
       return null;
     });
+  }
+
+  /**
+   * A CI that never starts stays pending, so nothing integrates without it, but past the patience
+   * the reason stops saying it is just waiting. {@code overdueSeconds} is 0 until then.
+   */
+  public static Assessment explainDelay(Assessment assessment, long overdueSeconds) {
+    if (overdueSeconds <= 0 || !"pending".equals(assessment.state())) return assessment;
+    String minutes = Math.max(1, overdueSeconds / 60) + " min";
+    String look =
+        " Revísalo en la pestaña Actions de GitHub. Cuando la CI corra, esto se actualiza solo.";
+    var runs = (List<?>) assessment.detail().get("checks");
+    var unfinished =
+        runs.stream().map(r -> ((Map<?, ?>) r).get("status")).filter(s -> !"completed".equals(s));
+    String reason;
+    if (runs.isEmpty())
+      reason =
+          "GitHub no ha lanzado ninguna comprobación en "
+              + minutes
+              + ". Lo habitual es que Actions esté desactivado en el repositorio o que el workflow"
+              + " no se active en esta rama."
+              + look;
+    else if (unfinished.toList().stream().anyMatch(s -> !"queued".equals(s))
+        || runs.stream().allMatch(r -> "completed".equals(((Map<?, ?>) r).get("status"))))
+      return assessment;
+    else
+      reason =
+          "La CI lleva "
+              + minutes
+              + " en cola sin empezar. Lo habitual es que no haya un runner disponible o que se"
+              + " hayan agotado los minutos de Actions."
+              + look;
+    var detail = new LinkedHashMap<>(assessment.detail());
+    detail.put("stalled", true);
+    return new Assessment("pending", reason, detail);
   }
 
   /** Pure decision over GitHub's answers: pending until CI ends, then success or failed. */

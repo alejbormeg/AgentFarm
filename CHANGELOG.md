@@ -7,6 +7,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 ## Sin publicar — camino a la versión 1.0
 
 - La CI ya no guarda artefactos que nadie usa: 294 ocupaban 13,8 GB del espacio de Actions.
+- Si la CI de un repositorio no arranca o se queda en cola, el panel lo dice a los 10 minutos, con la causa probable y dónde mirar. Sigue sin integrarse nada sin ella.
 
 ## Sin publicar — lo que encontró el piloto
 

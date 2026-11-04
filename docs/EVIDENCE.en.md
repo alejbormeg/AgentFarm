@@ -24,6 +24,10 @@ A `test` criterion can't be replaced by a manual validation. It only closes when
 
 A `test` criterion is **checked** if CI passed entirely and, for each check, the report shows the approved command, unaltered, passing in the disposable container. Tests on the host don't count. CI doesn't pass if the candidate changes a workflow other than `.github/workflows/agentfarm.yml`.
 
+**If CI doesn't start:** after 10 minutes with no checks, or with all of them queued, the panel explains the likely
+cause: Actions disabled, a workflow that doesn't run on the branch, no runner or no minutes. Nothing integrates without
+it. Change the wait with `AGENTFARM_CI_WAIT_SECONDS`.
+
 **N/A:** a `test` criterion can't rely on an `N/A:` command, and a candidate that changes code with a test type in `N/A:` doesn't pass. N/A is only accepted when the changes are documentation (`docs/`, `.md`, `.txt`, licenses, project memory).
 
 It checks that the approved commands passed, not that the tests are good. Without a GitHub credential in the panel, `test` criteria stay unchecked.

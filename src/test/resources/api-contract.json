@@ -163,6 +163,18 @@
       "state" : "string",
       "title" : "string",
       "verification" : {
+        "at" : "number",
+        "detail" : {
+          "added" : [ "string" ],
+          "checks" : [ {
+            "conclusion" : "string",
+            "name" : "string",
+            "status" : "string"
+          } ],
+          "files" : [ "string" ],
+          "secrets" : [ ]
+        },
+        "reason" : "string",
         "state" : "string"
       },
       "version" : "number"
@@ -272,6 +284,18 @@
       "state" : "string",
       "title" : "string",
       "verification" : {
+        "at" : "number",
+        "detail" : {
+          "added" : [ "string" ],
+          "checks" : [ {
+            "conclusion" : "string",
+            "name" : "string",
+            "status" : "string"
+          } ],
+          "files" : [ "string" ],
+          "secrets" : [ ]
+        },
+        "reason" : "string",
         "state" : "string"
       },
       "version" : "number"

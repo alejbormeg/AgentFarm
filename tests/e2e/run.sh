@@ -73,7 +73,7 @@ echo e2e-panel-token > "$work/github-token"
 mkdir "$work/build"
 git -C "$root" rev-parse HEAD > "$work/build/build-commit.txt"
 AGENTFARM_PASSWORD="$password" AGENTFARM_DB="$work/panel/agentfarm.db" PORT="$port" \
-  AGENTFARM_USERS_FILE="$work/users.json" \
+  AGENTFARM_USERS_FILE="$work/users.json" AGENTFARM_CI_WAIT_SECONDS=1 \
   AGENTFARM_GITHUB_TOKEN_FILE="$work/github-token" AGENTFARM_GITHUB_API="http://127.0.0.1:$api_port" \
   java -Xbootclasspath/a:"$work/build" -jar "$root/target/agentfarm.jar" > "$work/panel.log" 2>&1 &
 pids+=($!)
@@ -337,6 +337,20 @@ if [[ -n "${E2E_CHROME:-}" ]]; then
     sleep 2
   done
   [[ "$overlaps" != 0 ]] || fail "the panel did not see two tasks on the same files"
+  # A repository whose CI never starts: the panel says why, and the gate stays shut.
+  item=e2e-request-noci
+  touch "$work/gh.json.no-ci"
+  owner /work '{"request_id":"e2e-request-noci","repository":"e2e/demo","title":"Añadir una despedida","request":"Crea greeting.txt con una despedida."}' > /dev/null
+  wait_for proposed 60
+  owner /work/$item/actions/implement '{"version":1}' > /dev/null
+  wait_for review 150
+  stalled=""
+  for _ in $(seq 1 45); do
+    stalled=$(curl -fs -u "admin:$password" "$panel/api/evidence/$item" | python3 -c 'import json,sys;d=json.load(sys.stdin);print("yes" if d["verification"].get("detail",{}).get("stalled") and not d["ready"] else "")')
+    [[ -n "$stalled" ]] && break
+    sleep 2
+  done
+  [[ -n "$stalled" ]] || fail "a CI that never starts was not explained"
   # A slot of this node with another commit and a broken sandbox; a warning only lasts while it reports.
   node_jar="$work/node-cookies"
   node_csrf=$(curl -fs -H "Authorization: Bearer $(cat "$work/state/node-token")" -c "$node_jar" -b "$node_jar" "$panel/api/csrf" | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
@@ -357,6 +371,8 @@ if [[ -n "${E2E_CHROME:-}" ]]; then
   done
   SMOKE_NOTICES=1 CHROME="$E2E_CHROME" node "$root/tests/ui/smoke.mjs" "$panel" "$password" || fail "browser notices"
   kill "$reporter" 2>/dev/null || true
+  rm -f "$work/gh.json.no-ci"
+  owner /work/e2e-request-noci/actions/cancel '{}' > /dev/null
 else
   echo "Browser notices skipped: set E2E_CHROME to a Chrome binary"
 fi
