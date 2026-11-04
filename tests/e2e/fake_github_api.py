@@ -69,14 +69,13 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(404, {"message": path})
 
     def do_POST(self):
-        self.rfile.read(int(self.headers.get("Content-Length", 0) or 0))
+        body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0) or 0)) or "{}")
         if re.fullmatch(r"/app-manifests/\w+/conversions", self.path):
             # GitHub answers this one without credentials: the code is the secret.
             return self.reply(201, {"id": 4242, "slug": "agentfarm-e2e", "pem": open(os.environ["E2E_APP_PEM"]).read()})
         if not self.headers.get("Authorization", "").startswith("Bearer "):
             return self.reply(401, {"message": "Bad credentials"})
         if re.fullmatch(r"/app/installations/\d+/access_tokens", self.path):
-            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or "{}")
             if body.get("repositories"):
                 return self.reply(201, {"token": "ghs_e2e_repo_" + "_".join(body["repositories"]), "expires_at": "2099-01-01T00:00:00Z", "repository_selection": "selected"})
             return self.reply(201, {"token": "ghs_e2e", "expires_at": "2099-01-01T00:00:00Z", "repository_selection": "all"})
