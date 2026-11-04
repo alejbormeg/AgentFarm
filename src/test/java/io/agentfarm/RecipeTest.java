@@ -64,7 +64,10 @@ class RecipeTest {
             "migration@1",
             "project-memory@1"),
         ids);
-    assertEquals(1, RecipeCatalog.snapshot("adopt-repo", 1).path("version").asLong(), "published versions stay");
+    assertEquals(
+        1,
+        RecipeCatalog.snapshot("adopt-repo", 1).path("version").asLong(),
+        "published versions stay");
     var mutable =
         (com.fasterxml.jackson.databind.node.ObjectNode) RecipeCatalog.snapshot("bugfix", 1);
     mutable.put("title", "tampered");
@@ -126,15 +129,14 @@ class RecipeTest {
     historical.put("version", 99);
     historical.remove("hash");
     historical.put("hash", sha256(canonical(historical)));
-    store.tx(
-        c -> {
-          exec(
-              c,
-              "UPDATE work_recipes SET snapshot=? WHERE item=?",
-              encode(historical),
-              "recipe-task-123");
-          return null;
-        });
+    store.tx(c -> {
+      exec(
+          c,
+          "UPDATE work_recipes SET snapshot=? WHERE item=?",
+          encode(historical),
+          "recipe-task-123");
+      return null;
+    });
     assertEquals(historical, MAPPER.valueToTree(work.get("recipe-task-123")).path("recipe"));
     assertEquals(
         historical,

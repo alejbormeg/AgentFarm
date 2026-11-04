@@ -9,14 +9,16 @@ public class AgentFarmApplication {
   public static void main(String[] args) throws Exception {
     if (args.length > 0 && args[0].equals("user-hash")) {
       // Reads one password from stdin and prints the bcrypt hash for AGENTFARM_USERS_FILE.
-      String password = new java.io.BufferedReader(new java.io.InputStreamReader(System.in)).readLine();
+      String password =
+          new java.io.BufferedReader(new java.io.InputStreamReader(System.in)).readLine();
       if (password == null || password.length() < 12) {
         System.err.println("Password must contain at least 12 characters");
         System.exit(2);
       }
       System.out.println(
           "{bcrypt}"
-              + new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(password));
+              + new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
+                  .encode(password));
       return;
     }
     if (args.length > 0 && args[0].equals("mcp")) {

@@ -40,7 +40,8 @@ public final class RecipeCatalog {
           recipe,
           (a, b) -> number(a, "version") > number(b, "version") ? a : b);
     var result = new ArrayList<JsonNode>();
-    for (var recipe : newest.values()) result.add(snapshot(text(recipe, "id"), number(recipe, "version")));
+    for (var recipe : newest.values())
+      result.add(snapshot(text(recipe, "id"), number(recipe, "version")));
     return result;
   }
 }

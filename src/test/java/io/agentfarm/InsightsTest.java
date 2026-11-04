@@ -23,14 +23,43 @@ class InsightsTest {
   }
 
   void propose(String id) {
-    work.create(MAPPER.valueToTree(obj("request_id", id, "repository", "o/" + id, "title", "Título " + id, "request", "R")), "owner");
+    work.create(
+        MAPPER.valueToTree(
+            obj(
+                "request_id",
+                id,
+                "repository",
+                "o/" + id,
+                "title",
+                "Título " + id,
+                "request",
+                "R")),
+        "owner");
     var claim = (Map<?, ?>) work.claim("a-" + id);
     work.report(
         ((Map<?, ?>) claim.get("command")).get("id").toString(),
         MAPPER.valueToTree(
-            obj("state", "proposed", "proposal",
-                obj("summary", "s", "acceptance", "a", "as_is", "x", "to_be", "y", "unit_test", "u", "integration_test", "i",
-                    "base_sha", "b".repeat(40), "criteria", List.of(obj("id", "AC-1", "description", "d", "method", "manual"))))),
+            obj(
+                "state",
+                "proposed",
+                "proposal",
+                obj(
+                    "summary",
+                    "s",
+                    "acceptance",
+                    "a",
+                    "as_is",
+                    "x",
+                    "to_be",
+                    "y",
+                    "unit_test",
+                    "u",
+                    "integration_test",
+                    "i",
+                    "base_sha",
+                    "b".repeat(40),
+                    "criteria",
+                    List.of(obj("id", "AC-1", "description", "d", "method", "manual"))))),
         "a-" + id);
   }
 
@@ -40,28 +69,47 @@ class InsightsTest {
     propose("metric-02");
     work.action("metric-01", "implement", MAPPER.valueToTree(obj("version", 1)), "owner");
     work.action("metric-02", "correct", MAPPER.valueToTree(obj("feedback", "más tests")), "owner");
-    var totals = MAPPER.valueToTree(new InsightsService(store, Clock.systemUTC()).metrics(4)).path("totals");
+    var totals =
+        MAPPER.valueToTree(new InsightsService(store, Clock.systemUTC()).metrics(4)).path("totals");
     assertEquals(2, totals.path("proposals").asInt());
     assertEquals(0.5, totals.path("approval_rate").asDouble());
     assertEquals(1, totals.path("corrections").asInt());
     assertTrue(totals.path("median_cycle_hours").isNull(), "nothing integrated yet");
-    assertThrows(IllegalArgumentException.class, () -> new InsightsService(store, Clock.systemUTC()).metrics(0));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new InsightsService(store, Clock.systemUTC()).metrics(0));
   }
 
   @Test
   void expectedCostComesFromSettledRunsPerRecipeAndKind() {
     work.create(
-        MAPPER.valueToTree(obj("request_id", "cost-0001", "repository", "o/r", "title", "T", "request", "R", "recipe", obj("id", "bugfix", "version", 1))),
+        MAPPER.valueToTree(
+            obj(
+                "request_id",
+                "cost-0001",
+                "repository",
+                "o/r",
+                "title",
+                "T",
+                "request",
+                "R",
+                "recipe",
+                obj("id", "bugfix", "version", 1))),
         "owner");
-    store.tx(
-        c -> {
-          String command = Store.one(c, "SELECT id FROM work_commands WHERE item='cost-0001'").get("id").toString();
-          Store.exec(c, "INSERT INTO budget_accounts VALUES('sub','subscription','{}')");
-          Store.exec(c, "INSERT INTO budget_runs VALUES('sub',?,'{}','settled','{\"weekly\":120}')", "work-" + command);
-          Store.exec(c, "INSERT INTO budget_runs VALUES('sub','work-unknown','{}','settled','{\"weekly\":999}')");
-          Store.exec(c, "INSERT INTO budget_runs VALUES('sub','work-x','{}','reserved',NULL)");
-          return null;
-        });
+    store.tx(c -> {
+      String command =
+          Store.one(c, "SELECT id FROM work_commands WHERE item='cost-0001'").get("id").toString();
+      Store.exec(c, "INSERT INTO budget_accounts VALUES('sub','subscription','{}')");
+      Store.exec(
+          c,
+          "INSERT INTO budget_runs VALUES('sub',?,'{}','settled','{\"weekly\":120}')",
+          "work-" + command);
+      Store.exec(
+          c,
+          "INSERT INTO budget_runs VALUES('sub','work-unknown','{}','settled','{\"weekly\":999}')");
+      Store.exec(c, "INSERT INTO budget_runs VALUES('sub','work-x','{}','reserved',NULL)");
+      return null;
+    });
     var costs = MAPPER.valueToTree(new InsightsService(store, Clock.systemUTC()).costs());
     var bugfix = costs.path("bugfix/research/subscription");
     assertEquals(1, bugfix.path("runs").asInt());
@@ -75,7 +123,11 @@ class InsightsTest {
     propose("notify-01");
     var sent = new ArrayList<String>();
     var service =
-        new NotificationService(store, "https://hooks.example/x", "slack", "http://localhost:8080",
+        new NotificationService(
+            store,
+            "https://hooks.example/x",
+            "slack",
+            "http://localhost:8080",
             (URI uri, String type, Map<String, String> headers, String body) -> {
               sent.add(body);
               return 200;
@@ -89,23 +141,35 @@ class InsightsTest {
     propose("notify-02");
     for (int i = 0; i < 7; i++) failing.deliver();
     long attempts =
-        store.tx(c -> Store.num(Store.one(c, "SELECT attempts FROM notifications WHERE item='notify-02'"), "attempts"));
+        store.tx(c ->
+            Store.num(
+                Store.one(c, "SELECT attempts FROM notifications WHERE item='notify-02'"),
+                "attempts"));
     assertEquals(5L, attempts, "bounded retries");
-    assertThrows(IllegalArgumentException.class, () -> new NotificationService(store, "http://evil.example/x", "json", "p", (u, t, h, b) -> 200));
-    assertThrows(IllegalArgumentException.class, () -> new NotificationService(store, "", "sms", "p", (u, t, h, b) -> 200));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new NotificationService(
+                store, "http://evil.example/x", "json", "p", (u, t, h, b) -> 200));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new NotificationService(store, "", "sms", "p", (u, t, h, b) -> 200));
   }
 
   private void observed(String run, long cumulative, long at) {
-    store.tx(
-        c -> {
-          Store.exec(c, "INSERT OR IGNORE INTO budget_accounts VALUES('codex','subscription','{}')");
-          Store.exec(
-              c,
-              "INSERT INTO budget_runs VALUES('codex',?,'{}','reconciled',?)",
-              run,
-              "{\"source\":\"provider-cumulative\",\"windows\":{\"weekly\":{\"cumulative_used\":" + cumulative + ",\"observed_at\":" + at + "}}}");
-          return null;
-        });
+    store.tx(c -> {
+      Store.exec(c, "INSERT OR IGNORE INTO budget_accounts VALUES('codex','subscription','{}')");
+      Store.exec(
+          c,
+          "INSERT INTO budget_runs VALUES('codex',?,'{}','reconciled',?)",
+          run,
+          "{\"source\":\"provider-cumulative\",\"windows\":{\"weekly\":{\"cumulative_used\":"
+              + cumulative
+              + ",\"observed_at\":"
+              + at
+              + "}}}");
+      return null;
+    });
   }
 
   @Test
@@ -125,7 +189,11 @@ class InsightsTest {
     observed("work-a", 9000, 100);
     observed("work-b", 9500, 200);
     observed("work-c", 300, 300);
-    var cost = MAPPER.valueToTree(new InsightsService(store, Clock.systemUTC()).metrics(8)).path("cost").path("codex");
+    var cost =
+        MAPPER
+            .valueToTree(new InsightsService(store, Clock.systemUTC()).metrics(8))
+            .path("cost")
+            .path("codex");
     assertEquals(800, cost.path("observed").asLong());
   }
 }

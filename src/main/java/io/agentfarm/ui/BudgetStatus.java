@@ -61,20 +61,25 @@ public class BudgetStatus implements ComponentTreeSupplier {
         new Text(
             "Sin cambio automático de proveedor ni pagos adicionales. Económico y equilibrado usan"
                 + " la misma política actual; revisión reforzada espera al verificador separado."));
-    return VerticalLayout.builder().content(parts).style(UiSupport.FULL_WIDTH).fullWidth(true).build();
+    return VerticalLayout.builder()
+        .content(parts)
+        .style(UiSupport.FULL_WIDTH)
+        .fullWidth(true)
+        .build();
   }
 
   // A stale reading never appears as a gauge: it would look like the current balance.
   static Component quota(Map<String, Object> runtime) {
     JsonNode q =
-        runtime.get("snapshot") instanceof JsonNode n
-            ? n.path("quota")
-            : MissingNode.getInstance();
+        runtime.get("snapshot") instanceof JsonNode n ? n.path("quota") : MissingNode.getInstance();
     String observed = q.path("observed_at").asText("");
     String seen = "Sin observación";
     if (!observed.isEmpty()) {
       try {
-        seen = "Última observación " + UiSupport.ago(Instant.now().getEpochSecond() - Instant.parse(observed).getEpochSecond());
+        seen =
+            "Última observación "
+                + UiSupport.ago(
+                    Instant.now().getEpochSecond() - Instant.parse(observed).getEpochSecond());
       } catch (java.time.format.DateTimeParseException ignored) {
         // An unreadable date stays reported as no observation.
       }

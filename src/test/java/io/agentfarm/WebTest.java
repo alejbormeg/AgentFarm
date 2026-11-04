@@ -52,7 +52,9 @@ class WebTest {
 
   HttpResponse<String> as(String user, String method, String path, String body) throws Exception {
     var client =
-        HttpClient.newBuilder().cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL)).build();
+        HttpClient.newBuilder()
+            .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
+            .build();
     String basic =
         "Basic "
             + Base64.getEncoder()
@@ -77,14 +79,19 @@ class WebTest {
 
   @Test
   void reviewersDecideProposalsButOnlyOwnersIntegrateOrConfigure() throws Exception {
-    assertEquals("reviewer", Json.parse(as("rita", "GET", "/api/me", null).body()).path("role").asText());
+    assertEquals(
+        "reviewer", Json.parse(as("rita", "GET", "/api/me", null).body()).path("role").asText());
     assertEquals(200, as("oscar", "GET", "/api/work", null).statusCode());
     String request =
         "{\"request_id\":\"team-request-01\",\"repository\":\"o/r\",\"title\":\"T\",\"request\":\"R\"}";
     assertEquals(403, as("oscar", "POST", "/api/work", request).statusCode());
     assertEquals(200, as("rita", "POST", "/api/work", request).statusCode());
     assertTrue(get("/api/audit", true).body().contains("rita"), "audited with the person's name");
-    assertNotEquals(403, as("rita", "POST", "/api/work/team-request-01/actions/implement", "{\"version\":1}").statusCode(), "allowed, but no proposal yet");
+    assertNotEquals(
+        403,
+        as("rita", "POST", "/api/work/team-request-01/actions/implement", "{\"version\":1}")
+            .statusCode(),
+        "allowed, but no proposal yet");
     for (String owned :
         List.of(
             "/api/work/team-request-01/actions/merge",
@@ -93,7 +100,10 @@ class WebTest {
             "/api/governance/paused/true",
             "/api/budget/configure"))
       assertEquals(403, as("rita", "POST", owned, "{}").statusCode(), owned);
-    assertEquals("{\"status\":\"UP\"}", as("rita", "GET", "/api/health", null).body(), "details for owners only");
+    assertEquals(
+        "{\"status\":\"UP\"}",
+        as("rita", "GET", "/api/health", null).body(),
+        "details for owners only");
   }
 
   @Test
@@ -103,7 +113,12 @@ class WebTest {
     long step = java.time.Instant.now().getEpochSecond() / 30;
     assertEquals(
         200,
-        as("olga", "POST", "/api/me/2fa/confirm", "{\"code\":\"" + TwoFactor.code(secret, step) + "\"}").statusCode());
+        as(
+                "olga",
+                "POST",
+                "/api/me/2fa/confirm",
+                "{\"code\":\"" + TwoFactor.code(secret, step) + "\"}")
+            .statusCode());
 
     var browser =
         HttpClient.newBuilder()
@@ -114,42 +129,67 @@ class WebTest {
         HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/work"))
             .header(
                 "Authorization",
-                "Basic " + Base64.getEncoder().encodeToString(("olga:" + TEAM_PASSWORD).getBytes(StandardCharsets.UTF_8)));
-    assertEquals(401, HttpClient.newHttpClient().send(basic.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+                "Basic "
+                    + Base64.getEncoder()
+                        .encodeToString(
+                            ("olga:" + TEAM_PASSWORD).getBytes(StandardCharsets.UTF_8)));
+    assertEquals(
+        401,
+        HttpClient.newHttpClient()
+            .send(basic.build(), HttpResponse.BodyHandlers.ofString())
+            .statusCode());
 
-    assertEquals(302, form(browser, "/login", "/login", "username=olga&password=" + TEAM_PASSWORD).statusCode());
-    assertTrue(page(browser, "/overview").headers().firstValue("Location").orElse("").endsWith("/login/2fa"));
+    assertEquals(
+        302,
+        form(browser, "/login", "/login", "username=olga&password=" + TEAM_PASSWORD).statusCode());
+    assertTrue(
+        page(browser, "/overview")
+            .headers()
+            .firstValue("Location")
+            .orElse("")
+            .endsWith("/login/2fa"));
     assertEquals(401, page(browser, "/api/work").statusCode(), "the password alone opens nothing");
 
     var wrong = form(browser, "/login/2fa", "/login/2fa", "code=000000");
     assertTrue(wrong.headers().firstValue("Location").orElse("").endsWith("?error"));
     assertEquals(401, page(browser, "/api/work").statusCode());
     assertEquals(
-        302, form(browser, "/login/2fa", "/login/2fa", "code=" + TwoFactor.code(secret, step + 1)).statusCode());
+        302,
+        form(browser, "/login/2fa", "/login/2fa", "code=" + TwoFactor.code(secret, step + 1))
+            .statusCode());
     assertEquals(200, page(browser, "/api/work").statusCode());
 
     var csrf = Json.parse(page(browser, "/api/csrf").body());
     var require =
-        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/governance/two-factor-to-integrate/true"))
+        HttpRequest.newBuilder(
+                URI.create(
+                    "http://localhost:" + port + "/api/governance/two-factor-to-integrate/true"))
             .header(csrf.path("header").asText(), csrf.path("token").asText())
             .header("Content-Type", "application/json")
             .POST(HttpRequest.BodyPublishers.ofString("{}"));
-    assertEquals(200, browser.send(require.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+    assertEquals(
+        200, browser.send(require.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
     try {
       var refused = as("paula", "POST", "/api/work/none/actions/merge", "{\"sha\":\"x\"}");
       assertEquals(409, refused.statusCode());
       assertTrue(refused.body().contains("segundo factor"), refused.body());
-      assertEquals(409, as("paula", "POST", "/api/work/batch/merge", "{\"items\":[]}").statusCode());
+      assertEquals(
+          409, as("paula", "POST", "/api/work/batch/merge", "{\"items\":[]}").statusCode());
       var unprotected = as("paula", "POST", "/api/governance/two-factor-to-integrate/false", "{}");
       assertEquals(409, unprotected.statusCode());
-      assertTrue(unprotected.body().contains("segundo factor"), "the panel can show why: " + unprotected.body());
+      assertTrue(
+          unprotected.body().contains("segundo factor"),
+          "the panel can show why: " + unprotected.body());
     } finally {
       var off =
-          HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/governance/two-factor-to-integrate/false"))
+          HttpRequest.newBuilder(
+                  URI.create(
+                      "http://localhost:" + port + "/api/governance/two-factor-to-integrate/false"))
               .header(csrf.path("header").asText(), csrf.path("token").asText())
               .header("Content-Type", "application/json")
               .POST(HttpRequest.BodyPublishers.ofString("{}"));
-      assertEquals(200, browser.send(off.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
+      assertEquals(
+          200, browser.send(off.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
     }
   }
 
@@ -160,13 +200,20 @@ class WebTest {
   }
 
   /** Posts a form the way a browser does, with the CSRF token of the page that shows it. */
-  HttpResponse<String> form(HttpClient client, String pagePath, String action, String fields) throws Exception {
-    var token = java.util.regex.Pattern.compile("name=\"_csrf\" value=\"([^\"]+)\"").matcher(page(client, pagePath).body());
+  HttpResponse<String> form(HttpClient client, String pagePath, String action, String fields)
+      throws Exception {
+    var token =
+        java.util.regex.Pattern.compile("name=\"_csrf\" value=\"([^\"]+)\"")
+            .matcher(page(client, pagePath).body());
     assertTrue(token.find(), pagePath + " has a CSRF field");
     return client.send(
         HttpRequest.newBuilder(URI.create("http://localhost:" + port + action))
             .header("Content-Type", "application/x-www-form-urlencoded")
-            .POST(HttpRequest.BodyPublishers.ofString(fields + "&_csrf=" + java.net.URLEncoder.encode(token.group(1), StandardCharsets.UTF_8)))
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    fields
+                        + "&_csrf="
+                        + java.net.URLEncoder.encode(token.group(1), StandardCharsets.UTF_8)))
             .build(),
         HttpResponse.BodyHandlers.ofString());
   }
@@ -303,15 +350,12 @@ class WebTest {
 
   @Test
   void executorIsScopedRevocableAndCannotBecomeOwner() throws Exception {
-    store.tx(
-        c -> {
-          Store.exec(
-              c, "INSERT OR IGNORE INTO farm_nodes(id,role) VALUES('test-executor','napoleon')");
-          Store.exec(
-              c,
-              "INSERT OR IGNORE INTO budget_accounts VALUES('test-account','subscription','{}')");
-          return null;
-        });
+    store.tx(c -> {
+      Store.exec(c, "INSERT OR IGNORE INTO farm_nodes(id,role) VALUES('test-executor','napoleon')");
+      Store.exec(
+          c, "INSERT OR IGNORE INTO budget_accounts VALUES('test-account','subscription','{}')");
+      return null;
+    });
     var issued =
         Json.MAPPER.valueToTree(nodeCredentials.issue("test-executor", "test-account", "test"));
     String bearer = "Bearer " + issued.path("token").asText();
@@ -369,14 +413,17 @@ class WebTest {
     claim.header(csrf.path("header").asText(), csrf.path("token").asText());
     assertEquals(
         200, executor.send(claim.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
-    for (var agent : Map.of("test-executor-s2", 200, "other-executor", 403, "test-executor-x", 403).entrySet())
+    for (var agent :
+        Map.of("test-executor-s2", 200, "other-executor", 403, "test-executor-x", 403).entrySet())
       assertEquals(
           agent.getValue(),
           executor
               .send(
                   claim
                       .copy()
-                      .POST(HttpRequest.BodyPublishers.ofString("{\"agent\":\"" + agent.getKey() + "\"}"))
+                      .POST(
+                          HttpRequest.BodyPublishers.ofString(
+                              "{\"agent\":\"" + agent.getKey() + "\"}"))
                       .build(),
                   HttpResponse.BodyHandlers.ofString())
               .statusCode(),
@@ -414,20 +461,23 @@ class WebTest {
 
   @Test
   void meteredAccountOnlyReservesAndSettles() throws Exception {
-    store.tx(
-        c -> {
-          Store.exec(c, "INSERT OR IGNORE INTO farm_nodes(id,role) VALUES('metered-node','napoleon')");
-          Store.exec(c, "INSERT OR IGNORE INTO budget_accounts VALUES('sub-m','subscription','{}')");
-          Store.exec(c, "INSERT OR IGNORE INTO budget_accounts VALUES('api-m','api','{\"monthly\":10000}')");
-          return null;
-        });
+    store.tx(c -> {
+      Store.exec(c, "INSERT OR IGNORE INTO farm_nodes(id,role) VALUES('metered-node','napoleon')");
+      Store.exec(c, "INSERT OR IGNORE INTO budget_accounts VALUES('sub-m','subscription','{}')");
+      Store.exec(
+          c, "INSERT OR IGNORE INTO budget_accounts VALUES('api-m','api','{\"monthly\":10000}')");
+      return null;
+    });
     assertThrows(
         IllegalArgumentException.class,
         () -> nodeCredentials.issue("metered-node", "sub-m", "sub-m", "test"));
-    var issued = Json.MAPPER.valueToTree(nodeCredentials.issue("metered-node", "sub-m", "api-m", "test"));
+    var issued =
+        Json.MAPPER.valueToTree(nodeCredentials.issue("metered-node", "sub-m", "api-m", "test"));
     String bearer = "Bearer " + issued.path("token").asText();
     HttpClient node =
-        HttpClient.newBuilder().cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL)).build();
+        HttpClient.newBuilder()
+            .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
+            .build();
     var csrf =
         Json.parse(
             node.send(
@@ -460,10 +510,21 @@ class WebTest {
                     .build(),
                 HttpResponse.BodyHandlers.ofString())
             .statusCode());
-    assertNotEquals(403, post.apply("/api/budget/reserve", "{\"account\":\"api-m\",\"run_id\":\"r1\",\"amounts\":{\"monthly\":1}}"));
-    assertEquals(403, post.apply("/api/budget/configure", "{\"account\":\"api-m\",\"mode\":\"api\",\"shares\":{\"monthly\":1}}"));
+    assertNotEquals(
+        403,
+        post.apply(
+            "/api/budget/reserve",
+            "{\"account\":\"api-m\",\"run_id\":\"r1\",\"amounts\":{\"monthly\":1}}"));
+    assertEquals(
+        403,
+        post.apply(
+            "/api/budget/configure",
+            "{\"account\":\"api-m\",\"mode\":\"api\",\"shares\":{\"monthly\":1}}"));
     assertEquals(403, post.apply("/api/budget/rollover", "{\"account\":\"api-m\"}"));
-    assertEquals(403, post.apply("/api/budget/settle", "{\"account\":\"sub-m\",\"run_id\":\"r1\",\"actual\":null}"));
+    assertEquals(
+        403,
+        post.apply(
+            "/api/budget/settle", "{\"account\":\"sub-m\",\"run_id\":\"r1\",\"actual\":null}"));
   }
 
   @Test
@@ -577,9 +638,10 @@ class WebTest {
 
   @Test
   void signInPageIsSpanishAndCarriesItsCsrfToken() throws Exception {
-    var page = client.send(
-        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/login")).build(),
-        HttpResponse.BodyHandlers.ofString());
+    var page =
+        client.send(
+            HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/login")).build(),
+            HttpResponse.BodyHandlers.ofString());
     assertEquals(200, page.statusCode());
     assertTrue(page.body().contains("Contraseña"));
     assertFalse(page.body().contains("Please sign in"));
@@ -595,7 +657,9 @@ class WebTest {
             .header("Authorization", auth())
             .header(csrf.get("header").asText(), csrf.get("token").asText())
             .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString("{\"id\":\"" + node + "\",\"role\":\"napoleon\"}"))
+            .POST(
+                HttpRequest.BodyPublishers.ofString(
+                    "{\"id\":\"" + node + "\",\"role\":\"napoleon\"}"))
             .build(),
         HttpResponse.BodyHandlers.ofString());
     assertEquals(200, toggle("oscar", TEAM_PASSWORD, node).statusCode());
@@ -617,9 +681,11 @@ class WebTest {
   private HttpResponse<String> toggle(String user, String secret, String node) throws Exception {
     String basic =
         "Basic "
-            + Base64.getEncoder().encodeToString((user + ":" + secret).getBytes(StandardCharsets.UTF_8));
+            + Base64.getEncoder()
+                .encodeToString((user + ":" + secret).getBytes(StandardCharsets.UTF_8));
     return client.send(
-        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/mateu/v3/sync/agent-status"))
+        HttpRequest.newBuilder(
+                URI.create("http://localhost:" + port + "/mateu/v3/sync/agent-status"))
             .header("Authorization", basic)
             .header("Origin", "http://localhost:" + port)
             .header("Content-Type", "application/json")
@@ -662,7 +728,8 @@ class WebTest {
     var csrf = Json.parse(get("/api/csrf", true).body());
     var refused =
         client.send(
-            HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/work/any/actions/merge"))
+            HttpRequest.newBuilder(
+                    URI.create("http://localhost:" + port + "/api/work/any/actions/merge"))
                 .header("Authorization", auth())
                 .header(csrf.get("header").asText(), csrf.get("token").asText())
                 .header("Content-Type", "application/json")
@@ -704,28 +771,27 @@ class WebTest {
       var jobs = new ArrayList<java.util.concurrent.Future<?>>();
       for (int i = 0; i < 16; i++)
         jobs.add(
-            pool.submit(
-                () -> {
-                  for (int j = 0; j < 12; j++) {
-                    try {
-                      var request =
-                          HttpRequest.newBuilder(
-                                  URI.create(
-                                      "http://localhost:"
-                                          + port
-                                          + (j % 2 == 0 ? "/api/work" : "/api/runtime")))
-                              .timeout(java.time.Duration.ofSeconds(10))
-                              .header("Cookie", cookie)
-                              .GET()
-                              .build();
-                      var response = session.send(request, HttpResponse.BodyHandlers.ofString());
-                      assertEquals(200, response.statusCode());
-                      assertNotNull(Json.parse(response.body()));
-                    } catch (Exception e) {
-                      throw new RuntimeException(e);
-                    }
-                  }
-                }));
+            pool.submit(() -> {
+              for (int j = 0; j < 12; j++) {
+                try {
+                  var request =
+                      HttpRequest.newBuilder(
+                              URI.create(
+                                  "http://localhost:"
+                                      + port
+                                      + (j % 2 == 0 ? "/api/work" : "/api/runtime")))
+                          .timeout(java.time.Duration.ofSeconds(10))
+                          .header("Cookie", cookie)
+                          .GET()
+                          .build();
+                  var response = session.send(request, HttpResponse.BodyHandlers.ofString());
+                  assertEquals(200, response.statusCode());
+                  assertNotNull(Json.parse(response.body()));
+                } catch (Exception e) {
+                  throw new RuntimeException(e);
+                }
+              }
+            }));
       for (var job : jobs) job.get(30, java.util.concurrent.TimeUnit.SECONDS);
     } finally {
       pool.shutdownNow();

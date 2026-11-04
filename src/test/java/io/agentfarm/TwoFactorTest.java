@@ -69,14 +69,21 @@ class TwoFactorTest {
   @Test
   void isOnlyActiveOnceACodeConfirmsIt() {
     var enrollment = factor.setup("rita");
-    assertTrue(enrollment.uri().startsWith("otpauth://totp/AgentFarm%3Arita?secret=" + enrollment.secret()));
+    assertTrue(
+        enrollment
+            .uri()
+            .startsWith("otpauth://totp/AgentFarm%3Arita?secret=" + enrollment.secret()));
     assertFalse(factor.enabled("rita"));
-    assertFalse(factor.verify("rita", current(enrollment.secret())), "not usable before confirming");
+    assertFalse(
+        factor.verify("rita", current(enrollment.secret())), "not usable before confirming");
     assertThrows(IllegalArgumentException.class, () -> factor.confirm("rita", "000000"));
     assertFalse(factor.enabled("rita"));
     factor.confirm("rita", current(enrollment.secret()));
     assertTrue(factor.enabled("rita"));
-    assertThrows(IllegalArgumentException.class, () -> factor.setup("rita"), "cannot silently replace an active one");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> factor.setup("rita"),
+        "cannot silently replace an active one");
   }
 
   @Test
@@ -87,7 +94,9 @@ class TwoFactorTest {
     assertFalse(factor.verify("rita", code), "a replay is refused");
     clock.now = clock.now.plusSeconds(600);
     assertFalse(factor.verify("rita", code), "an old code is refused");
-    assertTrue(factor.verify("rita", TwoFactor.code(secret, clock.now.getEpochSecond() / 30 - 1)), "one step of drift");
+    assertTrue(
+        factor.verify("rita", TwoFactor.code(secret, clock.now.getEpochSecond() / 30 - 1)),
+        "one step of drift");
     for (String bad : new String[] {null, "", "12345", "abcdef", "1234567"})
       assertFalse(factor.verify("rita", bad));
     assertFalse(factor.verify("oscar", "123456"), "an account without it has nothing to verify");
@@ -130,7 +139,10 @@ class TwoFactorTest {
     assertTrue(factor.reset("rita", "host-operator"));
     assertFalse(factor.enabled("rita"));
     assertFalse(factor.reset("rita", "host-operator"));
-    boolean audited = store.tx(c -> Store.one(c, "SELECT 1 FROM audit WHERE action='2fa.reset' AND subject='rita'") != null);
+    boolean audited =
+        store.tx(c ->
+            Store.one(c, "SELECT 1 FROM audit WHERE action='2fa.reset' AND subject='rita'")
+                != null);
     assertTrue(audited);
   }
 }

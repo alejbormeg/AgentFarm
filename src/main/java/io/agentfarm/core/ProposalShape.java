@@ -14,8 +14,14 @@ public final class ProposalShape {
 
   private static final List<String> COMPARED =
       List.of(
-          "summary", "acceptance", "unit_test", "integration_test", "setup", "allowed_paths",
-          "criteria", "risks");
+          "summary",
+          "acceptance",
+          "unit_test",
+          "integration_test",
+          "setup",
+          "allowed_paths",
+          "criteria",
+          "risks");
 
   /** What a new version changes in the fields an operator approves, for review at a glance. */
   public static ArrayNode changes(JsonNode before, JsonNode after) {
@@ -31,21 +37,42 @@ public final class ProposalShape {
     return result;
   }
 
-  /** Evidence that the commands of a "test" criterion cannot show, in lower case and without accents. */
+  /**
+   * Evidence that the commands of a "test" criterion cannot show, in lower case and without
+   * accents.
+   */
   private static final List<String> OUT_OF_REACH =
       List.of(
-          "identidad del binario", "hash del binario", "firma del binario", "binary identity",
-          "usuario del proceso", "uid del proceso", "process user", "como root",
-          "estado de la red", "sin acceso a red", "sin acceso a la red", "network state",
-          "en produccion", "in production", "captura de pantalla", "screenshot",
-          "a mano", "manualmente", "by hand", "manually",
-          "revision humana", "human review");
+          "identidad del binario",
+          "hash del binario",
+          "firma del binario",
+          "binary identity",
+          "usuario del proceso",
+          "uid del proceso",
+          "process user",
+          "como root",
+          "estado de la red",
+          "sin acceso a red",
+          "sin acceso a la red",
+          "network state",
+          "en produccion",
+          "in production",
+          "captura de pantalla",
+          "screenshot",
+          "a mano",
+          "manualmente",
+          "by hand",
+          "manually",
+          "revision humana",
+          "human review");
+
   private static final Set<String> PROVES_NOTHING = Set.of("true", ":", "exit 0", "/bin/true");
 
   /**
    * Criteria that may never be accredited, so the owner sees them before approving. Advice only: a
-   * phrase can be a false alarm, and rejecting the proposal would waste a paid research turn. What is
-   * certainly impossible (a test criterion on a command marked N/A) is rejected by EvidenceService.
+   * phrase can be a false alarm, and rejecting the proposal would waste a paid research turn. What
+   * is certainly impossible (a test criterion on a command marked N/A) is rejected by
+   * EvidenceService.
    */
   public static ArrayNode doubtfulCriteria(JsonNode proposal) {
     var result = new ArrayNode(JsonNodeFactory.instance);
@@ -79,7 +106,8 @@ public final class ProposalShape {
 
   public static void normalize(JsonNode proposal) {
     for (var criterion : proposal.path("criteria")) {
-      if (!(criterion instanceof ObjectNode c) || !c.path("method").asText().equals("test")) continue;
+      if (!(criterion instanceof ObjectNode c) || !c.path("method").asText().equals("test"))
+        continue;
       var checks = c.get("checks");
       var names = new LinkedHashSet<String>();
       if (checks == null || checks.isNull()) continue;

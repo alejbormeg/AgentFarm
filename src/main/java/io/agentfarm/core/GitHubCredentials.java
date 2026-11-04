@@ -14,10 +14,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * GitHub token for the control plane: a GitHub App installation token (preferred, minted and
- * cached here) or a personal token file. The App comes from the environment or from what
- * GitHubAppSetup stored beside the database. Tokens are never logged. The API returns only
- * repositoryToken, and only to the node running an order on that repository.
+ * GitHub token for the control plane: a GitHub App installation token (preferred, minted and cached
+ * here) or a personal token file. The App comes from the environment or from what GitHubAppSetup
+ * stored beside the database. Tokens are never logged. The API returns only repositoryToken, and
+ * only to the node running an order on that repository.
  */
 @Component
 public class GitHubCredentials {
@@ -50,7 +50,9 @@ public class GitHubCredentials {
           return github(installation, jwt, body);
         }
       };
+
   private record App(String id, String key, String installation) {}
+
   private String cached;
   private Instant expires = Instant.EPOCH;
 
@@ -72,12 +74,23 @@ public class GitHubCredentials {
   }
 
   public GitHubCredentials(
-      String tokenFile, String appId, String keyFile, String installation, Exchange exchange, Clock clock) {
+      String tokenFile,
+      String appId,
+      String keyFile,
+      String installation,
+      Exchange exchange,
+      Clock clock) {
     this(tokenFile, appId, keyFile, installation, exchange, clock, null);
   }
 
   private GitHubCredentials(
-      String tokenFile, String appId, String keyFile, String installation, Exchange exchange, Clock clock, Path storedDir) {
+      String tokenFile,
+      String appId,
+      String keyFile,
+      String installation,
+      Exchange exchange,
+      Clock clock,
+      Path storedDir) {
     this.storedDir = storedDir;
     if (!appId.isBlank() && (!appId.matches("[0-9]{1,12}") || !installation.matches("[0-9]{1,15}")))
       throw new IllegalArgumentException("GitHub App id and installation id must be numeric");
@@ -100,7 +113,9 @@ public class GitHubCredentials {
     try {
       var stored = parse(Files.readString(storedDir.resolve(STORED_APP)));
       String id = stored.path("app_id").asText(), at = stored.path("installation_id").asText();
-      return id.isBlank() || at.isBlank() ? null : new App(id, storedDir.resolve(STORED_KEY).toString(), at);
+      return id.isBlank() || at.isBlank()
+          ? null
+          : new App(id, storedDir.resolve(STORED_KEY).toString(), at);
     } catch (java.io.IOException | IllegalArgumentException e) {
       return null;
     }
@@ -141,8 +156,9 @@ public class GitHubCredentials {
   }
 
   /**
-   * A token for the executor, limited to one repository, so it needs no login of its own. Null without
-   * an App. A wider answer than requested is refused: the executor would hold more than it should.
+   * A token for the executor, limited to one repository, so it needs no login of its own. Null
+   * without an App. A wider answer than requested is refused: the executor would hold more than it
+   * should.
    */
   public java.util.Map<String, Object> repositoryToken(String repository) throws Exception {
     var app = app();
@@ -151,10 +167,13 @@ public class GitHubCredentials {
     var body =
         parse(
             exchange.tokenResponse(
-                app.installation(), jwtFor(app.id(), app.key()), encode(obj("repositories", java.util.List.of(name)))));
+                app.installation(),
+                jwtFor(app.id(), app.key()),
+                encode(obj("repositories", java.util.List.of(name)))));
     if (!body.path("repository_selection").asText().equals("selected"))
       throw new IllegalStateException("GitHub answered with a token wider than one repository");
-    return obj("token", body.path("token").asText(), "expires_at", body.path("expires_at").asText());
+    return obj(
+        "token", body.path("token").asText(), "expires_at", body.path("expires_at").asText());
   }
 
   /** A token minted for another App must not outlive the change to this one. */
@@ -168,15 +187,23 @@ public class GitHubCredentials {
         HttpClient.newHttpClient()
             .send(
                 HttpRequest.newBuilder(
-                        URI.create(GitHubApi.base() + "/app/installations/" + installation + "/access_tokens"))
+                        URI.create(
+                            GitHubApi.base()
+                                + "/app/installations/"
+                                + installation
+                                + "/access_tokens"))
                     .timeout(Duration.ofSeconds(20))
                     .header("Authorization", "Bearer " + jwt)
                     .header("Accept", "application/vnd.github+json")
-                    .POST(body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body))
+                    .POST(
+                        body == null
+                            ? HttpRequest.BodyPublishers.noBody()
+                            : HttpRequest.BodyPublishers.ofString(body))
                     .build(),
                 HttpResponse.BodyHandlers.ofString());
     if (response.statusCode() != 201)
-      throw new IllegalStateException("GitHub App token request failed (HTTP " + response.statusCode() + ")");
+      throw new IllegalStateException(
+          "GitHub App token request failed (HTTP " + response.statusCode() + ")");
     return response.body();
   }
 
@@ -189,10 +216,12 @@ public class GitHubCredentials {
   String jwtFor(String appId, String keyFile) throws Exception {
     long now = clock.instant().getEpochSecond();
     var url = Base64.getUrlEncoder().withoutPadding();
-    String header = url.encodeToString("{\"alg\":\"RS256\",\"typ\":\"JWT\"}".getBytes(StandardCharsets.UTF_8));
+    String header =
+        url.encodeToString("{\"alg\":\"RS256\",\"typ\":\"JWT\"}".getBytes(StandardCharsets.UTF_8));
     String claims =
         url.encodeToString(
-            encode(obj("iat", now - 60, "exp", now + 540, "iss", appId)).getBytes(StandardCharsets.UTF_8));
+            encode(obj("iat", now - 60, "exp", now + 540, "iss", appId))
+                .getBytes(StandardCharsets.UTF_8));
     var signer = Signature.getInstance("SHA256withRSA");
     signer.initSign(privateKey(Files.readString(Path.of(keyFile))));
     signer.update((header + "." + claims).getBytes(StandardCharsets.US_ASCII));
@@ -204,6 +233,7 @@ public class GitHubCredentials {
       throw new IllegalArgumentException(
           "Convert the GitHub App key to PKCS#8: openssl pkcs8 -topk8 -nocrypt -in app.pem -out app-pkcs8.pem");
     String base64 = pem.replaceAll("-----[A-Z ]+-----", "").replaceAll("\\s", "");
-    return KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(Base64.getDecoder().decode(base64)));
+    return KeyFactory.getInstance("RSA")
+        .generatePrivate(new PKCS8EncodedKeySpec(Base64.getDecoder().decode(base64)));
   }
 }

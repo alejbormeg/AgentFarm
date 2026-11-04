@@ -72,24 +72,49 @@ class CommandmentsTest {
         "failed",
         statuses(
                 Commandments.assess(
-                    n(), n("regression", obj("status", "not_proved", "reason", "ya pasaban")), "success", "", files("a"), ""))
+                    n(),
+                    n("regression", obj("status", "not_proved", "reason", "ya pasaban")),
+                    "success",
+                    "",
+                    files("a"),
+                    ""))
             .get("CM-2"));
     assertEquals(
         "failed",
-        statuses(Commandments.assess(n(), n("review", obj("passed", false)), "success", "", files("a"), ""))
+        statuses(
+                Commandments.assess(
+                    n(), n("review", obj("passed", false)), "success", "", files("a"), ""))
             .get("CM-3"));
     assertEquals(
         "failed",
         statuses(
                 Commandments.assess(
-                    n("allowed_paths", List.of("src/")), n(), "success", "", files("docs/x.md"), ""))
+                    n("allowed_paths", List.of("src/")),
+                    n(),
+                    "success",
+                    "",
+                    files("docs/x.md"),
+                    ""))
             .get("CM-4"));
     assertEquals(
         "failed",
         statuses(
                 Commandments.assess(
                     n(),
-                    n("quality", obj("metrics", List.of(obj("name", "coverage", "status", "failed", "base", 90.0, "candidate", 80.0)))),
+                    n(
+                        "quality",
+                        obj(
+                            "metrics",
+                            List.of(
+                                obj(
+                                    "name",
+                                    "coverage",
+                                    "status",
+                                    "failed",
+                                    "base",
+                                    90.0,
+                                    "candidate",
+                                    80.0)))),
                     "success",
                     "",
                     files("a"),
@@ -99,30 +124,51 @@ class CommandmentsTest {
         "failed",
         statuses(
                 Commandments.assess(
-                    n(), n(), "failed", "", n("files", List.of("a"), "secrets", List.of("a (clave de API)")), ""))
+                    n(),
+                    n(),
+                    "failed",
+                    "",
+                    n("files", List.of("a"), "secrets", List.of("a (clave de API)")),
+                    ""))
             .get("CM-6"));
     assertEquals(
         "failed",
-        statuses(Commandments.assess(n(), n(), "success", "", files("agentfarm.yaml"), "")).get("CM-7"));
+        statuses(Commandments.assess(n(), n(), "success", "", files("agentfarm.yaml"), ""))
+            .get("CM-7"));
     assertEquals(
         "failed",
-        statuses(Commandments.assess(n(), n(), "failed", "", files(".github/workflows/ci.yml"), "")).get("CM-7"));
+        statuses(Commandments.assess(n(), n(), "failed", "", files(".github/workflows/ci.yml"), ""))
+            .get("CM-7"));
   }
 
   @Test
   void onlyAdoptingARepoMayAddItsRules() {
-    var added = n("files", List.of("agentfarm.yaml"), "added", List.of("agentfarm.yaml"), "secrets", List.of());
+    var added =
+        n(
+            "files",
+            List.of("agentfarm.yaml"),
+            "added",
+            List.of("agentfarm.yaml"),
+            "secrets",
+            List.of());
     assertEquals(
-        "ok", statuses(Commandments.assess(n(), n(), "success", "", added, "adopt-repo")).get("CM-7"));
-    assertEquals(
-        "failed", statuses(Commandments.assess(n(), n(), "success", "", added, "bugfix")).get("CM-7"));
+        "ok",
+        statuses(Commandments.assess(n(), n(), "success", "", added, "adopt-repo")).get("CM-7"));
     assertEquals(
         "failed",
-        statuses(Commandments.assess(n(), n(), "success", "", files("agentfarm.yaml"), "adopt-repo")).get("CM-7"),
+        statuses(Commandments.assess(n(), n(), "success", "", added, "bugfix")).get("CM-7"));
+    assertEquals(
+        "failed",
+        statuses(
+                Commandments.assess(n(), n(), "success", "", files("agentfarm.yaml"), "adopt-repo"))
+            .get("CM-7"),
         "adopting adds the rules; it does not rewrite existing ones");
     assertEquals(
         "ok",
-        statuses(Commandments.assess(n(), n(), "success", "", files(".github/workflows/agentfarm.yml"), "")).get("CM-7"),
+        statuses(
+                Commandments.assess(
+                    n(), n(), "success", "", files(".github/workflows/agentfarm.yml"), ""))
+            .get("CM-7"),
         "the platform's own workflow is not a project rule");
   }
 
@@ -147,8 +193,10 @@ class CommandmentsTest {
     assertEquals("failed", QualityGate.compare("c", "higher", "80", "79.9").get("status"));
     assertEquals("failed", QualityGate.compare("w", "lower", "3", "4").get("status"));
     assertEquals("passed", QualityGate.compare("w", "lower", "3", "2").get("status"));
-    assertEquals("failed", QualityGate.compare("c", "higher", "80", "oops").get("status"), "unmeasurable");
-    assertEquals("passed", QualityGate.compare("c", "higher", "oops", "70").get("status"), "first reading");
+    assertEquals(
+        "failed", QualityGate.compare("c", "higher", "80", "oops").get("status"), "unmeasurable");
+    assertEquals(
+        "passed", QualityGate.compare("c", "higher", "oops", "70").get("status"), "first reading");
   }
 
   @Test
@@ -160,8 +208,7 @@ class CommandmentsTest {
             "app_test.go",
             "src/app.test.ts",
             "src/app.spec.js",
-            "lib/__tests__/x.js"))
-      assertTrue(TestPolicy.isTest(path), path);
+            "lib/__tests__/x.js")) assertTrue(TestPolicy.isTest(path), path);
     for (String path : List.of("src/main/App.java", "latest/notes.py", "contest.py"))
       assertFalse(TestPolicy.isTest(path), path);
   }
@@ -186,6 +233,8 @@ class CommandmentsTest {
         () -> ProjectProfile.parse(base + "quality:\n  gates:\n    a: b\n"));
     assertThrows(
         IllegalArgumentException.class,
-        () -> ProjectProfile.parse(base + "quality:\n  metrics:\n    a: {command: x, better: more}\n"));
+        () ->
+            ProjectProfile.parse(
+                base + "quality:\n  metrics:\n    a: {command: x, better: more}\n"));
   }
 }

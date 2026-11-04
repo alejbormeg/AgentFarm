@@ -6,8 +6,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * Liveness for Compose, systemd or an uptime monitor. Anonymous callers only learn UP/DOWN;
- * the owner also sees executors and queue counts.
+ * Liveness for Compose, systemd or an uptime monitor. Anonymous callers only learn UP/DOWN; the
+ * owner also sees executors and queue counts.
  */
 @RestController
 public class HealthApi {
@@ -47,14 +47,13 @@ public class HealthApi {
     Map<String, Object> counts;
     try {
       counts =
-          store.tx(
-              c ->
-                  Store.one(
-                      c,
-                      "SELECT (SELECT COUNT(*) FROM work_items WHERE state IN"
-                          + " ('proposed','review','blocked')) waiting,(SELECT COUNT(*) FROM"
-                          + " work_commands WHERE state='queued') queued,(SELECT paused FROM"
-                          + " governance WHERE id=1) paused"));
+          store.tx(c ->
+              Store.one(
+                  c,
+                  "SELECT (SELECT COUNT(*) FROM work_items WHERE state IN"
+                      + " ('proposed','review','blocked')) waiting,(SELECT COUNT(*) FROM"
+                      + " work_commands WHERE state='queued') queued,(SELECT paused FROM"
+                      + " governance WHERE id=1) paused"));
     } catch (Exception e) {
       return ResponseEntity.status(503).body(Map.of("status", "DOWN"));
     }
@@ -64,9 +63,7 @@ public class HealthApi {
     if (!owner) return ResponseEntity.ok(Map.of("status", "UP"));
     long fresh =
         ((java.util.List<?>) telemetry.snapshot().get("executors"))
-            .stream()
-                .filter(x -> Boolean.TRUE.equals(((Map<?, ?>) x).get("fresh")))
-                .count();
+            .stream().filter(x -> Boolean.TRUE.equals(((Map<?, ?>) x).get("fresh"))).count();
     return ResponseEntity.ok(
         Json.obj(
             "status", "UP",

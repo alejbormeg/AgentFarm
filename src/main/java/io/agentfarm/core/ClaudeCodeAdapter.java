@@ -7,9 +7,9 @@ import java.time.Instant;
 import java.util.*;
 
 /**
- * Claude Code in headless print mode ({@code claude -p --output-format json}). Each turn is
- * charged to a Clover API account in USD micros: reserved before the call and settled with the
- * cost Claude Code reports. Subscription quota is not observable, so only API accounts are used.
+ * Claude Code in headless print mode ({@code claude -p --output-format json}). Each turn is charged
+ * to a Clover API account in USD micros: reserved before the call and settled with the cost Claude
+ * Code reports. Subscription quota is not observable, so only API accounts are used.
  */
 public final class ClaudeCodeAdapter implements AgentAdapter {
   /** Tools per role; Bash is never granted because tests run in the sandbox, not in the turn. */
@@ -101,7 +101,12 @@ public final class ClaudeCodeAdapter implements AgentAdapter {
 
   /** With MCP servers (research and review only): their tools are allowed by server prefix. */
   public static List<String> command(
-      String binary, String role, String model, List<String> mcp, String mcpConfig, List<String> hidden) {
+      String binary,
+      String role,
+      String model,
+      List<String> mcp,
+      String mcpConfig,
+      List<String> hidden) {
     String tools = TOOLS.get(role);
     if (tools == null) throw new IllegalArgumentException("Unknown Claude Code role");
     if (!mcp.isEmpty()) {
@@ -122,7 +127,8 @@ public final class ClaudeCodeAdapter implements AgentAdapter {
                 tools,
                 "--disallowedTools",
                 "Bash",
-                // A repository's own settings could grant tools or run hooks: they are agents' files.
+                // A repository's own settings could grant tools or run hooks: they are agents'
+                // files.
                 "--setting-sources",
                 "user",
                 "--settings",

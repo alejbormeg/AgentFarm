@@ -15,7 +15,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class EvidenceService {
   /** Recipes whose candidates may be approved in a batch once every gate has passed. */
-  static final Set<String> LOW_RISK = Set.of("dependency-update", "test-improvement", "project-memory");
+  static final Set<String> LOW_RISK =
+      Set.of("dependency-update", "test-improvement", "project-memory");
 
   private final Store db;
   private final Clock clock;
@@ -23,11 +24,10 @@ public class EvidenceService {
   public EvidenceService(Store db, Clock clock) {
     this.db = db;
     this.clock = clock;
-    db.tx(
-        c -> {
-          schema(c);
-          return null;
-        });
+    db.tx(c -> {
+      schema(c);
+      return null;
+    });
   }
 
   /** Other tasks in review on this repository that change the same files as this one. */
@@ -47,9 +47,20 @@ public class EvidenceService {
       var shared = new ArrayList<String>();
       parse(other.get("detail").toString())
           .path("files")
-          .forEach(f -> { if (mine.contains(f.asText())) shared.add(f.asText()); });
+          .forEach(f -> {
+            if (mine.contains(f.asText())) shared.add(f.asText());
+          });
       if (!shared.isEmpty())
-        result.add(obj("item", other.get("id"), "title", other.get("title"), "pr", other.get("pr"), "files", shared));
+        result.add(
+            obj(
+                "item",
+                other.get("id"),
+                "title",
+                other.get("title"),
+                "pr",
+                other.get("pr"),
+                "files",
+                shared));
     }
     return result;
   }
@@ -155,16 +166,15 @@ public class EvidenceService {
   public Object importLegacy(String id, JsonNode n, String actor) {
     if (actor.startsWith("node:"))
       throw new IllegalArgumentException("Human scope import required");
-    return db.tx(
-        c -> {
-          var item = item(c, id);
-          checkVersion(item, n);
-          if (!item.get("state").equals("review"))
-            throw new IllegalArgumentException("Only review candidates can import legacy scope");
-          capture(c, item);
-          audit(c, actor, "evidence.scope.import", id);
-          return dossier(c, item);
-        });
+    return db.tx(c -> {
+      var item = item(c, id);
+      checkVersion(item, n);
+      if (!item.get("state").equals("review"))
+        throw new IllegalArgumentException("Only review candidates can import legacy scope");
+      capture(c, item);
+      audit(c, actor, "evidence.scope.import", id);
+      return dossier(c, item);
+    });
   }
 
   static Map<String, Object> item(Connection c, String id) throws Exception {
@@ -209,59 +219,58 @@ public class EvidenceService {
       throw new IllegalArgumentException(
           "Explicit decision, environment and meaningful evidence/reason required");
     String requestHash = sha256(canonical(n));
-    return db.tx(
-        c -> {
-          var prior = one(c, "SELECT * FROM evidence_decisions WHERE request_id=?", request);
-          if (prior != null) {
-            if (!prior.get("request_hash").equals(requestHash)
-                || !prior.get("item").equals(id)
-                || !prior.get("actor").equals(actor))
-              throw new IllegalArgumentException("Decision request id already used");
-            return obj("state", "recorded", "decision", prior);
-          }
-          var item = item(c, id);
-          checkVersion(item, n);
-          if (!item.get("state").equals("review"))
-            throw new IllegalArgumentException("Candidate must be in review");
-          var scope = scope(c, item);
-          if (!scope.get("hash").equals(sha256(canonical(parse(item.get("proposal").toString())))))
-            throw new IllegalArgumentException("Approved proposal changed");
-          String basis = basis(item, scope);
-          if (!basis.equals(text(n, "basis")))
-            throw new IllegalArgumentException("Evidence changed; inspect the current dossier");
-          JsonNode match = null;
-          for (var entry : parse(scope.get("criteria").toString()))
-            if (entry.path("id").asText().equals(criterion)) match = entry;
-          if (Commandments.EXCEPTABLE.contains(criterion)) {
-            if (!kind.equals("exception"))
-              throw new IllegalArgumentException("A commandment only admits a signed exception");
-            match = MAPPER.valueToTree(obj("method", "test"));
-          }
-          if (match == null) throw new IllegalArgumentException("Unknown criterion");
-          if (kind.equals("manual") && !match.path("method").asText().equals("manual"))
-            throw new IllegalArgumentException(
-                "This criterion requires independent tests; only an explicit justified exception"
-                    + " can replace them");
-          exec(
-              c,
-              "INSERT INTO"
-                  + " evidence_decisions(request_id,item,version,sha,basis,criterion,kind,reason,environment,actor,at,request_hash)"
-                  + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
-              request,
-              id,
-              item.get("version"),
-              item.get("sha"),
-              basis,
-              criterion,
-              kind,
-              TelemetryService.clean(reason),
-              TelemetryService.clean(environment),
-              actor,
-              clock.instant().getEpochSecond(),
-              requestHash);
-          audit(c, actor, "evidence." + kind, id + "/" + criterion + "@" + item.get("sha"));
-          return dossier(c, item);
-        });
+    return db.tx(c -> {
+      var prior = one(c, "SELECT * FROM evidence_decisions WHERE request_id=?", request);
+      if (prior != null) {
+        if (!prior.get("request_hash").equals(requestHash)
+            || !prior.get("item").equals(id)
+            || !prior.get("actor").equals(actor))
+          throw new IllegalArgumentException("Decision request id already used");
+        return obj("state", "recorded", "decision", prior);
+      }
+      var item = item(c, id);
+      checkVersion(item, n);
+      if (!item.get("state").equals("review"))
+        throw new IllegalArgumentException("Candidate must be in review");
+      var scope = scope(c, item);
+      if (!scope.get("hash").equals(sha256(canonical(parse(item.get("proposal").toString())))))
+        throw new IllegalArgumentException("Approved proposal changed");
+      String basis = basis(item, scope);
+      if (!basis.equals(text(n, "basis")))
+        throw new IllegalArgumentException("Evidence changed; inspect the current dossier");
+      JsonNode match = null;
+      for (var entry : parse(scope.get("criteria").toString()))
+        if (entry.path("id").asText().equals(criterion)) match = entry;
+      if (Commandments.EXCEPTABLE.contains(criterion)) {
+        if (!kind.equals("exception"))
+          throw new IllegalArgumentException("A commandment only admits a signed exception");
+        match = MAPPER.valueToTree(obj("method", "test"));
+      }
+      if (match == null) throw new IllegalArgumentException("Unknown criterion");
+      if (kind.equals("manual") && !match.path("method").asText().equals("manual"))
+        throw new IllegalArgumentException(
+            "This criterion requires independent tests; only an explicit justified exception"
+                + " can replace them");
+      exec(
+          c,
+          "INSERT INTO"
+              + " evidence_decisions(request_id,item,version,sha,basis,criterion,kind,reason,environment,actor,at,request_hash)"
+              + " VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+          request,
+          id,
+          item.get("version"),
+          item.get("sha"),
+          basis,
+          criterion,
+          kind,
+          TelemetryService.clean(reason),
+          TelemetryService.clean(environment),
+          actor,
+          clock.instant().getEpochSecond(),
+          requestHash);
+      audit(c, actor, "evidence." + kind, id + "/" + criterion + "@" + item.get("sha"));
+      return dossier(c, item);
+    });
   }
 
   public Object get(String id) {
@@ -269,13 +278,12 @@ public class EvidenceService {
   }
 
   public List<Map<String, Object>> inbox() {
-    return db.tx(
-        c -> {
-          var list = new ArrayList<Map<String, Object>>();
-          for (var item : rows(c, "SELECT * FROM work_items WHERE state='review' ORDER BY created"))
-            list.add(dossier(c, item));
-          return list;
-        });
+    return db.tx(c -> {
+      var list = new ArrayList<Map<String, Object>>();
+      for (var item : rows(c, "SELECT * FROM work_items WHERE state='review' ORDER BY created"))
+        list.add(dossier(c, item));
+      return list;
+    });
   }
 
   public static void requireReady(Connection c, Map<String, Object> item) throws Exception {
@@ -292,16 +300,15 @@ public class EvidenceService {
       var copy = MAPPER.createObjectNode();
       value
           .properties()
-          .forEach(
-              entry ->
-                  copy.set(
-                      entry.getKey(),
-                      entry
-                              .getKey()
-                              .matches(
-                                  "(?i)(access_token|refresh_token|id_token|password|api_key|authorization|token)")
-                          ? MAPPER.getNodeFactory().textNode("[oculto]")
-                          : sanitize(entry.getValue())));
+          .forEach(entry ->
+              copy.set(
+                  entry.getKey(),
+                  entry
+                          .getKey()
+                          .matches(
+                              "(?i)(access_token|refresh_token|id_token|password|api_key|authorization|token)")
+                      ? MAPPER.getNodeFactory().textNode("[oculto]")
+                      : sanitize(entry.getValue())));
       return copy;
     }
     if (value.isArray()) {
@@ -374,7 +381,11 @@ public class EvidenceService {
     String basis = basis(item, scope);
     result.put("basis", basis);
     var verification =
-        one(c, "SELECT * FROM evidence_verifications WHERE item=? AND basis=?", item.get("id"), basis);
+        one(
+            c,
+            "SELECT * FROM evidence_verifications WHERE item=? AND basis=?",
+            item.get("id"),
+            basis);
     result.put("independent_verifier_available", verification != null);
     result.put(
         "verification",
@@ -435,7 +446,8 @@ public class EvidenceService {
               latest));
     }
     if (!scopeMatches) blockers.add("Approved scope changed");
-    if (verification != null && parse(verification.get("detail").toString()).path("pull_conflict").asBoolean())
+    if (verification != null
+        && parse(verification.get("detail").toString()).path("pull_conflict").asBoolean())
       blockers.add("La PR tiene conflictos con la rama base");
     result.put("overlaps", overlaps(c, item, verification));
     var recipe = one(c, "SELECT snapshot FROM work_recipes WHERE item=?", item.get("id"));
@@ -474,7 +486,9 @@ public class EvidenceService {
         blockers.isEmpty()
             && exceptions == 0
             && LOW_RISK.contains(
-                recipe == null ? "" : parse(recipe.get("snapshot").toString()).path("id").asText()));
+                recipe == null
+                    ? ""
+                    : parse(recipe.get("snapshot").toString()).path("id").asText()));
     result.put("exceptions", exceptions);
     result.put(
         "acceptance_state",
@@ -493,8 +507,10 @@ public class EvidenceService {
       var report = reports.path(check.asText());
       if (!report.path("status").asText().equals("passed")
           || !report.path("sandbox").path("mode").asText().equals("container")
-          || !report.path("command").asText().equals(proposal.path(check.asText() + "_test").asText()))
-        return false;
+          || !report
+              .path("command")
+              .asText()
+              .equals(proposal.path(check.asText() + "_test").asText())) return false;
     }
     return !entry.path("checks").isEmpty();
   }

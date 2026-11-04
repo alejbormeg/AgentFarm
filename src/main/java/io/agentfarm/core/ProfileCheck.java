@@ -4,13 +4,20 @@ import static io.agentfarm.core.Json.obj;
 
 import java.util.*;
 
-/** What the platform checks in the agentfarm.yaml a candidate adds, with the parser the executor uses. */
+/**
+ * What the platform checks in the agentfarm.yaml a candidate adds, with the parser the executor
+ * uses.
+ */
 public final class ProfileCheck {
   private ProfileCheck() {}
 
   /** The profile must load and keep the approved commands; narrow paths only raise a warning. */
   public static Map<String, Object> validate(
-      String source, String repository, String unit, String integration, Collection<String> directories) {
+      String source,
+      String repository,
+      String unit,
+      String integration,
+      Collection<String> directories) {
     ProjectProfile profile;
     try {
       profile = ProjectProfile.parse(source);
@@ -19,12 +26,11 @@ public final class ProfileCheck {
       return failed(e.getMessage());
     }
     if (!profile.repository().equals(repository)) return failed("Profile repository mismatch");
-    if (!sameCommand(profile.tests().get("unit"), unit) || !sameCommand(profile.tests().get("integration"), integration))
+    if (!sameCommand(profile.tests().get("unit"), unit)
+        || !sameCommand(profile.tests().get("integration"), integration))
       return failed("Los comandos de pruebas del perfil no coinciden con los aprobados");
     var uncovered =
-        directories.stream()
-            .filter(d -> !d.startsWith(".") && !profile.permits(d + "/x"))
-            .toList();
+        directories.stream().filter(d -> !d.startsWith(".") && !profile.permits(d + "/x")).toList();
     return obj(
         "status",
         "passed",

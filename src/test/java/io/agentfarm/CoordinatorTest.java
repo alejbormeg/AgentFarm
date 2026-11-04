@@ -72,11 +72,10 @@ class CoordinatorTest {
   @Test
   void crashedWorkIsNotRepeated() {
     service.enqueue(spec("T1"), "test");
-    store.tx(
-        c -> {
-          exec(c, "UPDATE tasks SET state='running'");
-          return null;
-        });
+    store.tx(c -> {
+      exec(c, "UPDATE tasks SET state='running'");
+      return null;
+    });
     assertEquals(
         "running_task_requires_reconciliation", service.simulate(2, 5, "test").get("reason"));
     assertEquals(0, service.report().size());
@@ -116,14 +115,18 @@ class CoordinatorTest {
     control.registerNode("napoleon-1", "napoleon", "owner");
     control.heartbeat("node", "napoleon-1", "busy", "node:napoleon-1");
     control.heartbeat("node", "napoleon-1", "idle", "node:napoleon-1");
-    assertEquals("busy", store.tx(c -> Store.one(c, "SELECT reported_state FROM farm_nodes")).get("reported_state"));
+    assertEquals(
+        "busy",
+        store.tx(c -> Store.one(c, "SELECT reported_state FROM farm_nodes")).get("reported_state"));
     var later =
         new ControlService(
             store,
             Clock.fixed(clock.instant().plusSeconds(13), ZoneOffset.UTC),
             new BudgetService(store, clock));
     later.heartbeat("node", "napoleon-1", "idle", "node:napoleon-1");
-    assertEquals("idle", store.tx(c -> Store.one(c, "SELECT reported_state FROM farm_nodes")).get("reported_state"));
+    assertEquals(
+        "idle",
+        store.tx(c -> Store.one(c, "SELECT reported_state FROM farm_nodes")).get("reported_state"));
   }
 
   @Test
@@ -228,30 +231,35 @@ class CoordinatorTest {
         "{\"acceptance\": [\"Evidence\"], \"allowed_paths\": [\"docs/\"], \"extra\": 1e-07, \"id\":"
             + " \"float\", \"project\": \"demo\", \"title\": \"Test\"}";
     String hash = sha256(original);
-    store.tx(
-        c -> {
-          exec(c, "INSERT INTO tasks VALUES(?,?,?,?,?)", "demo", "float", original, hash, "ready");
-          return null;
-        });
+    store.tx(c -> {
+      exec(c, "INSERT INTO tasks VALUES(?,?,?,?,?)", "demo", "float", original, hash, "ready");
+      return null;
+    });
     assertEquals("already_enqueued", service.enqueue(parse(original), "test").get("state"));
     assertEquals(hash, service.tasks().getFirst().get("hash"));
   }
+
   @Test
   void candidateRequiresAssignedWorkerAndStaysUnverified() {
-    service.enqueue(spec("candidate"),"test");
-    control.registerNode("n","napoleon","test");
-    control.registerWorker("boxer","n","test");
+    service.enqueue(spec("candidate"), "test");
+    control.registerNode("n", "napoleon", "test");
+    control.registerWorker("boxer", "n", "test");
     store.tx(c -> {
-      exec(c,"UPDATE tasks SET state='running' WHERE id='candidate'");
-      exec(c,"UPDATE task_runtime SET worker='boxer' WHERE project='demo' AND id='candidate'");
+      exec(c, "UPDATE tasks SET state='running' WHERE id='candidate'");
+      exec(c, "UPDATE task_runtime SET worker='boxer' WHERE project='demo' AND id='candidate'");
       return null;
     });
-    String sha="a".repeat(40);
-    assertThrows(IllegalArgumentException.class,()->control.finish("demo","candidate","other",sha,"test"));
-    assertThrows(IllegalArgumentException.class,()->control.finish("demo","candidate","boxer","short","test"));
-    control.finish("demo","candidate","boxer",sha,"test");
-    assertEquals("review",service.tasks().getFirst().get("state"));
-    assertThrows(IllegalArgumentException.class,()->control.finish("demo","candidate","boxer",sha,"test"));
+    String sha = "a".repeat(40);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> control.finish("demo", "candidate", "other", sha, "test"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> control.finish("demo", "candidate", "boxer", "short", "test"));
+    control.finish("demo", "candidate", "boxer", sha, "test");
+    assertEquals("review", service.tasks().getFirst().get("state"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> control.finish("demo", "candidate", "boxer", sha, "test"));
   }
-
 }

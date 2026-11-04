@@ -56,42 +56,35 @@ public class SchemaMigrations {
   }
 
   public static int apply(Store store, List<Migration> migrations) {
-    return store.tx(
-        c -> {
-          statement(
-              c,
-              "CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY,name TEXT"
-                  + " NOT NULL,applied_at TEXT NOT NULL)");
-          int latest = migrations.getLast().version();
-          int current =
-              (int)
-                  num(one(c, "SELECT COALESCE(MAX(version),0) v FROM schema_migrations"), "v");
-          if (current > latest)
-            throw new IllegalStateException(
-                "Database schema v" + current + " is newer than this AgentFarm (v" + latest + ")");
-          for (var m : migrations) {
-            if (m.version() <= current) continue;
-            for (String sql : m.statements()) statement(c, sql);
-            exec(
-                c,
-                "INSERT INTO schema_migrations VALUES(?,?,?)",
-                m.version(),
-                m.name(),
-                java.time.Instant.now().toString());
-          }
-          return latest;
-        });
+    return store.tx(c -> {
+      statement(
+          c,
+          "CREATE TABLE IF NOT EXISTS schema_migrations(version INTEGER PRIMARY KEY,name TEXT"
+              + " NOT NULL,applied_at TEXT NOT NULL)");
+      int latest = migrations.getLast().version();
+      int current =
+          (int) num(one(c, "SELECT COALESCE(MAX(version),0) v FROM schema_migrations"), "v");
+      if (current > latest)
+        throw new IllegalStateException(
+            "Database schema v" + current + " is newer than this AgentFarm (v" + latest + ")");
+      for (var m : migrations) {
+        if (m.version() <= current) continue;
+        for (String sql : m.statements()) statement(c, sql);
+        exec(
+            c,
+            "INSERT INTO schema_migrations VALUES(?,?,?)",
+            m.version(),
+            m.name(),
+            java.time.Instant.now().toString());
+      }
+      return latest;
+    });
   }
 
   public static int version(Store store) {
-    return store.tx(
-        c -> {
-          if (one(c, "SELECT name FROM sqlite_master WHERE name='schema_migrations'") == null)
-            return 0;
-          return (int)
-                num(
-                    one(c, "SELECT COALESCE(MAX(version),0) v FROM schema_migrations"),
-                    "v");
-        });
+    return store.tx(c -> {
+      if (one(c, "SELECT name FROM sqlite_master WHERE name='schema_migrations'") == null) return 0;
+      return (int) num(one(c, "SELECT COALESCE(MAX(version),0) v FROM schema_migrations"), "v");
+    });
   }
 }

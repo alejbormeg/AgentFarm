@@ -29,74 +29,73 @@ public class WorkflowService {
           int maxParallel,
       @org.springframework.beans.factory.annotation.Value("${agentfarm.max-per-repository:1}")
           int maxPerRepository) {
-    if (maxParallel < 1 || maxParallel > 16 || maxPerRepository < 1 || maxPerRepository > maxParallel)
+    if (maxParallel < 1
+        || maxParallel > 16
+        || maxPerRepository < 1
+        || maxPerRepository > maxParallel)
       throw new IllegalArgumentException("Invalid parallelism limits");
     this.maxParallel = maxParallel;
     this.maxPerRepository = maxPerRepository;
     this.db = db;
     this.clock = clock;
-    db.tx(
-        c -> {
-          statement(
-              c,
-              "CREATE TABLE IF NOT EXISTS work_items(id TEXT PRIMARY KEY,repo TEXT NOT NULL,title"
-                  + " TEXT NOT NULL,request TEXT NOT NULL,state TEXT NOT NULL,version INTEGER NOT"
-                  + " NULL DEFAULT 0,proposal TEXT NOT NULL DEFAULT '{}',evidence TEXT NOT NULL"
-                  + " DEFAULT '{}',issue INTEGER,pr INTEGER,branch TEXT,sha TEXT,error TEXT,created"
-                  + " INTEGER NOT NULL)");
-          statement(
-              c,
-              "CREATE TABLE IF NOT EXISTS work_commands(id TEXT PRIMARY KEY,item TEXT NOT NULL"
-                  + " REFERENCES work_items(id),kind TEXT NOT NULL,payload TEXT NOT NULL,state TEXT"
-                  + " NOT NULL DEFAULT 'queued',claimed_by TEXT,updated INTEGER NOT NULL)");
-          statement(
-              c,
-              "CREATE UNIQUE INDEX IF NOT EXISTS one_open_command ON work_commands(item) WHERE"
-                  + " state IN ('queued','claimed')");
-          statement(
-              c,
-              "CREATE TABLE IF NOT EXISTS work_recipes(item TEXT PRIMARY KEY REFERENCES"
-                  + " work_items(id),snapshot TEXT NOT NULL)");
-          statement(
-              c,
-              "CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY,item TEXT NOT"
-                  + " NULL,state TEXT NOT NULL,title TEXT NOT NULL,created INTEGER NOT NULL,sent"
-                  + " INTEGER NOT NULL DEFAULT 0,attempts INTEGER NOT NULL DEFAULT 0)");
-          ensureColumn(c, "work_commands", "claimed_at", "INTEGER");
-          statement(
-              c,
-              "CREATE TABLE IF NOT EXISTS autonomy_policies(recipe TEXT PRIMARY KEY,level TEXT NOT"
-                  + " NULL,updated INTEGER NOT NULL)");
-          EvidenceService.schema(c);
-          InitiativeService.schema(c);
-          return null;
-        });
+    db.tx(c -> {
+      statement(
+          c,
+          "CREATE TABLE IF NOT EXISTS work_items(id TEXT PRIMARY KEY,repo TEXT NOT NULL,title"
+              + " TEXT NOT NULL,request TEXT NOT NULL,state TEXT NOT NULL,version INTEGER NOT"
+              + " NULL DEFAULT 0,proposal TEXT NOT NULL DEFAULT '{}',evidence TEXT NOT NULL"
+              + " DEFAULT '{}',issue INTEGER,pr INTEGER,branch TEXT,sha TEXT,error TEXT,created"
+              + " INTEGER NOT NULL)");
+      statement(
+          c,
+          "CREATE TABLE IF NOT EXISTS work_commands(id TEXT PRIMARY KEY,item TEXT NOT NULL"
+              + " REFERENCES work_items(id),kind TEXT NOT NULL,payload TEXT NOT NULL,state TEXT"
+              + " NOT NULL DEFAULT 'queued',claimed_by TEXT,updated INTEGER NOT NULL)");
+      statement(
+          c,
+          "CREATE UNIQUE INDEX IF NOT EXISTS one_open_command ON work_commands(item) WHERE"
+              + " state IN ('queued','claimed')");
+      statement(
+          c,
+          "CREATE TABLE IF NOT EXISTS work_recipes(item TEXT PRIMARY KEY REFERENCES"
+              + " work_items(id),snapshot TEXT NOT NULL)");
+      statement(
+          c,
+          "CREATE TABLE IF NOT EXISTS notifications(id INTEGER PRIMARY KEY,item TEXT NOT"
+              + " NULL,state TEXT NOT NULL,title TEXT NOT NULL,created INTEGER NOT NULL,sent"
+              + " INTEGER NOT NULL DEFAULT 0,attempts INTEGER NOT NULL DEFAULT 0)");
+      ensureColumn(c, "work_commands", "claimed_at", "INTEGER");
+      statement(
+          c,
+          "CREATE TABLE IF NOT EXISTS autonomy_policies(recipe TEXT PRIMARY KEY,level TEXT NOT"
+              + " NULL,updated INTEGER NOT NULL)");
+      EvidenceService.schema(c);
+      InitiativeService.schema(c);
+      return null;
+    });
   }
 
   public void requireAcceptance(String id) {
-    db.tx(
-        c -> {
-          EvidenceService.requireReady(c, EvidenceService.item(c, id));
-          return null;
-        });
+    db.tx(c -> {
+      EvidenceService.requireReady(c, EvidenceService.item(c, id));
+      return null;
+    });
   }
 
   public List<Map<String, Object>> items() {
-    return db.tx(
-        c -> {
-          var items = rows(c, "SELECT * FROM work_items ORDER BY created DESC");
-          for (var item : items) withRecipe(c, item);
-          return items;
-        });
+    return db.tx(c -> {
+      var items = rows(c, "SELECT * FROM work_items ORDER BY created DESC");
+      for (var item : items) withRecipe(c, item);
+      return items;
+    });
   }
 
   public Map<String, Object> get(String id) {
-    return db.tx(
-        c -> {
-          var w = one(c, "SELECT * FROM work_items WHERE id=?", id);
-          if (w == null) throw new IllegalArgumentException("Unknown work item");
-          return withRecipe(c, w);
-        });
+    return db.tx(c -> {
+      var w = one(c, "SELECT * FROM work_items WHERE id=?", id);
+      if (w == null) throw new IllegalArgumentException("Unknown work item");
+      return withRecipe(c, w);
+    });
   }
 
   private static Map<String, Object> withRecipe(java.sql.Connection c, Map<String, Object> item)
@@ -150,8 +149,7 @@ public class WorkflowService {
           || (selected != null
               && (!text(selected, "id").equals(saved.path("id").asText())
                   || number(selected, "version") != saved.path("version").asLong())))
-        throw new IllegalArgumentException(
-            "Request identifier already used with another recipe");
+        throw new IllegalArgumentException("Request identifier already used with another recipe");
       return prior;
     }
     var recipe =
@@ -203,144 +201,142 @@ public class WorkflowService {
         List.of(
             "summary", "acceptance", "as_is", "to_be", "unit_test", "integration_test", "base_sha"))
       text(proposal, key);
-    return db.tx(
-        c -> {
-          var prior = one(c, "SELECT * FROM work_items WHERE id=?", id);
-          if (prior != null) {
-            if (Objects.equals(prior.get("sha"), sha) && !prior.get("state").equals("blocked"))
-              return prior;
-            if (!prior.get("state").equals("blocked")
-                || !prior.get("repo").equals(repo)
-                || num(prior, "issue") != number(n, "issue"))
-              throw new IllegalArgumentException(
-                  "Existing task does not match recoverable candidate");
-            exec(
-                c,
-                "UPDATE work_items SET sha=?,branch=?,proposal=?,state='approved',error=NULL WHERE"
-                    + " id=?",
-                sha,
-                branch,
-                encode(proposal),
-                id);
-            command(c, id, "review_existing", Map.of());
-            audit(c, actor, "work.recover-candidate", id + " @ " + sha);
-            return one(c, "SELECT * FROM work_items WHERE id=?", id);
-          }
-          exec(
-              c,
-              "INSERT INTO"
-                  + " work_items(id,repo,title,request,state,version,proposal,issue,branch,sha,created)"
-                  + " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-              id,
-              repo,
-              text(n, "title"),
-              text(n, "request"),
-              "approved",
-              1,
-              encode(proposal),
-              number(n, "issue"),
-              branch,
-              sha,
-              clock.instant().getEpochSecond());
-          command(c, id, "review_existing", Map.of());
-          audit(c, actor, "work.import-candidate", id + " @ " + sha);
-          return one(c, "SELECT * FROM work_items WHERE id=?", id);
-        });
+    return db.tx(c -> {
+      var prior = one(c, "SELECT * FROM work_items WHERE id=?", id);
+      if (prior != null) {
+        if (Objects.equals(prior.get("sha"), sha) && !prior.get("state").equals("blocked"))
+          return prior;
+        if (!prior.get("state").equals("blocked")
+            || !prior.get("repo").equals(repo)
+            || num(prior, "issue") != number(n, "issue"))
+          throw new IllegalArgumentException("Existing task does not match recoverable candidate");
+        exec(
+            c,
+            "UPDATE work_items SET sha=?,branch=?,proposal=?,state='approved',error=NULL WHERE"
+                + " id=?",
+            sha,
+            branch,
+            encode(proposal),
+            id);
+        command(c, id, "review_existing", Map.of());
+        audit(c, actor, "work.recover-candidate", id + " @ " + sha);
+        return one(c, "SELECT * FROM work_items WHERE id=?", id);
+      }
+      exec(
+          c,
+          "INSERT INTO"
+              + " work_items(id,repo,title,request,state,version,proposal,issue,branch,sha,created)"
+              + " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+          id,
+          repo,
+          text(n, "title"),
+          text(n, "request"),
+          "approved",
+          1,
+          encode(proposal),
+          number(n, "issue"),
+          branch,
+          sha,
+          clock.instant().getEpochSecond());
+      command(c, id, "review_existing", Map.of());
+      audit(c, actor, "work.import-candidate", id + " @ " + sha);
+      return one(c, "SELECT * FROM work_items WHERE id=?", id);
+    });
   }
 
   public Map<String, Object> action(String id, String action, JsonNode n, String actor) {
-    return db.tx(
-        c -> {
-          var w = one(c, "SELECT * FROM work_items WHERE id=?", id);
-          if (w == null) throw new IllegalArgumentException("Unknown work item");
-          String state = w.get("state").toString();
-          if (action.equals("cancel")) {
-            exec(
+    return db.tx(c -> {
+      var w = one(c, "SELECT * FROM work_items WHERE id=?", id);
+      if (w == null) throw new IllegalArgumentException("Unknown work item");
+      String state = w.get("state").toString();
+      if (action.equals("cancel")) {
+        exec(
+            c,
+            "UPDATE work_commands SET state='cancelled',updated=? WHERE item=? AND state IN"
+                + " ('queued','claimed')",
+            clock.instant().getEpochSecond(),
+            id);
+        exec(c, "UPDATE work_items SET state='cancelled' WHERE id=?", id);
+      } else {
+        if (one(
                 c,
-                "UPDATE work_commands SET state='cancelled',updated=? WHERE item=? AND state IN"
-                    + " ('queued','claimed')",
-                clock.instant().getEpochSecond(),
-                id);
-            exec(c, "UPDATE work_items SET state='cancelled' WHERE id=?", id);
-          } else {
-            if (one(
-                    c,
-                    "SELECT id FROM work_commands WHERE item=? AND state IN ('queued','claimed')",
-                    id)
-                != null) throw new IllegalArgumentException("Operation already pending");
-            switch (action) {
-              case "implement" -> {
-                if (!state.equals("proposed") || number(n, "version") != num(w, "version"))
-                  throw new IllegalArgumentException("Approve the current proposal version");
-                EvidenceService.capture(c, w);
-                command(c, id, "implement", obj("version", num(w, "version")));
-                exec(c, "UPDATE work_items SET state='approved',error=NULL WHERE id=?", id);
-              }
-              case "merge" -> {
-                if (!state.equals("review")
-                    || w.get("pr") == null
-                    || !text(n, "sha").equals(w.get("sha")))
-                  throw new IllegalArgumentException("Approve the current PR commit");
-                EvidenceService.requireReady(c, w);
-                command(c, id, "merge", obj("sha", text(n, "sha")));
-                exec(c, "UPDATE work_items SET state='integrating',error=NULL WHERE id=?", id);
-              }
-              case "correct" -> {
-                if (!Set.of("proposed", "review", "blocked").contains(state))
-                  throw new IllegalArgumentException("No result to correct");
-                String feedback = text(n, "feedback");
-                if (n.path("retire").isArray() && !n.path("retire").isEmpty()) {
-                  ApprovedCriteria.retire(c, w, n.path("retire"), feedback, actor, clock.instant().getEpochSecond());
-                  audit(c, actor, "work.retire-criterion", id + " " + n.path("retire"));
-                }
-                command(c, id, "research", obj("feedback", feedback));
-                exec(c, "UPDATE work_items SET state='queued',error=NULL WHERE id=?", id);
-                proposeLesson(c, w, feedback, actor);
-              }
-              case "retry" -> {
-                if (!state.equals("blocked"))
-                  throw new IllegalArgumentException("Only blocked operations can retry");
-                var previous =
-                    one(
-                        c,
-                        "SELECT kind,payload FROM work_commands WHERE item=? ORDER BY updated"
-                            + " DESC,rowid DESC LIMIT 1",
-                        id);
-                if (previous == null || previous.get("kind").equals("merge"))
-                  throw new IllegalArgumentException("Integration needs a new explicit approval");
-                command(
-                    c,
-                    id,
-                    previous.get("kind").toString(),
-                    parse(previous.get("payload").toString()));
-                exec(c, "UPDATE work_items SET state='queued',error=NULL WHERE id=?", id);
-              }
-              default -> throw new IllegalArgumentException("Unknown action");
-            }
+                "SELECT id FROM work_commands WHERE item=? AND state IN ('queued','claimed')",
+                id)
+            != null) throw new IllegalArgumentException("Operation already pending");
+        switch (action) {
+          case "implement" -> {
+            if (!state.equals("proposed") || number(n, "version") != num(w, "version"))
+              throw new IllegalArgumentException("Approve the current proposal version");
+            EvidenceService.capture(c, w);
+            command(c, id, "implement", obj("version", num(w, "version")));
+            exec(c, "UPDATE work_items SET state='approved',error=NULL WHERE id=?", id);
           }
-          audit(c, actor, "work." + action, id);
-          return one(c, "SELECT * FROM work_items WHERE id=?", id);
-        });
+          case "merge" -> {
+            if (!state.equals("review")
+                || w.get("pr") == null
+                || !text(n, "sha").equals(w.get("sha")))
+              throw new IllegalArgumentException("Approve the current PR commit");
+            EvidenceService.requireReady(c, w);
+            command(c, id, "merge", obj("sha", text(n, "sha")));
+            exec(c, "UPDATE work_items SET state='integrating',error=NULL WHERE id=?", id);
+          }
+          case "correct" -> {
+            if (!Set.of("proposed", "review", "blocked").contains(state))
+              throw new IllegalArgumentException("No result to correct");
+            String feedback = text(n, "feedback");
+            if (n.path("retire").isArray() && !n.path("retire").isEmpty()) {
+              ApprovedCriteria.retire(
+                  c, w, n.path("retire"), feedback, actor, clock.instant().getEpochSecond());
+              audit(c, actor, "work.retire-criterion", id + " " + n.path("retire"));
+            }
+            command(c, id, "research", obj("feedback", feedback));
+            exec(c, "UPDATE work_items SET state='queued',error=NULL WHERE id=?", id);
+            proposeLesson(c, w, feedback, actor);
+          }
+          case "retry" -> {
+            if (!state.equals("blocked"))
+              throw new IllegalArgumentException("Only blocked operations can retry");
+            var previous =
+                one(
+                    c,
+                    "SELECT kind,payload FROM work_commands WHERE item=? ORDER BY updated"
+                        + " DESC,rowid DESC LIMIT 1",
+                    id);
+            if (previous == null || previous.get("kind").equals("merge"))
+              throw new IllegalArgumentException("Integration needs a new explicit approval");
+            command(
+                c, id, previous.get("kind").toString(), parse(previous.get("payload").toString()));
+            exec(c, "UPDATE work_items SET state='queued',error=NULL WHERE id=?", id);
+          }
+          default -> throw new IllegalArgumentException("Unknown action");
+        }
+      }
+      audit(c, actor, "work." + action, id);
+      return one(c, "SELECT * FROM work_items WHERE id=?", id);
+    });
   }
 
-  /** The repository of an order this agent holds right now. Integrating is the panel's, never a node's. */
+  /**
+   * The repository of an order this agent holds right now. Integrating is the panel's, never a
+   * node's.
+   */
   public String heldRepository(String command, String agent) {
-    return db.tx(
-        c -> {
-          var held =
-              one(
-                  c,
-                  "SELECT w.repo repo FROM work_commands k JOIN work_items w ON w.id=k.item WHERE k.id=?"
-                      + " AND k.state='claimed' AND k.claimed_by=? AND k.kind<>'merge'",
-                  command,
-                  agent);
-          if (held == null) throw new IllegalArgumentException("Not an order this executor holds");
-          return held.get("repo").toString();
-        });
+    return db.tx(c -> {
+      var held =
+          one(
+              c,
+              "SELECT w.repo repo FROM work_commands k JOIN work_items w ON w.id=k.item WHERE k.id=?"
+                  + " AND k.state='claimed' AND k.claimed_by=? AND k.kind<>'merge'",
+              command,
+              agent);
+      if (held == null) throw new IllegalArgumentException("Not an order this executor holds");
+      return held.get("repo").toString();
+    });
   }
 
   // Recipes whose proposals may start implementation without the owner; merge stays human.
-  static final Set<String> AUTO_IMPLEMENTABLE = Set.of("bugfix", "dependency-update", "test-improvement");
+  static final Set<String> AUTO_IMPLEMENTABLE =
+      Set.of("bugfix", "dependency-update", "test-improvement");
 
   public List<Map<String, Object>> autonomy() {
     return db.tx(c -> rows(c, "SELECT * FROM autonomy_policies ORDER BY recipe"));
@@ -356,18 +352,17 @@ public class WorkflowService {
             || (level.equals("auto_implement") && AUTO_IMPLEMENTABLE.contains(recipe))
             || (level.equals("propose_on_feedback") && recipe.equals("project-memory"));
     if (!valid) throw new IllegalArgumentException("Level not allowed for this recipe");
-    return db.tx(
-        c -> {
-          exec(
-              c,
-              "INSERT INTO autonomy_policies VALUES(?,?,?) ON CONFLICT(recipe) DO UPDATE SET"
-                  + " level=excluded.level,updated=excluded.updated",
-              recipe,
-              level,
-              clock.instant().getEpochSecond());
-          audit(c, actor, "autonomy." + level, recipe);
-          return obj("recipe", recipe, "level", level);
-        });
+    return db.tx(c -> {
+      exec(
+          c,
+          "INSERT INTO autonomy_policies VALUES(?,?,?) ON CONFLICT(recipe) DO UPDATE SET"
+              + " level=excluded.level,updated=excluded.updated",
+          recipe,
+          level,
+          clock.instant().getEpochSecond());
+      audit(c, actor, "autonomy." + level, recipe);
+      return obj("recipe", recipe, "level", level);
+    });
   }
 
   private static String level(java.sql.Connection c, String recipe) throws Exception {
@@ -376,8 +371,8 @@ public class WorkflowService {
   }
 
   /**
-   * Approves the current proposal when its recipe is auto_implement and every criterion is
-   * verified by tests in the container sandbox. Anything manual or host-run waits for the owner.
+   * Approves the current proposal when its recipe is auto_implement and every criterion is verified
+   * by tests in the container sandbox. Anything manual or host-run waits for the owner.
    */
   private void autoApprove(java.sql.Connection c, String id) throws Exception {
     var w = withRecipe(c, one(c, "SELECT * FROM work_items WHERE id=?", id));
@@ -401,7 +396,8 @@ public class WorkflowService {
   }
 
   /** With project-memory set to propose_on_feedback, a correction opens a memory proposal. */
-  private void proposeLesson(java.sql.Connection c, Map<String, Object> w, String feedback, String actor)
+  private void proposeLesson(
+      java.sql.Connection c, Map<String, Object> w, String feedback, String actor)
       throws Exception {
     if (feedback.isBlank() || !level(c, "project-memory").equals("propose_on_feedback")) return;
     var recipe = MAPPER.valueToTree(withRecipe(c, new LinkedHashMap<>(w))).path("recipe");
@@ -447,181 +443,177 @@ public class WorkflowService {
 
   private Object claim(String agent, boolean integration, boolean onlyIntegration) {
     ControlService.identifier(agent);
-    return db.tx(
-        c -> {
-          if (num(one(c, "SELECT paused FROM governance WHERE id=1"), "paused") == 1)
-            return Map.of();
-          // Expired claims require operator reconciliation, never automatic duplicate inference.
-          long now = clock.instant().getEpochSecond();
-          var expired =
-              rows(
-                  c,
-                  "SELECT item FROM work_commands WHERE state='claimed' AND updated<?",
-                  now - 120);
-          for (var r : expired)
-            exec(
-                c,
-                "UPDATE work_items SET state='blocked',error='Ejecutor desconectado; reconciliar"
-                    + " antes de reintentar' WHERE id=?",
-                r.get("item"));
-          exec(
-              c,
-              "UPDATE work_commands SET state='interrupted' WHERE state='claimed' AND updated<?",
-              now - 120);
-          // One command per executor; development work shares a global and a per-repository
-          // limit, so several executors (slots) can progress different repositories at once.
-          var held =
+    return db.tx(c -> {
+      if (num(one(c, "SELECT paused FROM governance WHERE id=1"), "paused") == 1) return Map.of();
+      // Expired claims require operator reconciliation, never automatic duplicate inference.
+      long now = clock.instant().getEpochSecond();
+      var expired =
+          rows(c, "SELECT item FROM work_commands WHERE state='claimed' AND updated<?", now - 120);
+      for (var r : expired)
+        exec(
+            c,
+            "UPDATE work_items SET state='blocked',error='Ejecutor desconectado; reconciliar"
+                + " antes de reintentar' WHERE id=?",
+            r.get("item"));
+      exec(
+          c,
+          "UPDATE work_commands SET state='interrupted' WHERE state='claimed' AND updated<?",
+          now - 120);
+      // One command per executor; development work shares a global and a per-repository
+      // limit, so several executors (slots) can progress different repositories at once.
+      var held =
+          one(c, "SELECT * FROM work_commands WHERE state='claimed' AND claimed_by=?", agent);
+      if (held != null) {
+        // A claim whose response was lost (no report since claiming, claimed_at still set) is
+        // delivered again; once the executor reported anything it gets nothing new.
+        if (held.get("claimed_at") == null) return Map.of();
+        exec(
+            c,
+            "UPDATE work_commands SET updated=?,claimed_at=? WHERE id=?",
+            now,
+            now,
+            held.get("id"));
+        held = one(c, "SELECT * FROM work_commands WHERE id=?", held.get("id"));
+        held.remove("claimed_at");
+        audit(c, agent, "work.claim-redelivered", held.get("item").toString());
+        return obj(
+            "command",
+            held,
+            "item",
+            withRecipe(c, one(c, "SELECT * FROM work_items WHERE id=?", held.get("item"))));
+      }
+      long busy =
+          num(
               one(
                   c,
-                  "SELECT * FROM work_commands WHERE state='claimed' AND claimed_by=?",
-                  agent);
-          if (held != null) {
-            // A claim whose response was lost (no report since claiming, claimed_at still set) is
-            // delivered again; once the executor reported anything it gets nothing new.
-            if (held.get("claimed_at") == null) return Map.of();
-            exec(c, "UPDATE work_commands SET updated=?,claimed_at=? WHERE id=?", now, now, held.get("id"));
-            held = one(c, "SELECT * FROM work_commands WHERE id=?", held.get("id"));
-            held.remove("claimed_at");
-            audit(c, agent, "work.claim-redelivered", held.get("item").toString());
-            return obj(
-                "command",
-                held,
-                "item",
-                withRecipe(c, one(c, "SELECT * FROM work_items WHERE id=?", held.get("item"))));
-          }
-          long busy =
-              num(
-                  one(
-                      c,
-                      "SELECT COUNT(*) n FROM work_commands WHERE state='claimed' AND kind!='merge'"),
-                  "n");
-          var busyRepos = new HashMap<String, Long>();
-          for (var r :
-              rows(
-                  c,
-                  "SELECT i.repo, COUNT(*) n FROM work_commands w JOIN work_items i ON i.id=w.item"
-                      + " WHERE w.state='claimed' AND w.kind!='merge' GROUP BY i.repo"))
-            busyRepos.put(r.get("repo").toString(), num(r, "n"));
-          Map<String, Object> cmd = null;
-          for (var candidate :
-              rows(
-                  c,
-                  "SELECT w.*, i.repo FROM work_commands w JOIN work_items i ON i.id=w.item"
-                      + " WHERE w.state='queued' "
-                      + (onlyIntegration
-                          ? "AND w.kind='merge' "
-                          : integration ? "" : "AND w.kind!='merge' ")
-                      + "ORDER BY w.updated,w.rowid")) {
-            if (!candidate.get("kind").equals("merge")
-                && (busy >= maxParallel
-                    || busyRepos.getOrDefault(candidate.get("repo").toString(), 0L)
-                        >= maxPerRepository)) continue;
-            if (InitiativeService.blockers(
-                    c, candidate.get("item").toString(), candidate.get("kind").toString())
-                .isEmpty()) {
-              cmd = candidate;
-              break;
-            }
-          }
-          if (cmd == null) return Map.of();
-          exec(
+                  "SELECT COUNT(*) n FROM work_commands WHERE state='claimed' AND kind!='merge'"),
+              "n");
+      var busyRepos = new HashMap<String, Long>();
+      for (var r :
+          rows(
               c,
-              "UPDATE work_commands SET state='claimed',claimed_by=?,updated=?,claimed_at=? WHERE"
-                  + " id=?",
-              agent,
-              now,
-              now,
-              cmd.get("id"));
-          cmd = one(c, "SELECT * FROM work_commands WHERE id=?", cmd.get("id"));
-          cmd.remove("claimed_at");
-          var item = one(c, "SELECT * FROM work_items WHERE id=?", cmd.get("item"));
-          return obj("command", cmd, "item", withRecipe(c, item));
-        });
+              "SELECT i.repo, COUNT(*) n FROM work_commands w JOIN work_items i ON i.id=w.item"
+                  + " WHERE w.state='claimed' AND w.kind!='merge' GROUP BY i.repo"))
+        busyRepos.put(r.get("repo").toString(), num(r, "n"));
+      Map<String, Object> cmd = null;
+      for (var candidate :
+          rows(
+              c,
+              "SELECT w.*, i.repo FROM work_commands w JOIN work_items i ON i.id=w.item"
+                  + " WHERE w.state='queued' "
+                  + (onlyIntegration
+                      ? "AND w.kind='merge' "
+                      : integration ? "" : "AND w.kind!='merge' ")
+                  + "ORDER BY w.updated,w.rowid")) {
+        if (!candidate.get("kind").equals("merge")
+            && (busy >= maxParallel
+                || busyRepos.getOrDefault(candidate.get("repo").toString(), 0L)
+                    >= maxPerRepository)) continue;
+        if (InitiativeService.blockers(
+                c, candidate.get("item").toString(), candidate.get("kind").toString())
+            .isEmpty()) {
+          cmd = candidate;
+          break;
+        }
+      }
+      if (cmd == null) return Map.of();
+      exec(
+          c,
+          "UPDATE work_commands SET state='claimed',claimed_by=?,updated=?,claimed_at=? WHERE"
+              + " id=?",
+          agent,
+          now,
+          now,
+          cmd.get("id"));
+      cmd = one(c, "SELECT * FROM work_commands WHERE id=?", cmd.get("id"));
+      cmd.remove("claimed_at");
+      var item = one(c, "SELECT * FROM work_items WHERE id=?", cmd.get("item"));
+      return obj("command", cmd, "item", withRecipe(c, item));
+    });
   }
 
   public Object report(String command, JsonNode n, String agent) {
-    return db.tx(
-        c -> {
-          var cmd = one(c, "SELECT * FROM work_commands WHERE id=?", command);
-          if (cmd == null
-              || !agent.equals(cmd.get("claimed_by"))
-              || !cmd.get("state").equals("claimed"))
-            throw new IllegalArgumentException("Command no longer owned");
-          String id = cmd.get("item").toString(), phase = text(n, "state");
-          // Any report confirms delivery: the claim is no longer eligible for redelivery.
-          exec(
-              c,
-              "UPDATE work_commands SET updated=?,claimed_at=NULL WHERE id=?",
-              clock.instant().getEpochSecond(),
-              command);
-          if (phase.equals("heartbeat"))
-            return Map.of(
-                "paused", num(one(c, "SELECT paused FROM governance WHERE id=1"), "paused") == 1);
-          String kind = cmd.get("kind").toString();
-          if (!phase.equals("blocked")
-              && !phase.equals("checkpoint")
-              && !((kind.equals("research") && phase.equals("proposed"))
-                  || (Set.of("implement", "review_existing").contains(kind)
-                      && phase.equals("review"))
-                  || (kind.equals("merge") && phase.equals("integrated"))))
-            throw new IllegalArgumentException("Invalid result transition");
-          for (String field : List.of("issue", "pr", "branch", "sha"))
-            if (n.has(field)) {
-              if (field.equals("sha") && !text(n, field).matches("[a-f0-9]{40}"))
-                throw new IllegalArgumentException("Full SHA required");
-              exec(
-                  c, "UPDATE work_items SET " + field + "=? WHERE id=?", n.get(field).asText(), id);
-            }
-          if (phase.equals("proposed")) {
-            var p = n.path("proposal");
-            if (p.has("project_memory"))
-              ProjectMemory.validate(
-                  p.get("project_memory"),
-                  one(c, "SELECT repo FROM work_items WHERE id=?", id).get("repo").toString());
-            var previous = parse(one(c, "SELECT proposal FROM work_items WHERE id=?", id).get("proposal").toString());
-            ApprovedCriteria.apply(c, id, previous, (com.fasterxml.jackson.databind.node.ObjectNode) p);
-            EvidenceService.criteria(p);
-            for (String key :
-                List.of("summary", "acceptance", "as_is", "to_be", "unit_test", "integration_test"))
-              text(p, key);
-            ((com.fasterxml.jackson.databind.node.ObjectNode) p)
-                .set("doubtful_criteria", ProposalShape.doubtfulCriteria(p));
-            ((com.fasterxml.jackson.databind.node.ObjectNode) p)
-                .set(
-                    "previous_changes",
-                    ProposalShape.changes(previous, p));
-            exec(c, "UPDATE work_items SET proposal=?,version=version+1 WHERE id=?", encode(p), id);
-          }
-          if (n.has("evidence"))
-            exec(c, "UPDATE work_items SET evidence=? WHERE id=?", encode(n.get("evidence")), id);
-          if (phase.equals("checkpoint")) return Map.of("state", "recorded");
-          if (phase.equals("integrated") && !n.path("merged").asBoolean())
-            throw new IllegalArgumentException("GitHub merge confirmation required");
-          if (phase.equals("review")) {
-            var w = one(c, "SELECT pr,sha FROM work_items WHERE id=?", id);
-            if (w.get("pr") == null || w.get("sha") == null)
-              throw new IllegalArgumentException("PR and SHA required");
-          }
-          exec(
-              c,
-              "UPDATE work_items SET state=?,error=? WHERE id=?",
-              (phase.equals("blocked") && kind.equals("merge") ? "review" : phase),
-              phase.equals("blocked") ? TelemetryService.clean(text(n, "error")) : null,
-              id);
-          exec(c, "UPDATE work_commands SET state='done' WHERE id=?", command);
-          audit(c, agent, "work." + phase, id);
-          if (phase.equals("proposed")) autoApprove(c, id);
-          String now = one(c, "SELECT state FROM work_items WHERE id=?", id).get("state").toString();
-          // Outbox for owner notifications: only states that wait for a person.
-          if (Set.of("proposed", "review", "blocked").contains(now))
-            exec(
-                c,
-                "INSERT INTO notifications(item,state,title,created) VALUES(?,?,?,?)",
-                id,
-                now,
-                one(c, "SELECT title FROM work_items WHERE id=?", id).get("title"),
-                clock.instant().getEpochSecond());
-          return Map.of("state", phase);
-        });
+    return db.tx(c -> {
+      var cmd = one(c, "SELECT * FROM work_commands WHERE id=?", command);
+      if (cmd == null
+          || !agent.equals(cmd.get("claimed_by"))
+          || !cmd.get("state").equals("claimed"))
+        throw new IllegalArgumentException("Command no longer owned");
+      String id = cmd.get("item").toString(), phase = text(n, "state");
+      // Any report confirms delivery: the claim is no longer eligible for redelivery.
+      exec(
+          c,
+          "UPDATE work_commands SET updated=?,claimed_at=NULL WHERE id=?",
+          clock.instant().getEpochSecond(),
+          command);
+      if (phase.equals("heartbeat"))
+        return Map.of(
+            "paused", num(one(c, "SELECT paused FROM governance WHERE id=1"), "paused") == 1);
+      String kind = cmd.get("kind").toString();
+      if (!phase.equals("blocked")
+          && !phase.equals("checkpoint")
+          && !((kind.equals("research") && phase.equals("proposed"))
+              || (Set.of("implement", "review_existing").contains(kind) && phase.equals("review"))
+              || (kind.equals("merge") && phase.equals("integrated"))))
+        throw new IllegalArgumentException("Invalid result transition");
+      for (String field : List.of("issue", "pr", "branch", "sha"))
+        if (n.has(field)) {
+          if (field.equals("sha") && !text(n, field).matches("[a-f0-9]{40}"))
+            throw new IllegalArgumentException("Full SHA required");
+          exec(c, "UPDATE work_items SET " + field + "=? WHERE id=?", n.get(field).asText(), id);
+        }
+      if (phase.equals("proposed")) {
+        var p = n.path("proposal");
+        if (p.has("project_memory"))
+          ProjectMemory.validate(
+              p.get("project_memory"),
+              one(c, "SELECT repo FROM work_items WHERE id=?", id).get("repo").toString());
+        var previous =
+            parse(
+                one(c, "SELECT proposal FROM work_items WHERE id=?", id)
+                    .get("proposal")
+                    .toString());
+        ApprovedCriteria.apply(c, id, previous, (com.fasterxml.jackson.databind.node.ObjectNode) p);
+        EvidenceService.criteria(p);
+        for (String key :
+            List.of("summary", "acceptance", "as_is", "to_be", "unit_test", "integration_test"))
+          text(p, key);
+        ((com.fasterxml.jackson.databind.node.ObjectNode) p)
+            .set("doubtful_criteria", ProposalShape.doubtfulCriteria(p));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) p)
+            .set("previous_changes", ProposalShape.changes(previous, p));
+        exec(c, "UPDATE work_items SET proposal=?,version=version+1 WHERE id=?", encode(p), id);
+      }
+      if (n.has("evidence"))
+        exec(c, "UPDATE work_items SET evidence=? WHERE id=?", encode(n.get("evidence")), id);
+      if (phase.equals("checkpoint")) return Map.of("state", "recorded");
+      if (phase.equals("integrated") && !n.path("merged").asBoolean())
+        throw new IllegalArgumentException("GitHub merge confirmation required");
+      if (phase.equals("review")) {
+        var w = one(c, "SELECT pr,sha FROM work_items WHERE id=?", id);
+        if (w.get("pr") == null || w.get("sha") == null)
+          throw new IllegalArgumentException("PR and SHA required");
+      }
+      exec(
+          c,
+          "UPDATE work_items SET state=?,error=? WHERE id=?",
+          (phase.equals("blocked") && kind.equals("merge") ? "review" : phase),
+          phase.equals("blocked") ? TelemetryService.clean(text(n, "error")) : null,
+          id);
+      exec(c, "UPDATE work_commands SET state='done' WHERE id=?", command);
+      audit(c, agent, "work." + phase, id);
+      if (phase.equals("proposed")) autoApprove(c, id);
+      String now = one(c, "SELECT state FROM work_items WHERE id=?", id).get("state").toString();
+      // Outbox for owner notifications: only states that wait for a person.
+      if (Set.of("proposed", "review", "blocked").contains(now))
+        exec(
+            c,
+            "INSERT INTO notifications(item,state,title,created) VALUES(?,?,?,?)",
+            id,
+            now,
+            one(c, "SELECT title FROM work_items WHERE id=?", id).get("title"),
+            clock.instant().getEpochSecond());
+      return Map.of("state", phase);
+    });
   }
 }

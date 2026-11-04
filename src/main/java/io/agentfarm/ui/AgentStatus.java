@@ -55,9 +55,29 @@ public class AgentStatus implements ComponentTreeSupplier {
     boolean executorFresh = Boolean.TRUE.equals(UiSupport.telemetry().snapshot().get("fresh"));
     boolean owner = UiSupport.isOwner();
     var parts = new ArrayList<Component>();
-    section(parts, "/icons/napoleon.svg", "Nodos dirigentes", "node", UiSupport.control().nodes(), now, executorFresh, owner);
-    section(parts, "/icons/boxer.svg", "Trabajadores Boxer", "worker", UiSupport.control().workers(), now, executorFresh, owner);
-    return VerticalLayout.builder().content(parts).style(UiSupport.FULL_WIDTH).fullWidth(true).build();
+    section(
+        parts,
+        "/icons/napoleon.svg",
+        "Nodos dirigentes",
+        "node",
+        UiSupport.control().nodes(),
+        now,
+        executorFresh,
+        owner);
+    section(
+        parts,
+        "/icons/boxer.svg",
+        "Trabajadores Boxer",
+        "worker",
+        UiSupport.control().workers(),
+        now,
+        executorFresh,
+        owner);
+    return VerticalLayout.builder()
+        .content(parts)
+        .style(UiSupport.FULL_WIDTH)
+        .fullWidth(true)
+        .build();
   }
 
   private static void section(

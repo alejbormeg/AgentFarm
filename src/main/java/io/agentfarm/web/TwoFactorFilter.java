@@ -12,12 +12,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * A password is not enough for an account with a second factor: its session must have passed a code.
- * HTTP Basic carries no session to remember that, so those accounts cannot use it.
+ * A password is not enough for an account with a second factor: its session must have passed a
+ * code. HTTP Basic carries no session to remember that, so those accounts cannot use it.
  */
 final class TwoFactorFilter extends OncePerRequestFilter {
   static final String VERIFIED = "agentfarm.two-factor-verified";
-  private static final Set<String> OPEN = Set.of("/login", "/login/2fa", "/logout", "/error", "/api/health");
+  private static final Set<String> OPEN =
+      Set.of("/login", "/login/2fa", "/logout", "/error", "/api/health");
   private final TwoFactor twoFactor;
 
   TwoFactorFilter(TwoFactor twoFactor) {
@@ -25,7 +26,8 @@ final class TwoFactorFilter extends OncePerRequestFilter {
   }
 
   @Override
-  protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+  protected void doFilterInternal(
+      HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
     var auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth == null
@@ -42,10 +44,13 @@ final class TwoFactorFilter extends OncePerRequestFilter {
       chain.doFilter(request, response);
       return;
     }
-    if (request.getServletPath().startsWith("/api/") || request.getHeader("Authorization") != null) {
+    if (request.getServletPath().startsWith("/api/")
+        || request.getHeader("Authorization") != null) {
       response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
       response.setContentType("application/json");
-      response.getWriter().write("{\"error\":\"Esta cuenta usa segundo factor: entra desde el panel.\"}");
+      response
+          .getWriter()
+          .write("{\"error\":\"Esta cuenta usa segundo factor: entra desde el panel.\"}");
       return;
     }
     response.sendRedirect("/login/2fa");

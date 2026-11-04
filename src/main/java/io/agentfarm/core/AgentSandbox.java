@@ -14,11 +14,25 @@ public final class AgentSandbox {
   public static final String PROFILE = "agentfarm";
   private static final List<String> SECRETS =
       List.of(
-          ".ssh", ".aws", ".azure", ".gnupg", ".kube", ".docker", ".config", ".netrc",
-          ".git-credentials", ".npmrc", ".pypirc", ".claude", ".codex/auth.json",
+          ".ssh",
+          ".aws",
+          ".azure",
+          ".gnupg",
+          ".kube",
+          ".docker",
+          ".config",
+          ".netrc",
+          ".git-credentials",
+          ".npmrc",
+          ".pypirc",
+          ".claude",
+          ".codex/auth.json",
           "agentfarm-backups");
 
-  /** Reaching any of these is root on the host, so hiding them must not depend on the network being off. */
+  /**
+   * Reaching any of these is root on the host, so hiding them must not depend on the network being
+   * off.
+   */
   public static final List<Path> CONTAINER_SOCKETS =
       List.of(
           Path.of("/run/docker.sock"),
@@ -29,7 +43,9 @@ public final class AgentSandbox {
 
   private AgentSandbox() {}
 
-  /** What this host adds to {@link #CONTAINER_SOCKETS}: session sockets and any custom Docker host. */
+  /**
+   * What this host adds to {@link #CONTAINER_SOCKETS}: session sockets and any custom Docker host.
+   */
   public static List<Path> hostSockets(Map<String, String> env, String uid) {
     var sockets = new ArrayList<>(CONTAINER_SOCKETS);
     String runtime = env.getOrDefault("XDG_RUNTIME_DIR", "");
@@ -77,13 +93,18 @@ public final class AgentSandbox {
     return role.equals("research") ? "live" : "disabled";
   }
 
-  /** What a profile hides, for the checks and for providers that take rules instead of a profile. */
+  /**
+   * What a profile hides, for the checks and for providers that take rules instead of a profile.
+   */
   @SuppressWarnings("unchecked")
   public static List<String> hiddenPaths(Map<String, Object> config) {
-    var permissions = (Map<String, Object>) ((Map<String, Object>) config.get("permissions")).get(PROFILE);
+    var permissions =
+        (Map<String, Object>) ((Map<String, Object>) config.get("permissions")).get(PROFILE);
     var hidden = new ArrayList<String>();
     ((Map<String, Object>) permissions.get("filesystem"))
-        .forEach((path, access) -> { if (access.equals("none")) hidden.add(path); });
+        .forEach((path, access) -> {
+          if (access.equals("none")) hidden.add(path);
+        });
     return hidden;
   }
 

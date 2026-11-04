@@ -19,12 +19,14 @@ public class SentryReader {
   }
 
   private final String tokenFile, base;
-  private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+  private final HttpClient http =
+      HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 
   public SentryReader(
       @Value("${agentfarm.sentry-token-file:}") String tokenFile,
       @Value("${agentfarm.sentry-url:https://sentry.io}") String base) {
-    if (!base.startsWith("https://")) throw new IllegalArgumentException("Sentry URL must use https");
+    if (!base.startsWith("https://"))
+      throw new IllegalArgumentException("Sentry URL must use https");
     this.tokenFile = tokenFile;
     this.base = base.replaceAll("/+$", "");
   }

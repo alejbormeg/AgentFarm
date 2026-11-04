@@ -67,7 +67,8 @@ public class WorkflowApi {
               "deletions", f.path("deletions").asInt(),
               "patch", patch.length() > 20000 ? patch.substring(0, 20000) + "\n…" : patch));
     }
-    return Json.obj("base", base, "sha", sha, "files", files, "truncated", compare.path("files").size() > 100);
+    return Json.obj(
+        "base", base, "sha", sha, "files", files, "truncated", compare.path("files").size() > 100);
   }
 
   private void checkAgent(JsonNode n, Principal p) {
@@ -125,7 +126,8 @@ public class WorkflowApi {
   }
 
   @PostMapping("/agent/commands/{id}/github-token")
-  public Object githubToken(@PathVariable String id, @RequestBody JsonNode n, Principal p) throws Exception {
+  public Object githubToken(@PathVariable String id, @RequestBody JsonNode n, Principal p)
+      throws Exception {
     if (!p.getName().startsWith("node:"))
       throw new org.springframework.security.access.AccessDeniedException("Only an executor");
     checkAgent(n, p);
@@ -134,7 +136,8 @@ public class WorkflowApi {
       var token = credentials.repositoryToken(repository);
       return token == null ? Json.obj("mode", credentials.mode()) : token;
     } catch (java.io.IOException | IllegalStateException e) {
-      throw new IllegalArgumentException("GitHub no ha dado un token para " + repository + ": " + e.getMessage());
+      throw new IllegalArgumentException(
+          "GitHub no ha dado un token para " + repository + ": " + e.getMessage());
     }
   }
 

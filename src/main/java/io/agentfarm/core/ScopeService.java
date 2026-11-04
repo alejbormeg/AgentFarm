@@ -123,11 +123,10 @@ public class ScopeService {
     CoordinatorService.validate(spec);
     List<String> allowed = new ArrayList<>();
     spec.get("allowed_paths")
-        .forEach(
-            v -> {
-              scopedPath(v.asText(), true);
-              allowed.add(v.asText());
-            });
+        .forEach(v -> {
+          scopedPath(v.asText(), true);
+          allowed.add(v.asText());
+        });
     base = commit(repo, base);
     candidate = commit(repo, candidate);
     if (git(repo, Set.of(0, 1), "merge-base", "--is-ancestor", base, candidate).code() != 0)

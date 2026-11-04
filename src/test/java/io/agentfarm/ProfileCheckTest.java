@@ -30,8 +30,10 @@ class ProfileCheckTest {
 
   @Test
   void rejectsWhatWouldBreakLaterTasks() {
-    assertEquals("failed", ProfileCheck.validate("setup: x", "o/r", "u", "i", List.of()).get("status"));
-    assertEquals("failed", ProfileCheck.validate(PROFILE, "o/otro", "u", "i", List.of()).get("status"));
+    assertEquals(
+        "failed", ProfileCheck.validate("setup: x", "o/r", "u", "i", List.of()).get("status"));
+    assertEquals(
+        "failed", ProfileCheck.validate(PROFILE, "o/otro", "u", "i", List.of()).get("status"));
     var changed = ProfileCheck.validate(PROFILE, "o/r", "otro", "i", List.of());
     assertEquals("failed", changed.get("status"));
     assertTrue(changed.get("error").toString().contains("aprobados"));
@@ -55,10 +57,13 @@ class ProfileCheckTest {
         """;
     assertEquals(
         "passed",
-        ProfileCheck.validate(profile, "o/r", "N/A: adopción sin código", "N/A: sin integración", List.of()).get("status"));
+        ProfileCheck.validate(
+                profile, "o/r", "N/A: adopción sin código", "N/A: sin integración", List.of())
+            .get("status"));
     assertEquals(
         "failed",
-        ProfileCheck.validate(profile, "o/r", "pytest", "N/A: sin integración", List.of()).get("status"),
+        ProfileCheck.validate(profile, "o/r", "pytest", "N/A: sin integración", List.of())
+            .get("status"),
         "N/A cannot replace an approved command");
   }
 
@@ -80,8 +85,15 @@ class ProfileCheckTest {
         """;
     assertEquals(
         "passed",
-        ProfileCheck.validate(template.replace("NAME", "undetected_mutations_percent"), "o/r", "u", "i", List.of()).get("status"));
-    var refused = ProfileCheck.validate(template.replace("NAME", "No-Vale"), "o/r", "u", "i", List.of());
+        ProfileCheck.validate(
+                template.replace("NAME", "undetected_mutations_percent"),
+                "o/r",
+                "u",
+                "i",
+                List.of())
+            .get("status"));
+    var refused =
+        ProfileCheck.validate(template.replace("NAME", "No-Vale"), "o/r", "u", "i", List.of());
     assertEquals("failed", refused.get("status"));
     assertTrue(refused.get("error").toString().contains("No-Vale"), refused.toString());
   }
@@ -89,9 +101,11 @@ class ProfileCheckTest {
   @Test
   void adoptingARepositoryWithoutCodeIsNotUntestedCode() {
     var adoption = List.of("agentfarm.yaml", ".github/workflows/agentfarm.yml");
-    assertFalse(io.agentfarm.core.TestPolicy.untestedCode(adoption, "not_applicable", "not_applicable"));
+    assertFalse(
+        io.agentfarm.core.TestPolicy.untestedCode(adoption, "not_applicable", "not_applicable"));
     assertTrue(
-        io.agentfarm.core.TestPolicy.untestedCode(List.of("agentfarm.yaml", "shop.py"), "not_applicable", "not_applicable"),
+        io.agentfarm.core.TestPolicy.untestedCode(
+            List.of("agentfarm.yaml", "shop.py"), "not_applicable", "not_applicable"),
         "the profile does not excuse real code");
   }
 }

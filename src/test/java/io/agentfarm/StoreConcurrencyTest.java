@@ -18,8 +18,8 @@ class StoreConcurrencyTest {
   Path memoryDir;
 
   /**
-   * 4000 durable commits take 24 s on an idle ext4 disk and 1.6 s in memory: the cost is fsync. This
-   * test is about atomicity and the connection lifecycle, so a slow CI disk must not fail it.
+   * 4000 durable commits take 24 s on an idle ext4 disk and 1.6 s in memory: the cost is fsync.
+   * This test is about atomicity and the connection lifecycle, so a slow CI disk must not fail it.
    */
   Path database() throws Exception {
     Path shm = Path.of("/dev/shm");
@@ -45,12 +45,11 @@ class StoreConcurrencyTest {
           Path db = database();
           var first = new Store(db.toString());
           var second = new Store(db.toString());
-          first.tx(
-              c -> {
-                statement(c, "CREATE TABLE counter(value INTEGER)");
-                exec(c, "INSERT INTO counter VALUES(0)");
-                return null;
-              });
+          first.tx(c -> {
+            statement(c, "CREATE TABLE counter(value INTEGER)");
+            exec(c, "INSERT INTO counter VALUES(0)");
+            return null;
+          });
           var pool =
               Executors.newFixedThreadPool(
                   16,
@@ -64,16 +63,14 @@ class StoreConcurrencyTest {
             for (int worker = 0; worker < 16; worker++) {
               var store = worker % 2 == 0 ? first : second;
               jobs.add(
-                  pool.submit(
-                      () -> {
-                        for (int i = 0; i < 250; i++)
-                          store.tx(
-                              c -> {
-                                long value = num(one(c, "SELECT value FROM counter"), "value");
-                                exec(c, "UPDATE counter SET value=?", value + 1);
-                                return null;
-                              });
-                      }));
+                  pool.submit(() -> {
+                    for (int i = 0; i < 250; i++)
+                      store.tx(c -> {
+                        long value = num(one(c, "SELECT value FROM counter"), "value");
+                        exec(c, "UPDATE counter SET value=?", value + 1);
+                        return null;
+                      });
+                  }));
             }
             for (var job : jobs) job.get(40, TimeUnit.SECONDS);
             long result = first.tx(c -> num(one(c, "SELECT value FROM counter"), "value"));
@@ -81,11 +78,10 @@ class StoreConcurrencyTest {
             assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    second.tx(
-                        c -> {
-                          exec(c, "UPDATE counter SET value=0");
-                          throw new IllegalArgumentException("rollback");
-                        }));
+                    second.tx(c -> {
+                      exec(c, "UPDATE counter SET value=0");
+                      throw new IllegalArgumentException("rollback");
+                    }));
             long afterRollback = first.tx(c -> num(one(c, "SELECT value FROM counter"), "value"));
             assertEquals(4000, afterRollback);
           } finally {

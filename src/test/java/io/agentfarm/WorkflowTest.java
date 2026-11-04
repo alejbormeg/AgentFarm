@@ -98,18 +98,29 @@ class WorkflowTest {
     var parallel =
         new WorkflowService(store, Clock.fixed(Instant.ofEpochSecond(1000), ZoneOffset.UTC), 2, 1);
     for (String[] r :
-        new String[][] {{"request-a1", "owner/a"}, {"request-a2", "owner/a"}, {"request-b1", "owner/b"}, {"request-c1", "owner/c"}})
-      parallel.create(n("request_id", r[0], "repository", r[1], "title", "T", "request", "R"), "owner");
+        new String[][] {
+          {"request-a1", "owner/a"},
+          {"request-a2", "owner/a"},
+          {"request-b1", "owner/b"},
+          {"request-c1", "owner/c"}
+        })
+      parallel.create(
+          n("request_id", r[0], "repository", r[1], "title", "T", "request", "R"), "owner");
     var first = (Map<?, ?>) parallel.claim("node-s1");
     assertEquals("request-a1", ((Map<?, ?>) first.get("item")).get("id"));
-    parallel.report(((Map<?, ?>) first.get("command")).get("id").toString(), n("state", "heartbeat"), "node-s1");
+    parallel.report(
+        ((Map<?, ?>) first.get("command")).get("id").toString(),
+        n("state", "heartbeat"),
+        "node-s1");
     assertTrue(((Map<?, ?>) parallel.claim("node-s1")).isEmpty(), "one command per executor");
     var second = (Map<?, ?>) parallel.claim("node-s2");
     assertEquals(
         "request-b1", ((Map<?, ?>) second.get("item")).get("id"), "same repository is skipped");
     assertTrue(((Map<?, ?>) parallel.claim("node-s3")).isEmpty(), "global limit reached");
-    assertThrows(IllegalArgumentException.class, () -> new WorkflowService(store, Clock.systemUTC(), 2, 3));
-    assertThrows(IllegalArgumentException.class, () -> ControlService.nodeIdentifier("napoleon-s1"));
+    assertThrows(
+        IllegalArgumentException.class, () -> new WorkflowService(store, Clock.systemUTC(), 2, 3));
+    assertThrows(
+        IllegalArgumentException.class, () -> ControlService.nodeIdentifier("napoleon-s1"));
     assertDoesNotThrow(() -> ControlService.nodeIdentifier("napoleon-sur"));
   }
 
@@ -161,13 +172,15 @@ class WorkflowTest {
   }
 
   /** v1 approved, then a correction whose agent answers with these criteria. */
-  com.fasterxml.jackson.databind.JsonNode corrected(String feedback, List<String> retire, Object... criteria) {
+  com.fasterxml.jackson.databind.JsonNode corrected(
+      String feedback, List<String> retire, Object... criteria) {
     approved();
     var body = obj("feedback", feedback);
     if (!retire.isEmpty()) body.put("retire", retire);
     service.action("request-123", "correct", MAPPER.valueToTree(body), "owner");
     var item = parse(one("SELECT proposal FROM work_items WHERE id='request-123'")).deepCopy();
-    ((com.fasterxml.jackson.databind.node.ObjectNode) item).set("criteria", MAPPER.valueToTree(List.of(criteria)));
+    ((com.fasterxml.jackson.databind.node.ObjectNode) item)
+        .set("criteria", MAPPER.valueToTree(List.of(criteria)));
     service.report(command(claim()), n("state", "proposed", "proposal", item), "agent");
     return parse(one("SELECT proposal FROM work_items WHERE id='request-123'"));
   }
@@ -208,12 +221,16 @@ class WorkflowTest {
 
   @Test
   void aCorrectionKeepsTheApprovedCriteriaAndAddsItsOwn() {
-    var p = corrected("Corrige solo el último fallo", List.of(), test("AC-1", "Solo cubre la corrección"));
+    var p =
+        corrected(
+            "Corrige solo el último fallo", List.of(), test("AC-1", "Solo cubre la corrección"));
     var criteria = p.path("criteria");
     assertEquals(2, criteria.size());
     assertEquals("AC-1", criteria.get(0).path("id").asText());
-    assertEquals("Works", criteria.get(0).path("description").asText(), "the approved text is kept");
-    assertEquals("AC-2", criteria.get(1).path("id").asText(), "reusing an id does not replace a criterion");
+    assertEquals(
+        "Works", criteria.get(0).path("description").asText(), "the approved text is kept");
+    assertEquals(
+        "AC-2", criteria.get(1).path("id").asText(), "reusing an id does not replace a criterion");
     assertEquals("Solo cubre la corrección", criteria.get(1).path("description").asText());
     assertEquals("AC-1", p.path("kept_criteria").get(0).asText());
   }
@@ -233,7 +250,11 @@ class WorkflowTest {
 
   @Test
   void onlyAPersonRetiresACriterionWithAReasonAndItShows() {
-    var p = corrected("Ese criterio no se puede acreditar con la plataforma", List.of("AC-1"), test("AC-1", "Otro"));
+    var p =
+        corrected(
+            "Ese criterio no se puede acreditar con la plataforma",
+            List.of("AC-1"),
+            test("AC-1", "Otro"));
     assertEquals(1, p.path("criteria").size());
     assertEquals("Otro", p.path("criteria").get(0).path("description").asText());
     var retired = p.path("retired_criteria").get(0);
@@ -247,9 +268,30 @@ class WorkflowTest {
   @Test
   void retiringNeedsAReasonAndAnApprovedCriterion() {
     approved();
-    assertThrows(IllegalArgumentException.class, () -> service.action("request-123", "correct", n("feedback", "Corto", "retire", List.of("AC-1")), "owner"));
-    assertThrows(IllegalArgumentException.class, () -> service.action("request-123", "correct", n("feedback", "Un motivo con la longitud suficiente", "retire", List.of("AC-9")), "owner"));
-    assertThrows(IllegalArgumentException.class, () -> service.action("request-123", "correct", n("feedback", "Un motivo con la longitud suficiente", "retire", List.of("AC-1")), "node:napoleon"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            service.action(
+                "request-123",
+                "correct",
+                n("feedback", "Corto", "retire", List.of("AC-1")),
+                "owner"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            service.action(
+                "request-123",
+                "correct",
+                n("feedback", "Un motivo con la longitud suficiente", "retire", List.of("AC-9")),
+                "owner"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            service.action(
+                "request-123",
+                "correct",
+                n("feedback", "Un motivo con la longitud suficiente", "retire", List.of("AC-1")),
+                "node:napoleon"));
   }
 
   @Test
@@ -258,7 +300,8 @@ class WorkflowTest {
     proposal(command(claim()), test("AC-1", "Works"));
     service.action("request-123", "correct", n("feedback", "Replantea los criterios"), "owner");
     var item = parse(one("SELECT proposal FROM work_items WHERE id='request-123'")).deepCopy();
-    ((com.fasterxml.jackson.databind.node.ObjectNode) item).set("criteria", MAPPER.valueToTree(List.of(test("AC-1", "Otro"))));
+    ((com.fasterxml.jackson.databind.node.ObjectNode) item)
+        .set("criteria", MAPPER.valueToTree(List.of(test("AC-1", "Otro"))));
     service.report(command(claim()), n("state", "proposed", "proposal", item), "agent");
     var p = parse(one("SELECT proposal FROM work_items WHERE id='request-123'"));
     assertEquals(1, p.path("criteria").size());
@@ -272,7 +315,10 @@ class WorkflowTest {
     assertEquals("owner/repo", service.heldRepository(command, "agent"));
     assertThrows(IllegalArgumentException.class, () -> service.heldRepository(command, "other"));
     proposal(command);
-    assertThrows(IllegalArgumentException.class, () -> service.heldRepository(command, "agent"), "already finished");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> service.heldRepository(command, "agent"),
+        "already finished");
   }
 
   @Test
@@ -334,11 +380,10 @@ class WorkflowTest {
   @Test
   void pausePreventsClaim() {
     create();
-    store.tx(
-        c -> {
-          Store.exec(c, "UPDATE governance SET paused=1");
-          return null;
-        });
+    store.tx(c -> {
+      Store.exec(c, "UPDATE governance SET paused=1");
+      return null;
+    });
     assertTrue(claim().isEmpty());
   }
 }

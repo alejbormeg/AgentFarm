@@ -23,7 +23,8 @@ public class NotificationService {
 
   @FunctionalInterface
   public interface Sender {
-    int post(URI uri, String contentType, Map<String, String> headers, String body) throws Exception;
+    int post(URI uri, String contentType, Map<String, String> headers, String body)
+        throws Exception;
   }
 
   @org.springframework.beans.factory.annotation.Autowired
@@ -42,7 +43,8 @@ public class NotificationService {
       var uri = URI.create(url);
       boolean local = Set.of("localhost", "127.0.0.1").contains(uri.getHost());
       if (!"https".equals(uri.getScheme()) && !(local && "http".equals(uri.getScheme())))
-        throw new IllegalArgumentException("Notification URL must use https (or http on localhost)");
+        throw new IllegalArgumentException(
+            "Notification URL must use https (or http on localhost)");
     }
     this.db = db;
     this.url = url;
@@ -58,7 +60,9 @@ public class NotificationService {
             .header("Content-Type", type)
             .POST(HttpRequest.BodyPublishers.ofString(body));
     headers.forEach(b::header);
-    return HttpClient.newHttpClient().send(b.build(), HttpResponse.BodyHandlers.discarding()).statusCode();
+    return HttpClient.newHttpClient()
+        .send(b.build(), HttpResponse.BodyHandlers.discarding())
+        .statusCode();
   }
 
   static String text(String state, String title) {
@@ -75,7 +79,9 @@ public class NotificationService {
   public int deliver() {
     if (url.isBlank()) return 0;
     var pending =
-        db.tx(c -> rows(c, "SELECT * FROM notifications WHERE sent=0 AND attempts<5 ORDER BY id LIMIT 20"));
+        db.tx(c ->
+            rows(
+                c, "SELECT * FROM notifications WHERE sent=0 AND attempts<5 ORDER BY id LIMIT 20"));
     int sent = 0;
     for (var n : pending) {
       String message = text(n.get("state").toString(), n.get("title").toString());
@@ -84,22 +90,49 @@ public class NotificationService {
       try {
         status =
             switch (format) {
-              case "slack" -> sender.post(URI.create(url), "application/json", Map.of(), encode(obj("text", message + " · " + link)));
-              case "ntfy" -> sender.post(URI.create(url), "text/plain", Map.of("Title", "AgentFarm", "Click", link), message);
-              default -> sender.post(URI.create(url), "application/json", Map.of(), encode(obj("event", "agentfarm.attention", "item", n.get("item"), "state", n.get("state"), "title", n.get("title"), "text", message, "url", link)));
+              case "slack" ->
+                  sender.post(
+                      URI.create(url),
+                      "application/json",
+                      Map.of(),
+                      encode(obj("text", message + " · " + link)));
+              case "ntfy" ->
+                  sender.post(
+                      URI.create(url),
+                      "text/plain",
+                      Map.of("Title", "AgentFarm", "Click", link),
+                      message);
+              default ->
+                  sender.post(
+                      URI.create(url),
+                      "application/json",
+                      Map.of(),
+                      encode(
+                          obj(
+                              "event",
+                              "agentfarm.attention",
+                              "item",
+                              n.get("item"),
+                              "state",
+                              n.get("state"),
+                              "title",
+                              n.get("title"),
+                              "text",
+                              message,
+                              "url",
+                              link)));
             };
       } catch (Exception e) {
         status = 0;
       }
       boolean ok = status >= 200 && status < 300;
       if (ok) sent++;
-      db.tx(
-          c ->
-              exec(
-                  c,
-                  "UPDATE notifications SET sent=?,attempts=attempts+1 WHERE id=?",
-                  ok ? 1 : 0,
-                  n.get("id")));
+      db.tx(c ->
+          exec(
+              c,
+              "UPDATE notifications SET sent=?,attempts=attempts+1 WHERE id=?",
+              ok ? 1 : 0,
+              n.get("id")));
     }
     return sent;
   }

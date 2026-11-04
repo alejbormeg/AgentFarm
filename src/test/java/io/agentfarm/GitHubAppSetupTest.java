@@ -73,7 +73,14 @@ class GitHubAppSetupTest {
               if (request.uri().getPath().endsWith("/conversions"))
                 return response(
                     status,
-                    Json.encode(Json.obj("id", 4242, "slug", "agentfarm-abc", "pem", pkcs1Pem(keys.getPrivate()))));
+                    Json.encode(
+                        Json.obj(
+                            "id",
+                            4242,
+                            "slug",
+                            "agentfarm-abc",
+                            "pem",
+                            pkcs1Pem(keys.getPrivate()))));
               return response(status == 201 ? 200 : status, "{}");
             },
             clock);
@@ -86,16 +93,25 @@ class GitHubAppSetupTest {
   @Test
   void theManifestAsksOnlyForWhatIntegrationNeeds() {
     var started = setup.start("http://localhost:8080");
-    assertTrue(started.get("action").toString().startsWith("https://github.com/settings/apps/new?state="));
+    assertTrue(
+        started.get("action").toString().startsWith("https://github.com/settings/apps/new?state="));
     JsonNode manifest = Json.parse(started.get("manifest").toString());
-    assertEquals("http://localhost:8080/github-app/created", manifest.path("redirect_url").asText());
+    assertEquals(
+        "http://localhost:8080/github-app/created", manifest.path("redirect_url").asText());
     assertEquals("http://localhost:8080/github-app/installed", manifest.path("setup_url").asText());
     assertFalse(manifest.path("public").asBoolean(true));
-    assertFalse(manifest.path("hook_attributes").path("active").asBoolean(true), "no webhook needed");
+    assertFalse(
+        manifest.path("hook_attributes").path("active").asBoolean(true), "no webhook needed");
     assertEquals("write", manifest.path("default_permissions").path("contents").asText());
     assertEquals("read", manifest.path("default_permissions").path("checks").asText());
-    assertEquals("write", manifest.path("default_permissions").path("issues").asText(), "the executor opens issues");
-    assertEquals("write", manifest.path("default_permissions").path("workflows").asText(), "and may add the CI template");
+    assertEquals(
+        "write",
+        manifest.path("default_permissions").path("issues").asText(),
+        "the executor opens issues");
+    assertEquals(
+        "write",
+        manifest.path("default_permissions").path("workflows").asText(),
+        "and may add the CI template");
     assertTrue(manifest.path("default_permissions").path("administration").isMissingNode());
     assertTrue(manifest.path("name").asText().matches("AgentFarm [A-Za-z0-9]{6}"));
   }
@@ -103,8 +119,11 @@ class GitHubAppSetupTest {
   @Test
   void createsInstallsAndLeavesTheCredentialReadyWithoutCopyingAnything() throws Exception {
     assertEquals("none", credentials.mode());
-    String install = setup.created("code-1", state(setup.start("http://p").get("action").toString()), "admin");
-    assertTrue(install.startsWith("https://github.com/apps/agentfarm-abc/installations/new?state="), install);
+    String install =
+        setup.created("code-1", state(setup.start("http://p").get("action").toString()), "admin");
+    assertTrue(
+        install.startsWith("https://github.com/apps/agentfarm-abc/installations/new?state="),
+        install);
     assertEquals("none", credentials.mode(), "not usable until it is installed");
     assertTrue(calls.get(0).uri().getPath().endsWith("/app-manifests/code-1/conversions"));
 
@@ -115,21 +134,30 @@ class GitHubAppSetupTest {
     String auth = calls.get(1).headers().firstValue("Authorization").orElseThrow();
     assertEquals(3, auth.split("\\.").length, "asks GitHub with a JWT made with the stored key");
     for (Path file : List.of(dir.resolve("github-app.pem"), dir.resolve("github-app.json")))
-      assertEquals(PosixFilePermissions.fromString("rw-------"), Files.getPosixFilePermissions(file), file.toString());
+      assertEquals(
+          PosixFilePermissions.fromString("rw-------"),
+          Files.getPosixFilePermissions(file),
+          file.toString());
     assertTrue(Files.readString(dir.resolve("github-app.pem")).contains("BEGIN PRIVATE KEY"));
     assertEquals("agentfarm-abc", setup.status().get("slug"));
     assertFalse(Json.encode(setup.status()).contains("PRIVATE"), "the key never leaves the volume");
-    boolean audited = store.tx(c -> Store.one(c, "SELECT 1 FROM audit WHERE action='github-app.install'") != null);
+    boolean audited =
+        store.tx(
+            c -> Store.one(c, "SELECT 1 FROM audit WHERE action='github-app.install'") != null);
     assertTrue(audited);
   }
 
   @Test
   void aStateWorksOnceAndExpires() throws Exception {
-    assertThrows(IllegalArgumentException.class, () -> setup.created("c", "made-up", "admin"), "no forged link");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> setup.created("c", "made-up", "admin"),
+        "no forged link");
     assertThrows(IllegalArgumentException.class, () -> setup.created("c", null, "admin"));
     String state = state(setup.start("http://p").get("action").toString());
     setup.created("c", state, "admin");
-    assertThrows(IllegalArgumentException.class, () -> setup.created("c", state, "admin"), "single use");
+    assertThrows(
+        IllegalArgumentException.class, () -> setup.created("c", state, "admin"), "single use");
     String old = state(setup.start("http://p").get("action").toString());
     now = now.plus(Duration.ofHours(2));
     assertThrows(IllegalArgumentException.class, () -> setup.created("c", old, "admin"), "expired");
@@ -143,18 +171,26 @@ class GitHubAppSetupTest {
     assertThrows(IllegalStateException.class, () -> setup.created("c", state, "admin"));
     assertFalse(Files.exists(dir.resolve("github-app.json")), "nothing is stored");
     status = 201;
-    String install = setup.created("c", state(setup.start("http://p").get("action").toString()), "admin");
-    assertThrows(IllegalArgumentException.class, () -> setup.installed("no-numeric", state(install), "admin"));
-    String again = setup.created("c", state(setup.start("http://p").get("action").toString()), "admin");
+    String install =
+        setup.created("c", state(setup.start("http://p").get("action").toString()), "admin");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> setup.installed("no-numeric", state(install), "admin"));
+    String again =
+        setup.created("c", state(setup.start("http://p").get("action").toString()), "admin");
     status = 404;
-    assertThrows(IllegalArgumentException.class, () -> setup.installed("9", state(again), "admin"), "someone else's installation");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> setup.installed("9", state(again), "admin"),
+        "someone else's installation");
     assertEquals("none", credentials.mode());
   }
 
   @Test
   void theConvertedKeySignsWithTheOriginalKey() throws Exception {
     String pem = GitHubAppSetup.pkcs8(pkcs1Pem(keys.getPrivate()));
-    byte[] der = Base64.getDecoder().decode(pem.replaceAll("-----[A-Z ]+-----", "").replaceAll("\\s", ""));
+    byte[] der =
+        Base64.getDecoder().decode(pem.replaceAll("-----[A-Z ]+-----", "").replaceAll("\\s", ""));
     assertArrayEquals(keys.getPrivate().getEncoded(), der);
     String already = "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n";
     assertEquals(already, GitHubAppSetup.pkcs8(already));
