@@ -42,7 +42,8 @@ Los resultados quedan en `tests/eval/results/`. La primera vez encontró tres fa
 
 ## Lanzarlo con una orden
 `tests/pilot/run.py` recorre el flujo desde el panel y escribe las medidas en JSON. **Gasta cuota**: se detiene
-al llegar a `--max-quota` (90 % semanal por defecto) y no lanza nada si no puede leerla.
+al llegar a `--max-quota` (90 % semanal por defecto) y no lanza nada si no puede leerla. Termina con error si
+una tarea se bloquea o llega a revisión sin pasar sus evidencias, para que un fallo no parezca un éxito.
 
 ```bash
 python3 tests/pilot/run.py --repo owner/repo-de-pilotos --password-file ~/.config/agentfarm-password \

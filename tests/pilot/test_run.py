@@ -7,8 +7,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 class Fake:
-    def __init__(self, states, quota=(10,), fresh=True, ready=True):
-        self.states, self.quota, self.fresh, self.ready = list(states), list(quota), fresh, ready
+    def __init__(self, states, quota=(10,), fresh=True, ready=True, evidence=None):
+        self.states, self.quota, self.fresh, self.ready, self.evidence = list(states), list(quota), fresh, ready, evidence
         self.posts, self.item = [], None
 
     def handler(self):
@@ -37,7 +37,8 @@ class Fake:
                     self.send({"quota_fresh": fake.fresh, "snapshot": {"quota": {"weekly_used_percent": used}}})
                 elif path == "/work":
                     state = fake.states.pop(0) if len(fake.states) > 1 else fake.states[0]
-                    self.send([{"id": fake.item, "state": state, "version": 1, "pr": 7, "sha": "a" * 40, "error": "motivo"}])
+                    self.send([{"id": fake.item, "state": state, "version": 1, "pr": 7, "sha": "a" * 40, "error": "motivo",
+                                "evidence": json.dumps(fake.evidence) if fake.evidence else None}])
                 elif path.startswith("/evidence/"):
                     self.send({"ready": fake.ready, "blockers": ["falta CI"]})
                 else:
@@ -117,5 +118,22 @@ fake = Fake(["proposed", "review"], ready=False)
 code, report = run(fake, "--merge", "--timeout", "1")
 assert code == 1 and "merge" not in actions(fake) and report["blocked"][0]["error"] == "['falta CI']", report
 print("ok   does not merge what the panel says is not ready")
+
+blocked = {"passed": False, "review": {"passed": False, "summary": "Falta una prueba"}}
+fake = Fake(["proposed", "review"], evidence=blocked)
+code, report = run(fake, "--merge")
+assert code == 1 and "merge" not in actions(fake), report
+assert report["blocked"][0]["error"] == "Falta una prueba" and report["tasks"][0]["review_passed"] is False, report
+print("ok   a candidate the reviewer blocked is not a success")
+
+fake = Fake(["proposed", "review"], evidence={"passed": True, "review": {"passed": True}})
+code, report = run(fake)
+assert code == 0 and report["blocked"] == [] and report["tasks"][0]["review_passed"] is True, report
+print("ok   a candidate with passing evidence goes on")
+
+fake = Fake(["proposed", "review", "merging", "integrated"], quota=(10,))
+code, report = run(fake, "--merge")
+assert code == 0 and report["quota_per_integrated_task"] is None and "menos de 1" in report["quota_note"], report
+print("ok   an unmeasurable cost is not reported as zero")
 
 print("Pilot checks passed")
