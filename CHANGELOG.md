@@ -4,6 +4,10 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — camino a la versión 1.0
+
+- La CI ya no guarda artefactos que nadie usa: 294 ocupaban 13,8 GB del espacio de Actions.
+
 ## Sin publicar — lo que encontró el piloto
 
 - Una corrección ya no pierde los criterios aprobados: solo una persona retira uno, con motivo visible.

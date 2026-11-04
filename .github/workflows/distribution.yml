@@ -27,6 +27,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: agentfarm-distribution-candidate
+          retention-days: 7
           path: |
             target/agentfarm.jar
             target/agentfarm-executor-linux.tar.gz

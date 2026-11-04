@@ -12,6 +12,7 @@ paths:
 - La primera llamada a Maven de cada job pasa por `runtime/mvn-retry.sh`, que solo repite cortes de descarga. No añadas reintentos a las pruebas: un fallo debe verse.
 - Cada script nuevo se añade a un job y a `comprobar.sh`.
 - Todo job lleva `timeout-minutes`: uno colgado consume minutos y no avisa.
+- Un artefacto ocupa espacio hasta que caduca, y ese espacio no vuelve al renovarse el ciclo. Sube uno solo si algo lo descarga y siempre con `retention-days`: 294 sin uso llegaron a 13,8 GB frente a los 500 MB del plan. `tests/pre_push.sh` exige la caducidad.
 - Si un fallo es de infraestructura, demuéstralo con el registro antes de relanzar. Consulta la skill `diagnosticar-ci`.
 - Sin minutos, Actions está desactivado y `validar-local.sh` hace lo que `java.yml`: mantén ambos iguales. `merge-gate.sh --local` solo fusiona el commit que ese script validó, y deja de funcionar cuando Actions vuelve a estar activo.
 - `tests/claude_rules.sh` y `tests/codex_sandbox.sh` necesitan una cuenta real, así que no van en la CI. Se repiten al actualizar esas herramientas.
