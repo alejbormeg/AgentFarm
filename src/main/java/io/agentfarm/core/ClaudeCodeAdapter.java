@@ -112,7 +112,7 @@ public final class ClaudeCodeAdapter implements AgentAdapter {
     if (!mcp.isEmpty()) {
       if (role.equals("implement"))
         throw new IllegalArgumentException("MCP tools are limited to research and review");
-      for (String m : mcp) tools += ",mcp__" + m;
+      tools += mcp.stream().map(m -> ",mcp__" + m).collect(java.util.stream.Collectors.joining());
     }
     var argv =
         new ArrayList<>(

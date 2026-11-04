@@ -130,7 +130,7 @@ public class BudgetService {
         end,
         total,
         shares.get(period).asLong(),
-        used == null ? 0 : used,
+        java.util.Objects.requireNonNullElse(used, 0L),
         used,
         at,
         age,

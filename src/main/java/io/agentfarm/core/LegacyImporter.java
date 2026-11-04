@@ -21,7 +21,9 @@ public class LegacyImporter {
     try (Connection old =
         DriverManager.getConnection(
             "jdbc:sqlite:" + source.toAbsolutePath().toUri() + "?mode=ro")) {
-      old.createStatement().execute("BEGIN");
+      try (var begin = old.createStatement()) {
+        begin.execute("BEGIN");
+      }
       Map<String, Object> result =
           store.tx(c -> {
             int copied = 0;
@@ -69,7 +71,9 @@ public class LegacyImporter {
             audit(c, actor, "legacy.import", "sqlite");
             return Json.obj("state", "imported", "rows", copied);
           });
-      old.createStatement().execute("ROLLBACK");
+      try (var rollback = old.createStatement()) {
+        rollback.execute("ROLLBACK");
+      }
       return result;
     } catch (SQLException e) {
       throw new IllegalArgumentException("Cannot read legacy SQLite database", e);

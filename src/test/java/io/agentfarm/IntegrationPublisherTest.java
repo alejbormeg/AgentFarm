@@ -119,6 +119,7 @@ class IntegrationPublisherTest {
                         false,
                         "merged",
                         remoteMerged));
+          @SuppressWarnings("unchecked")
           HttpResponse<String> response = mock(HttpResponse.class);
           when(response.statusCode()).thenReturn(githubStatus);
           when(response.body()).thenReturn(body);
