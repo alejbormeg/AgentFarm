@@ -21,10 +21,12 @@ jobs:
         # Java 25 only after merging: each PR run costs minutes, and Java 21 is what the project compiles for.
         java: ${{ github.event_name == 'push' && fromJSON('["21", "25"]') || fromJSON('["21"]') }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: actions/setup-java@v4
+          # The secret scan reads the whole history.
+          fetch-depth: 0
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
           java-version: ${{ matrix.java }}
@@ -42,14 +44,16 @@ jobs:
       - run: bash runtime/verify.sh
       - run: bash runtime/package.sh
         if: matrix.java == '21'
+      - run: bash tests/security_scan.sh
+        if: matrix.java == '21'
   e2e:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
           java-version: '21'
@@ -57,7 +61,7 @@ jobs:
       - run: bash runtime/mvn-retry.sh -B -ntp -DskipTests package
         env:
           MVN: ./mvnw
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
       - run: docker pull -q bash:5.2
@@ -73,7 +77,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - run: docker compose up --build --wait -d

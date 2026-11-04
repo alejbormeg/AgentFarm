@@ -40,7 +40,7 @@ step() { echo; echo "== $*"; "$@"; }
 if [[ "$java25" == 1 ]]; then
   # Same steps that need a JDK, on Java 25. Runs as this user so permission tests mean the same.
   docker build -q -t agentfarm-validar-java25 - >/dev/null <<'DOCKER'
-FROM eclipse-temurin:25-jdk
+FROM eclipse-temurin:25-jdk@sha256:83f4a7fc27df94dcc7b8de04d14cbbba8da14406f921e966969c3b09000aa507
 RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends git python3 >/dev/null
 DOCKER
   mkdir -p "$HOME/.m2"
@@ -63,6 +63,7 @@ step java -jar target/agentfarm.jar memory --file examples/project-memory.json -
 step java -jar target/agentfarm.jar memory --file agentfarm-memory.json --repository alejbormeg/AgentFarm >/dev/null
 step bash runtime/verify.sh
 step bash runtime/package.sh
+step bash tests/security_scan.sh
 
 echo; echo "#### e2e"
 step docker pull -q bash:5.2

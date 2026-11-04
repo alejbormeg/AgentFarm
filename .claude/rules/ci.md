@@ -11,6 +11,8 @@ paths:
 - Las comprobaciones obligatorias son `java (21)`, `e2e` y `container`. Si renombras un job, actualiza `required` en `merge-gate.sh`, o la puerta no fusionará nada.
 - La primera llamada a Maven de cada job pasa por `runtime/mvn-retry.sh`, que solo repite cortes de descarga. No añadas reintentos a las pruebas: un fallo debe verse.
 - Cada script nuevo se añade a un job y a `comprobar.sh`.
+- `tests/security_scan.sh` falla con una vulnerabilidad alta o crítica que tenga arreglo, o con un secreto en el historial. Actualiza la dependencia. Una coincidencia falsa de gitleaks va en `.gitleaksignore`, comprobando antes que lo es: nunca copies su valor.
+- Acciones e imágenes base van fijadas por SHA y digest. Al actualizarlas, cambia el valor y el comentario de la versión.
 - Todo job lleva `timeout-minutes`: uno colgado consume minutos y no avisa.
 - Un artefacto ocupa espacio hasta que caduca, y ese espacio no vuelve al renovarse el ciclo. Sube uno solo si algo lo descarga y siempre con `retention-days`: 294 sin uso llegaron a 13,8 GB frente a los 500 MB del plan. `tests/pre_push.sh` exige la caducidad.
 - Si un fallo es de infraestructura, demuéstralo con el registro antes de relanzar. Consulta la skill `diagnosticar-ci`.

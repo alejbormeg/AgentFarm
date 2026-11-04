@@ -12,6 +12,13 @@
 
 Spotless y SpotBugs solo corren con Java 21, porque su resultado no depende del JDK, y no corren al construir la imagen.
 
+## Escaneo de seguridad
+
+`tests/security_scan.sh` lo corren `validar-local.sh` y la CI. No necesita claves ni envía el código fuera: Trivy descarga su base de vulnerabilidades y mira el jar, y gitleaks lee el historial en local.
+
+- **Trivy** falla con una vulnerabilidad alta o crítica que ya tenga arreglo. Actualiza la dependencia.
+- **gitleaks** falla con un posible secreto en el historial. Si es real, revócalo: borrarlo del repositorio no basta. Si es falso, añade su huella a `.gitleaksignore`.
+
 ## Regenerar lo generado
 
 ```bash

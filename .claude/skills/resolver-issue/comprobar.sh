@@ -46,6 +46,10 @@ if touches '^(agentfarm$|tests/(credentials|ops)\.sh|src/main/java/io/agentfarm/
   step bash tests/ops.sh
 fi
 touches 'merge-gate\.sh|tests/merge_gate\.sh' && step bash tests/merge_gate.sh
+if touches '^(pom\.xml|\.gitleaksignore|tests/security_scan\.sh)'; then
+  [[ "$java_changed" == 1 ]] || ./mvnw -B -ntp -q -DskipTests package
+  step bash tests/security_scan.sh
+fi
 touches '^tests/pilot/' && step python3 -I tests/pilot/test_run.py
 touches 'require-checks\.sh|comprobar\.sh|tests/pre_push\.sh' && step bash tests/pre_push.sh
 touches 'install-dedicated-user\.sh|tests/dedicated_user\.sh' && step bash tests/dedicated_user.sh
