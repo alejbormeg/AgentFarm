@@ -142,10 +142,22 @@ const checkNotices = async () => {
   await go("/overview?tarea=e2e-request-overlap");
   check(await until(() => visible("Toca los mismos archivos que")), "a task warns about another one on the same files");
   check(await until(() => visible("AC-3 quizá no se pueda acreditar")), "a doubtful criterion is flagged before approving");
+  check(
+    await js(`(()=>{const d=${all}.find(e=>e.className==='decision'),l=${all}.find(e=>e.className==='links');return !!d&&!!l&&!!(d.compareDocumentPosition(l)&Node.DOCUMENT_POSITION_FOLLOWING)&&d.textContent.includes('Implementar propuesta')})()`),
+    "the decision comes before the evidence",
+  );
   await go("/overview?tarea=e2e-request-adopt");
   check(await until(() => visible("Cambios respecto a la versión anterior")), "a corrected proposal lists what changed");
   await js(`${all}.find(e=>e.tagName==='SUMMARY'&&e.textContent.startsWith('Cambios respecto')).click()`);
   check(await until(() => visible("Antes:")), "opening the changes shows the earlier value");
+  await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "dark" }] });
+  await go("/overview");
+  await until(() => visible("Bandeja"));
+  check(
+    await js(`(()=>{const s=${all}.find(e=>e.tagName==='SELECT');const [r,g,b]=getComputedStyle(s).color.match(/\\d+/g).map(Number);return document.documentElement.getAttribute('theme')==='light'&&r+g+b<300})()`),
+    "the panel stays readable on a dark system",
+  );
+  await send("Emulation.setEmulatedMedia", { features: [] });
   const errors = await shownErrors();
   check(errors.length === 0, `the notices show no error ${errors.join(" | ")}`);
   check(exceptions.length === 0, `the notices throw nothing ${exceptions.slice(0, 2).join(" | ")}`);

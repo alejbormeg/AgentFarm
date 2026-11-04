@@ -673,7 +673,7 @@ class FarmConsole extends HTMLElement {
     main.append(E("h2", "La cosecha de esta semana"));
     const pills = E("div", "", "pills");
     pills.append(
-      pill(d.integrated.length + " integradas", d.integrated.length ? "ok" : ""),
+      pill(d.integrated.length + (d.integrated.length === 1 ? " integrada" : " integradas"), d.integrated.length ? "ok" : ""),
       pill(d.in_progress + " en curso"),
       pill(d.waiting + " esperan tu decisión"),
     );
@@ -1882,7 +1882,7 @@ class FarmConsole extends HTMLElement {
       ["Aprobadas", t.approval_rate == null ? "—" : Math.round(t.approval_rate * 100) + " %"],
       ["Correcciones pedidas", t.corrections],
       ["Cosecha · PR integradas", t.integrated],
-      ["Ciclo mediano", t.median_cycle_hours == null ? "—" : t.median_cycle_hours.toFixed(1) + " h"],
+      ["Ciclo mediano", t.median_cycle_hours == null ? "—" : t.median_cycle_hours.toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " h"],
     ]) {
       const tr = E("tr");
       tr.append(E("th", label), E("td", String(value)));
@@ -2021,6 +2021,8 @@ class FarmConsole extends HTMLElement {
       sentryProject = E("input");
     sentryOrg.placeholder = "organización de Sentry";
     sentryProject.placeholder = "proyecto de Sentry";
+    sentryOrg.setAttribute("aria-label", "Organización de Sentry");
+    sentryProject.setAttribute("aria-label", "Proyecto de Sentry");
     form.append(sentryOrg, sentryProject);
     form.append(
       button("Guardar", () =>
@@ -2053,6 +2055,8 @@ class FarmConsole extends HTMLElement {
     );
     task.append(row);
     if (["proposed", "review"].includes(w.state)) task.append(E("p", whyYou(w)));
+    const dossier = this.data.dossiers?.find((d) => d.item === w.id);
+    task.append(this.taskDecision(w, dossier, json(w.proposal)));
     if (w.recipe) {
       const recipe = E("details");
       recipe.dataset.key = "recipe-" + w.id;
@@ -2113,7 +2117,6 @@ class FarmConsole extends HTMLElement {
         E("small", "Creación de issue pendiente de confirmación de GitHub."),
       );
     if (w.error) task.append(E("p", w.error, "error"));
-    const dossier = this.data.dossiers?.find((d) => d.item === w.id);
     if (dossier) {
       this.commandments(task, w, dossier);
       this.acceptance(task, w, dossier);
@@ -2347,10 +2350,14 @@ class FarmConsole extends HTMLElement {
     }
     if (w.sha) detail.append(E("p", "Commit: " + w.sha));
     task.append(detail);
-    const actions = E("div", "", "actions");
+    return task;
+  }
+  // What the person can decide, and what stops them: the first thing the task shows.
+  taskDecision(w, dossier, p) {
+    const actions = E("div", "", "decision");
     if (w.state === "proposed") {
       const estimate = expectedCost(this.data.costs, w);
-      if (estimate) task.append(E("p", estimate, "muted"));
+      if (estimate) actions.append(E("p", estimate, "muted"));
     }
     if (w.state === "proposed" && this.data.me?.role !== "observer")
       actions.append(
@@ -2364,34 +2371,24 @@ class FarmConsole extends HTMLElement {
         ),
       );
     if (w.state === "review" && this.data.me?.role === "owner") {
-      const approve = E("details");
-      approve.dataset.key = "approve-" + w.id;
-      approve.append(
-        E("summary", "Aprobar e integrar"),
-        E(
-          "p",
-          "Se fusionará la PR #" +
-            w.pr +
-            " con el commit " +
-            w.sha +
-            ". GitHub y las pruebas deben confirmarlo.",
-        ),
-        button(
-          "Confirmar integración de este commit",
-          () =>
-            this.action("/work/" + w.id + "/actions/merge", { sha: w.sha }),
-          true,
-        ),
-      );
-      if (dossier?.ready) actions.append(approve);
-      else
+      if (dossier?.ready)
         actions.append(
-          E(
-            "p",
-            "Integración bloqueada: faltan criterios o mandamientos por cubrir.",
-            "error",
+          E("p", "Se fusionará la PR #" + w.pr + " con el commit " + w.sha + ". GitHub y las pruebas deben confirmarlo."),
+          button(
+            "Aprobar e integrar este commit",
+            () =>
+              confirm("¿Integrar la PR #" + w.pr + " con el commit " + w.sha.slice(0, 12) + "?") &&
+              this.action("/work/" + w.id + "/actions/merge", { sha: w.sha }),
+            true,
           ),
         );
+      else {
+        actions.append(E("h4", "Aún no se puede integrar"));
+        const missing = E("ul", "", "blockers");
+        for (const blocker of dossier?.blockers || ["Faltan criterios o mandamientos por cubrir."])
+          missing.append(E("li", blocker.replace(": evidence missing", ": sin evidencia todavía")));
+        actions.append(missing);
+      }
     }
     const canAct = this.data.me?.role !== "observer";
     if (canAct && ["proposed", "review", "blocked"].includes(w.state)) {
@@ -2422,8 +2419,7 @@ class FarmConsole extends HTMLElement {
           this.action("/work/" + w.id + "/actions/cancel", {}),
         ),
       );
-    task.append(actions);
-    return task;
+    return actions;
   }
   async draw(target, source) {
     try {

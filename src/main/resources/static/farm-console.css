@@ -6,8 +6,8 @@
   padding-right: 12px;
   color: var(--lumo-body-text-color, #233345);
   font: 14px/1.55 var(--lumo-font-family, system-ui, sans-serif);
-  --ink: var(--lumo-header-text-color, #142d4e);
-  --accent: var(--lumo-primary-color, #285bc5);
+  --ink: #142d4e;
+  --accent: #285bc5;
   --line: #dce3e9;
   --paper: #f6f7f9;
   --muted: var(--lumo-secondary-text-color, #526477);
@@ -650,4 +650,28 @@ td {
   width: auto;
   margin: 0 var(--lumo-space-xs) 0 0;
   vertical-align: middle;
+}
+
+.decision {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 18px;
+  padding: 12px 14px;
+  background: var(--paper);
+  border-radius: 6px;
+}
+.decision:empty {
+  display: none;
+}
+.decision .blockers {
+  margin: 0;
+  padding-left: 18px;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
 }
