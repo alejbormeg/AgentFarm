@@ -156,11 +156,14 @@ const expectedCost = (costs, w) => {
     (c) => c.recipe === recipe && c.kind === "implement",
   );
   if (!found.length) return "";
+  if (found.every((c) => c.median == null))
+    return "Sin coste por ejecución: la cuota de suscripción es de toda la cuenta y se lee en porcentajes enteros.";
   return (
     "Coste observado al implementar " +
     (recipe === "libre" ? "peticiones libres" : "la receta " + recipe) +
     ": " +
     found
+      .filter((c) => c.median != null)
       .map((c) =>
         c.unit === "usd_micros"
           ? "mediana " + (c.median / 1e6).toFixed(2) + " USD, p90 " + (c.p90 / 1e6).toFixed(2) + " USD"
@@ -673,7 +676,7 @@ class FarmConsole extends HTMLElement {
     main.append(E("h2", "La cosecha de esta semana"));
     const pills = E("div", "", "pills");
     pills.append(
-      pill(d.integrated.length + " integradas", d.integrated.length ? "ok" : ""),
+      pill(d.integrated.length + (d.integrated.length === 1 ? " integrada" : " integradas"), d.integrated.length ? "ok" : ""),
       pill(d.in_progress + " en curso"),
       pill(d.waiting + " esperan tu decisión"),
     );
@@ -1882,7 +1885,7 @@ class FarmConsole extends HTMLElement {
       ["Aprobadas", t.approval_rate == null ? "—" : Math.round(t.approval_rate * 100) + " %"],
       ["Correcciones pedidas", t.corrections],
       ["Cosecha · PR integradas", t.integrated],
-      ["Ciclo mediano", t.median_cycle_hours == null ? "—" : t.median_cycle_hours.toFixed(1) + " h"],
+      ["Ciclo mediano", t.median_cycle_hours == null ? "—" : t.median_cycle_hours.toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " h"],
     ]) {
       const tr = E("tr");
       tr.append(E("th", label), E("td", String(value)));
@@ -1894,7 +1897,11 @@ class FarmConsole extends HTMLElement {
         E("th", "Consumo " + account),
         E(
           "td",
-          (c.unit === "usd_micros" ? (c.total / 1e6).toFixed(2) + " USD" : c.total / 100 + " %") +
+          (c.attribution === "account"
+            ? (c.observed + c.total ? "Hasta " + (c.observed + c.total) / 100 + " %" : "Menos de 1 %") + " de la cuenta"
+            : c.unit === "usd_micros"
+              ? (c.total / 1e6).toFixed(2) + " USD"
+              : c.total / 100 + " %") +
             " · " + c.runs + " ejecuciones",
         ),
       );
@@ -2021,6 +2028,8 @@ class FarmConsole extends HTMLElement {
       sentryProject = E("input");
     sentryOrg.placeholder = "organización de Sentry";
     sentryProject.placeholder = "proyecto de Sentry";
+    sentryOrg.setAttribute("aria-label", "Organización de Sentry");
+    sentryProject.setAttribute("aria-label", "Proyecto de Sentry");
     form.append(sentryOrg, sentryProject);
     form.append(
       button("Guardar", () =>
@@ -2053,6 +2062,8 @@ class FarmConsole extends HTMLElement {
     );
     task.append(row);
     if (["proposed", "review"].includes(w.state)) task.append(E("p", whyYou(w)));
+    const dossier = this.data.dossiers?.find((d) => d.item === w.id);
+    task.append(this.taskDecision(w, dossier, json(w.proposal)));
     if (w.recipe) {
       const recipe = E("details");
       recipe.dataset.key = "recipe-" + w.id;
@@ -2113,7 +2124,6 @@ class FarmConsole extends HTMLElement {
         E("small", "Creación de issue pendiente de confirmación de GitHub."),
       );
     if (w.error) task.append(E("p", w.error, "error"));
-    const dossier = this.data.dossiers?.find((d) => d.item === w.id);
     if (dossier) {
       this.commandments(task, w, dossier);
       this.acceptance(task, w, dossier);
@@ -2127,6 +2137,14 @@ class FarmConsole extends HTMLElement {
       ev = json(w.evidence);
     for (const doubt of p.doubtful_criteria || [])
       task.append(E("p", doubt.id + " quizá no se pueda acreditar. " + doubt.reason, "warning"));
+    if (p.kept_criteria?.length)
+      task.append(
+        E("p", "Se conservan de la versión aprobada: " + p.kept_criteria.join(", ") + ". Un agente no puede quitarlos.", "muted"),
+      );
+    for (const gone of p.retired_criteria || [])
+      task.append(
+        E("p", gone.id + " retirado por " + gone.actor + ": «" + gone.description + "». Motivo: " + gone.reason, "warning"),
+      );
     if (p.previous_changes?.length) {
       const changes = E("details");
       changes.dataset.key = "changes-" + w.id;
@@ -2347,10 +2365,14 @@ class FarmConsole extends HTMLElement {
     }
     if (w.sha) detail.append(E("p", "Commit: " + w.sha));
     task.append(detail);
-    const actions = E("div", "", "actions");
+    return task;
+  }
+  // What the person can decide, and what stops them: the first thing the task shows.
+  taskDecision(w, dossier, p) {
+    const actions = E("div", "", "decision");
     if (w.state === "proposed") {
       const estimate = expectedCost(this.data.costs, w);
-      if (estimate) task.append(E("p", estimate, "muted"));
+      if (estimate) actions.append(E("p", estimate, "muted"));
     }
     if (w.state === "proposed" && this.data.me?.role !== "observer")
       actions.append(
@@ -2364,34 +2386,24 @@ class FarmConsole extends HTMLElement {
         ),
       );
     if (w.state === "review" && this.data.me?.role === "owner") {
-      const approve = E("details");
-      approve.dataset.key = "approve-" + w.id;
-      approve.append(
-        E("summary", "Aprobar e integrar"),
-        E(
-          "p",
-          "Se fusionará la PR #" +
-            w.pr +
-            " con el commit " +
-            w.sha +
-            ". GitHub y las pruebas deben confirmarlo.",
-        ),
-        button(
-          "Confirmar integración de este commit",
-          () =>
-            this.action("/work/" + w.id + "/actions/merge", { sha: w.sha }),
-          true,
-        ),
-      );
-      if (dossier?.ready) actions.append(approve);
-      else
+      if (dossier?.ready)
         actions.append(
-          E(
-            "p",
-            "Integración bloqueada: faltan criterios o mandamientos por cubrir.",
-            "error",
+          E("p", "Se fusionará la PR #" + w.pr + " con el commit " + w.sha + ". GitHub y las pruebas deben confirmarlo."),
+          button(
+            "Aprobar e integrar este commit",
+            () =>
+              confirm("¿Integrar la PR #" + w.pr + " con el commit " + w.sha.slice(0, 12) + "?") &&
+              this.action("/work/" + w.id + "/actions/merge", { sha: w.sha }),
+            true,
           ),
         );
+      else {
+        actions.append(E("h4", "Aún no se puede integrar"));
+        const missing = E("ul", "", "blockers");
+        for (const blocker of dossier?.blockers || ["Faltan criterios o mandamientos por cubrir."])
+          missing.append(E("li", blocker.replace(": evidence missing", ": sin evidencia todavía")));
+        actions.append(missing);
+      }
     }
     const canAct = this.data.me?.role !== "observer";
     if (canAct && ["proposed", "review", "blocked"].includes(w.state)) {
@@ -2400,13 +2412,32 @@ class FarmConsole extends HTMLElement {
       correct.append(E("summary", "Pedir correcciones"));
       const feedback = E("textarea");
       feedback.placeholder = "Qué debe corregirse";
+      feedback.setAttribute("aria-label", "Qué debe corregirse");
+      // Once a version was approved its criteria stay unless a person retires them, with the reason above.
+      const approved = w.state === "proposed" ? (p.criteria || []).filter((c) => p.kept_criteria?.includes(c.id)) : p.criteria || [];
+      const retire = [];
+      const retirable = E("details");
+      retirable.dataset.key = "retire-" + w.id;
+      retirable.append(E("summary", "Retirar un criterio aprobado"), E("p", "El motivo es el texto de la corrección, con al menos 20 caracteres, y queda visible.", "muted"));
+      for (const c of approved) {
+        const box = E("input");
+        box.type = "checkbox";
+        box.dataset.key = "retire-" + w.id + "-" + c.id;
+        retire.push([c.id, box]);
+        const label = E("label");
+        label.append(box, " " + c.id + " · " + c.description);
+        retirable.append(label);
+      }
       correct.append(
         feedback,
-        button("Investigar correcciones", () =>
-          this.action("/work/" + w.id + "/actions/correct", {
+        ...(approved.length && w.state !== "blocked" ? [retirable] : []),
+        button("Investigar correcciones", () => {
+          const ids = retire.filter(([, box]) => box.checked).map(([id]) => id);
+          return this.action("/work/" + w.id + "/actions/correct", {
             feedback: feedback.value,
-          }),
-        ),
+            ...(ids.length ? { retire: ids } : {}),
+          });
+        }),
       );
       actions.append(correct);
     }
@@ -2422,8 +2453,7 @@ class FarmConsole extends HTMLElement {
           this.action("/work/" + w.id + "/actions/cancel", {}),
         ),
       );
-    task.append(actions);
-    return task;
+    return actions;
   }
   async draw(target, source) {
     try {

@@ -7,7 +7,7 @@ repositorios y un humano decida qué se integra. Lee [PRODUCT.md](PRODUCT.md) an
 ## Reglas que no se negocian
 
 - No amplíes alcance ni cambies contratos sin aprobación.
-- Una aprobación se vincula al commit exacto. No publiques ni fusiones sin autorización explícita del propietario; aun autorizado, solo con todas las comprobaciones en verde sobre el head actual.
+- Una aprobación se vincula al commit exacto. No publiques ni fusiones sin autorización explícita del propietario; aun autorizado, solo con todas las comprobaciones en verde sobre el head actual. Mientras Actions esté desactivado por falta de minutos, el propietario ha decidido que `validar-local.sh` sobre ese mismo head las sustituye.
 - Nunca incorpores ni muestres secretos, sesiones ni logs privados. Eso incluye la salida de una orden: no imprimas tokens ni la contraseña del panel.
 - Distingue capacidad implementada, simulada y planificada. Probado con dobles no es probado en real, y hay que decirlo.
 - Una issue se cierra solo si se cumple su aceptación. Lo que no puedas acreditar se queda abierto, con un comentario de lo que falta.
@@ -49,7 +49,7 @@ Lo pendiente vive en las issues de GitHub, no en listas de la documentación.
 `tests/e2e/run.sh` necesita Docker y la imagen `bash:5.2`; con `E2E_SANDBOX=host` corre sin contenedor. `tests/eval/run.sh` y los
 pilotos reales de `docs/PILOTS.md` gastan cuota: mírala antes y no los lances sin que te lo pidan, salvo que la tarea lo exija.
 
-La CI ejecuta todo esto en `.github/workflows/java.yml`, con Java 21 y 25. Un cambio de documentación también pasa por ella.
+La CI ejecuta todo esto en `.github/workflows/java.yml`: con Java 21 en cada PR, y también con 25 al fusionar. Un cambio que solo toca `docs/`, `site/` o `*.md` de la raíz no la usa.
 
 **Antes de publicar,** ejecuta `bash .claude/skills/resolver-issue/comprobar.sh`. Elige qué correr según lo que cambia la rama y registra que ese commit pasó. Casi todos los rojos de la CI venían de publicar algo que nunca se había ejecutado en local.
 
