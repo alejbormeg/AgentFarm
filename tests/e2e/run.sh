@@ -286,9 +286,27 @@ adoption corrected || fail "corrected adoption candidate"
 # A task whose branch the base has moved past starts over from the base on the same PR.
 item=e2e-request-0001
 old_head=$(git -C "$work/remote.git" rev-parse "$branch")
-owner /work/e2e-request-0001/actions/correct '{"feedback":"La base ha cambiado: actualiza la propuesta."}' > /dev/null
+approved_criteria=$(python3 - "$panel" "$password" <<'PY'
+import base64, json, sys, urllib.request
+panel, password = sys.argv[1:]
+req = urllib.request.Request(panel + "/api/work", headers={"Authorization": "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()})
+item = [x for x in json.load(urllib.request.urlopen(req)) if x["id"] == "e2e-request-0001"][0]
+print(json.dumps([c["description"] for c in json.loads(item["proposal"])["criteria"]]))
+PY
+)
+owner /work/e2e-request-0001/actions/correct '{"feedback":"La base ha cambiado: actualiza la propuesta. Reformula los criterios."}' > /dev/null
 sleep 3
 wait_for proposed 60
+python3 - "$panel" "$password" "$approved_criteria" <<'PY' || fail "a correction lost the approved criteria"
+import base64, json, sys, urllib.request
+panel, password, approved = sys.argv[1:]
+req = urllib.request.Request(panel + "/api/work", headers={"Authorization": "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()})
+item = [x for x in json.load(urllib.request.urlopen(req)) if x["id"] == "e2e-request-0001"][0]
+now = [c["description"] for c in json.loads(item["proposal"])["criteria"]]
+assert now[:len(json.loads(approved))] == json.loads(approved), now
+assert "Cubre solo la última corrección" in now, now
+PY
+echo "Approved criteria survived a correction"
 owner /work/e2e-request-0001/actions/implement '{"version":2}' > /dev/null
 sleep 3
 wait_for review 150
@@ -381,3 +399,12 @@ AGENTFARM_DB="$work/panel/agentfarm.db" AGENTFARM_GITHUB_API="http://127.0.0.1:$
 python3 -c 'import json,sys;r=json.load(open(sys.argv[1]));assert r["credential"]=="github-app",r;print("GitHub App connected from the panel:",r["state"])' "$work/app-check.json" \
   || fail "the stored App was not used"
 
+# With an App, the executor needs no gh login: each order gets a token for its repository from the panel.
+if owner /work/agent/commands/none/github-token '{"agent":"admin"}' > /dev/null 2>&1; then fail "a person obtained an executor token"; fi
+item=e2e-request-app
+owner /work '{"request_id":"e2e-request-app","repository":"e2e/demo","title":"Con la App","request":"Crea greeting.txt con un saludo."}' > /dev/null
+sleep 3
+wait_for proposed 60
+grep -qx ghs_e2e_repo_demo "$work/gh.json.tokens" || fail "the executor did not use a token limited to the repository"
+if grep -qx ghs_e2e "$work/gh.json.tokens"; then fail "the executor used a token for every repository"; fi
+echo "The executor used a short-lived token for one repository"

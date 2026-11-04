@@ -85,6 +85,10 @@ public class FarmDaemon extends CodexRunner {
             .directory(cwd.toFile())
             .redirectErrorStream(true)
             .redirectOutput(log.toFile());
+    if (githubToken != null && (args[0].equals(GH) || args[0].equals("git"))) {
+      githubAccess();
+      b.environment().put("GH_TOKEN", githubToken);
+    }
     b.environment()
         .put("PATH", System.getProperty("user.home") + "/.local/bin:" + System.getenv("PATH"));
     var p = b.start();
@@ -142,8 +146,23 @@ public class FarmDaemon extends CodexRunner {
     }
   }
 
+  // A repository-limited token from the panel when it has a GitHub App; otherwise the gh login.
+  // In this process's memory, handed only to gh and git here, and never to an agent's turn.
+  static String githubToken;
+  static java.time.Instant githubTokenExpires = java.time.Instant.EPOCH;
+
+  static void githubAccess() throws Exception {
+    if (githubToken != null && java.time.Instant.now().isBefore(githubTokenExpires.minusSeconds(600))) return;
+    var answer = post("/work/agent/commands/" + task.commandId + "/github-token", obj("agent", CLAIMANT));
+    githubToken = answer.path("token").isTextual() ? answer.path("token").asText() : null;
+    githubTokenExpires =
+        githubToken == null ? java.time.Instant.EPOCH : java.time.Instant.parse(answer.path("expires_at").asText());
+  }
+
   static String gitAt(String... args) throws Exception {
     var a = new ArrayList<>(List.of("git", "-C", task.checkout.toString()));
+    if (githubToken != null)
+      a.addAll(List.of("-c", "credential.helper=", "-c", "credential.helper=!" + GH + " auth git-credential"));
     a.addAll(List.of(args));
     return process(STATE, 120, a.toArray(String[]::new));
   }
@@ -1341,6 +1360,8 @@ public class FarmDaemon extends CodexRunner {
     int initial = 0;
     String reservation = "work-" + task.commandId;
     try {
+      githubToken = null;
+      githubAccess();
       int issue = ensureIssue(item);
       report("checkpoint", "issue", issue);
       refreshQuota();
@@ -1586,7 +1607,13 @@ public class FarmDaemon extends CodexRunner {
         try {
           if (sandboxHolds()) {
             var claim = post("/work/agent/claim", obj("agent", CLAIMANT));
-            if (claim.has("command")) work(claim);
+            if (claim.has("command")) {
+              try {
+                work(claim);
+              } finally {
+                githubToken = null;
+              }
+            }
           }
           failures = 0;
         } catch (Exception e) {

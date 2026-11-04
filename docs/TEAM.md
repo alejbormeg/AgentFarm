@@ -64,8 +64,11 @@ contra GitHub real**, solo contra un doble.
 (`AGENTFARM_GITHUB_TOKEN_FILE`), con permisos de repositorio:
 
 - Contents: read & write (integración), Pull requests: read & write,
-  Issues: read, Actions: read, Checks: read, Commit statuses: read,
-  Dependabot alerts: read.
+  Issues: read & write, Workflows: read & write, Actions: read, Checks: read,
+  Commit statuses: read, Dependabot alerts: read.
+
+Con la App, el ejecutor no necesita `gh auth login`: el panel le da por cada orden un token de una
+hora limitado a ese repositorio. Solo se ha probado con dobles.
 
 Pasos:
 

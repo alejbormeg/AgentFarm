@@ -8,7 +8,7 @@ The panel and the executor are separate processes. The panel mounts neither the 
 2. Napoleon inspects the checkout and searches the web when needed. It's the only turn with web search: implementation and review have it turned off. The issue holds sources, scope, criteria, diagrams and test commands.
 3. Review the scope and the commands, including dependency installation. **Implement proposal vN** approves that version. **Ask for corrections** reworks the proposal without authorizing implementation.
 4. Boxer works in `agentfarm/<issue>-<title>`. Unit and integration tests run, then a separate read-only review. If the repository has no CI, the executor adds a workflow with the approved commands. It then publishes the PR, as a draft if anything failed.
-5. Check the links and the evidence. **Approve and integrate** shows the SHA and asks for explicit confirmation. The panel checks GitHub again (SHA, draft, expected checks, CI states and requested changes), and records the integration only after GitHub confirms it.
+5. Check the links and the evidence. **Approve and integrate this commit** is at the top of the task, shows the SHA and asks for explicit confirmation. The panel checks GitHub again (SHA, draft, expected checks, CI states and requested changes), and records the integration only after GitHub confirms it.
 
 Test commands are no mathematical proof of quality. Their output, result and SHA are kept for human review. An N/A exception needs a reason visible in the approved proposal. An integrated PR doesn't mean a deployment.
 

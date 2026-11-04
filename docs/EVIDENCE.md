@@ -50,6 +50,10 @@ cambios son documentación (`docs/`, `.md`, `.txt`, licencias, memoria del proye
 Comprueba que los comandos aprobados pasaron, no que las pruebas sean buenas. Sin
 credencial de GitHub en el panel, los criterios de test quedan sin comprobar.
 
+Una corrección no puede perder criterios aprobados: se conservan sin cambios aunque el agente reutilice su
+id, y lo que aporta entra como criterios nuevos. Solo una persona retira uno, al pedir la corrección y con un
+motivo de al menos 20 caracteres, que queda visible en la propuesta y en la auditoría.
+
 Una nueva decisión de rechazo revoca la aceptación anterior del mismo criterio.
 El historial se conserva. Reintentar la misma petición no duplica decisiones.
 Cambiar SHA, versión aprobada o informe revisado invalida las decisiones; el

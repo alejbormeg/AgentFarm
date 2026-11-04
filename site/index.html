@@ -31,11 +31,16 @@ header { display: flex; align-items: center; gap: 10px; padding: 18px 0; font-we
 header img { width: 34px; height: 34px; }
 header nav { margin-left: auto; display: flex; gap: 18px; font-weight: 500; font-size: 15px; }
 h1, h2 { font-family: Georgia, "Times New Roman", serif; line-height: 1.12; letter-spacing: -0.01em; }
-h1 { font-size: clamp(42px, 8vw, 76px); margin: 36px 0 16px; max-width: 13ch; }
+h1 { font-size: clamp(34px, 8vw, 76px); margin: 36px 0 16px; text-wrap: balance; }
+h2 { text-wrap: balance; }
 h2 { font-size: clamp(28px, 5vw, 42px); margin: 0 0 18px; }
 .lead { font-size: clamp(18px, 2.6vw, 22px); color: var(--muted); max-width: 40em; margin: 0 0 26px; }
 .try { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px; }
 pre { margin: 0; background: var(--code); color: var(--code-ink); padding: 14px 18px; border-radius: 8px; overflow-x: auto; font-size: 15px; line-height: 1.5; max-width: 100%; }
+pre code { white-space: pre-wrap; overflow-wrap: anywhere; }
+#copy { min-height: 44px; padding: 10px 18px; background: var(--action); color: var(--action-ink); border: 0; border-radius: 8px; font: 700 16px/1.2 system-ui, sans-serif; cursor: pointer; }
+#copy:hover { filter: brightness(1.1); }
+@media (max-width: 480px) { header { font-size: 15px; } .wrap, .wall { padding-left: 20px; padding-right: 20px; } #copy { width: 100%; } }
 .button { display: inline-block; background: var(--action); color: var(--action-ink); padding: 12px 20px; border-radius: 8px; font-weight: 600; text-decoration: none; }
 .note { color: var(--muted); font-size: 15px; margin: 8px 0 0; }
 figure { margin: 40px 0 0; }
@@ -49,7 +54,7 @@ section { padding: 64px 0 0; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .steps li::before { color: var(--gold); } }
 .steps strong { display: block; margin-bottom: 4px; }
 .wall { background: var(--barn); color: var(--barn-ink); padding: 44px 16px; margin-top: 64px; }
-.wall h2 { font-size: clamp(30px, 6vw, 52px); }
+.wall h2 { font-size: clamp(26px, 6vw, 52px); }
 .wall ol { max-width: 44em; padding-left: 1.4em; font: 700 clamp(18px, 2.6vw, 23px)/1.4 Georgia, serif; }
 .wall li { margin-bottom: 10px; }
 .wall p { max-width: 44em; }
@@ -76,8 +81,9 @@ footer { padding: 64px 0 40px; color: var(--muted); font-size: 15px; }
   <h1>Deja de mantener tus repos.</h1>
   <p class="lead">Conecta una granja de agentes de código. Vigilan la CI y las dependencias, proponen arreglos y te traen cada cambio con sus pruebas. Tú solo decides qué entra.</p>
   <div class="try">
-    <pre><code>git clone https://github.com/alejbormeg/AgentFarm.git
+    <pre><code id="demo-commands">git clone https://github.com/alejbormeg/AgentFarm.git
 cd AgentFarm &amp;&amp; ./agentfarm demo</code></pre>
+    <button type="button" id="copy" hidden aria-live="polite">Copiar las órdenes</button>
   </div>
   <p class="note">Un minuto, con agentes y GitHub simulados. Necesitas JDK 21, git y python3. Nada sale de tu equipo.</p>
   <figure>
@@ -145,5 +151,18 @@ cd AgentFarm &amp;&amp; ./agentfarm demo</code></pre>
 <div class="wrap">
   <footer>AgentFarm toma sus personajes de <cite>Rebelión en la granja</cite>, de George Orwell. No tiene relación con sus herederos ni con sus editoriales.</footer>
 </div>
+<script>
+// Only a browser that can copy sees the button; the commands stay readable and selectable either way.
+(() => {
+  const button = document.getElementById("copy");
+  if (!navigator.clipboard) return;
+  button.hidden = false;
+  button.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(document.getElementById("demo-commands").textContent);
+    button.textContent = "Copiadas";
+    setTimeout(() => (button.textContent = "Copiar las órdenes"), 2000);
+  });
+})();
+</script>
 </body>
 </html>

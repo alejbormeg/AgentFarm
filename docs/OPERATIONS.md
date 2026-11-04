@@ -18,7 +18,7 @@ GitHub CLI autenticados en la cuenta Linux.
    integración, después una revisión Codex separada en modo de solo lectura.
    El ejecutor escribe un workflow con los comandos aprobados y publica la PR.
    Si hay fallos, la PR queda en borrador.
-5. Revisa enlaces y evidencias. **Aprobar e integrar** muestra el SHA y exige
+5. Revisa enlaces y evidencias. **Aprobar e integrar este commit** está al principio de la tarea, muestra el SHA y exige
    confirmación explícita. El panel vuelve a consultar GitHub: SHA, draft,
    checks esperados, estados CI y revisiones con cambios solicitados. Solo
    registra integración después de la respuesta positiva de GitHub.

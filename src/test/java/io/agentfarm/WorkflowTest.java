@@ -160,6 +160,121 @@ class WorkflowTest {
         () -> service.report(c, n("state", "integrated", "merged", true), "agent"));
   }
 
+  /** v1 approved, then a correction whose agent answers with these criteria. */
+  com.fasterxml.jackson.databind.JsonNode corrected(String feedback, List<String> retire, Object... criteria) {
+    approved();
+    var body = obj("feedback", feedback);
+    if (!retire.isEmpty()) body.put("retire", retire);
+    service.action("request-123", "correct", MAPPER.valueToTree(body), "owner");
+    var item = parse(one("SELECT proposal FROM work_items WHERE id='request-123'")).deepCopy();
+    ((com.fasterxml.jackson.databind.node.ObjectNode) item).set("criteria", MAPPER.valueToTree(List.of(criteria)));
+    service.report(command(claim()), n("state", "proposed", "proposal", item), "agent");
+    return parse(one("SELECT proposal FROM work_items WHERE id='request-123'"));
+  }
+
+  void approved() {
+    create();
+    proposal(command(claim()), test("AC-1", "Works"));
+    service.action("request-123", "implement", n("version", 1), "owner");
+    service.report(command(claim()), n("state", "blocked", "error", "Fallo del agente"), "agent");
+  }
+
+  void proposal(String command, Object... criteria) {
+    service.report(
+        command,
+        n(
+            "state",
+            "proposed",
+            "proposal",
+            obj(
+                "base_sha", "b".repeat(40),
+                "summary", "Change",
+                "acceptance", "Tests",
+                "as_is", "flowchart LR\nA-->B",
+                "to_be", "flowchart LR\nA-->C",
+                "unit_test", "./unit",
+                "integration_test", "./integration",
+                "criteria", List.of(criteria))),
+        "agent");
+  }
+
+  String one(String sql) {
+    return store.tx(c -> Store.one(c, sql).values().iterator().next().toString());
+  }
+
+  Object test(String id, String description) {
+    return obj("id", id, "description", description, "method", "test", "checks", List.of("unit"));
+  }
+
+  @Test
+  void aCorrectionKeepsTheApprovedCriteriaAndAddsItsOwn() {
+    var p = corrected("Corrige solo el último fallo", List.of(), test("AC-1", "Solo cubre la corrección"));
+    var criteria = p.path("criteria");
+    assertEquals(2, criteria.size());
+    assertEquals("AC-1", criteria.get(0).path("id").asText());
+    assertEquals("Works", criteria.get(0).path("description").asText(), "the approved text is kept");
+    assertEquals("AC-2", criteria.get(1).path("id").asText(), "reusing an id does not replace a criterion");
+    assertEquals("Solo cubre la corrección", criteria.get(1).path("description").asText());
+    assertEquals("AC-1", p.path("kept_criteria").get(0).asText());
+  }
+
+  @Test
+  void aSameCriterionIsNotRepeated() {
+    var p = corrected("Corrige el fallo", List.of(), test("AC-7", "  Works "));
+    assertEquals(1, p.path("criteria").size());
+  }
+
+  @Test
+  void anAgentCannotRetireACriterionByItself() {
+    var p = corrected("Corrige el fallo", List.of(), test("AC-1", "Otro"));
+    assertTrue(p.path("retired_criteria").isEmpty());
+    assertEquals("Works", p.path("criteria").get(0).path("description").asText());
+  }
+
+  @Test
+  void onlyAPersonRetiresACriterionWithAReasonAndItShows() {
+    var p = corrected("Ese criterio no se puede acreditar con la plataforma", List.of("AC-1"), test("AC-1", "Otro"));
+    assertEquals(1, p.path("criteria").size());
+    assertEquals("Otro", p.path("criteria").get(0).path("description").asText());
+    var retired = p.path("retired_criteria").get(0);
+    assertEquals("AC-1", retired.path("id").asText());
+    assertEquals("Works", retired.path("description").asText());
+    assertEquals("owner", retired.path("actor").asText());
+    assertTrue(retired.path("reason").asText().startsWith("Ese criterio"));
+    assertEquals("1", one("SELECT COUNT(*) FROM audit WHERE action='work.retire-criterion'"));
+  }
+
+  @Test
+  void retiringNeedsAReasonAndAnApprovedCriterion() {
+    approved();
+    assertThrows(IllegalArgumentException.class, () -> service.action("request-123", "correct", n("feedback", "Corto", "retire", List.of("AC-1")), "owner"));
+    assertThrows(IllegalArgumentException.class, () -> service.action("request-123", "correct", n("feedback", "Un motivo con la longitud suficiente", "retire", List.of("AC-9")), "owner"));
+    assertThrows(IllegalArgumentException.class, () -> service.action("request-123", "correct", n("feedback", "Un motivo con la longitud suficiente", "retire", List.of("AC-1")), "node:napoleon"));
+  }
+
+  @Test
+  void beforeAnyApprovalAgentsMayStillRewriteTheirProposal() {
+    create();
+    proposal(command(claim()), test("AC-1", "Works"));
+    service.action("request-123", "correct", n("feedback", "Replantea los criterios"), "owner");
+    var item = parse(one("SELECT proposal FROM work_items WHERE id='request-123'")).deepCopy();
+    ((com.fasterxml.jackson.databind.node.ObjectNode) item).set("criteria", MAPPER.valueToTree(List.of(test("AC-1", "Otro"))));
+    service.report(command(claim()), n("state", "proposed", "proposal", item), "agent");
+    var p = parse(one("SELECT proposal FROM work_items WHERE id='request-123'"));
+    assertEquals(1, p.path("criteria").size());
+    assertEquals("Otro", p.path("criteria").get(0).path("description").asText());
+  }
+
+  @Test
+  void onlyTheExecutorHoldingAnOrderLearnsItsRepository() {
+    create();
+    String command = command(claim());
+    assertEquals("owner/repo", service.heldRepository(command, "agent"));
+    assertThrows(IllegalArgumentException.class, () -> service.heldRepository(command, "other"));
+    proposal(command);
+    assertThrows(IllegalArgumentException.class, () -> service.heldRepository(command, "agent"), "already finished");
+  }
+
   @Test
   void cancelRevokesCommand() {
     create();
