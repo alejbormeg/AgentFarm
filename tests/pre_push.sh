@@ -30,4 +30,11 @@ git -C "$work/repo" rev-parse HEAD > "$work/repo/.git/agentfarm-checked"
 allows "git push"
 git -C "$work/repo" -c user.name=t -c user.email=t@t commit -q --allow-empty -m next
 blocks "git push"
+# An artifact without retention-days stays 90 days: 294 of them once filled the Actions quota.
+for workflow in "$root"/.github/workflows/*.yml; do
+  uploads=$(grep -c 'actions/upload-artifact' "$workflow" || true)
+  retained=$(grep -c 'retention-days:' "$workflow" || true)
+  [[ "$uploads" == "$retained" ]] || { echo "FAIL: $workflow uploads an artifact without retention-days" >&2; exit 1; }
+done
+echo "ok   every uploaded artifact expires"
 echo "Pre-push checks passed"
