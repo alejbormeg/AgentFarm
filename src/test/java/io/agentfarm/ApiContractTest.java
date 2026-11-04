@@ -277,6 +277,36 @@ class ApiContractTest {
                 obj("status", "passed", "exit_code", 0, "command", "./integration"))),
         "worker");
     EvidenceFixtures.accept(store, clock, "contract-review");
+    // What the verifier leaves once GitHub answers; without credentials it never runs here.
+    String basis = parse(get("/api/evidence/contract-review").body()).path("basis").asText();
+    store.tx(c ->
+        Store.exec(
+            c,
+            "INSERT OR REPLACE INTO evidence_verifications(item,basis,sha,state,reason,detail,at)"
+                + " VALUES(?,?,?,?,?,?,?)",
+            "contract-review",
+            basis,
+            sha,
+            "success",
+            "La CI del commit pasó entera.",
+            encode(
+                obj(
+                    "checks",
+                    List.of(
+                        obj(
+                            "name",
+                            "AgentFarm unit",
+                            "status",
+                            "completed",
+                            "conclusion",
+                            "success")),
+                    "files",
+                    List.of("demo/a.txt"),
+                    "added",
+                    List.of("demo/a.txt"),
+                    "secrets",
+                    List.of())),
+            now));
 
     // Low risk with every gate passed: ready to integrate in a batch.
     candidate("contract-ready", "test-improvement", "d".repeat(40));

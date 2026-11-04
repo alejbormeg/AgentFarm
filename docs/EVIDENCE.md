@@ -43,6 +43,10 @@ muestra para cada comprobación que el comando aprobado, sin alterar, pasó en e
 contenedor desechable. Las pruebas en el host no cuentan. La CI no pasa si el
 candidato cambia otro workflow distinto de `.github/workflows/agentfarm.yml`.
 
+**Si la CI no arranca:** a los 10 minutos sin comprobaciones, o con todas en cola, el panel lo explica con la causa
+probable: Actions desactivado, un workflow que no se activa en la rama, sin runner o sin minutos. Sigue sin integrarse
+nada sin ella. El plazo se cambia con `AGENTFARM_CI_WAIT_SECONDS`.
+
 **N/A:** un criterio de test no puede remitir a un comando `N/A:`, y un candidato que
 cambia código con un tipo de prueba en `N/A:` no pasa. Solo se admite N/A cuando los
 cambios son documentación (`docs/`, `.md`, `.txt`, licencias, memoria del proyecto).

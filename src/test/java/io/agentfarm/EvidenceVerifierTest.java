@@ -447,6 +447,79 @@ class EvidenceVerifierTest {
   }
 
   @Test
+  void aCiThatNeverStartsExplainsWhyButLetsNothingThrough() {
+    var linked = n("ci_checks", List.of("*"));
+    var none = n("total_count", 0);
+    var waiting = EvidenceVerifier.assess(linked, none, github("/status"), compared());
+    var quiet = EvidenceVerifier.explainDelay(waiting, 0);
+    assertEquals("La CI aún no ha empezado.", quiet.reason());
+    assertNull(quiet.detail().get("stalled"));
+    var late = EvidenceVerifier.explainDelay(waiting, 720);
+    assertEquals("pending", late.state(), "the wait is explained, never excused");
+    assertEquals(true, late.detail().get("stalled"));
+    assertTrue(late.reason().contains("12 min"), late.reason());
+    assertTrue(late.reason().contains("Actions esté desactivado"), late.reason());
+  }
+
+  @Test
+  void aQueuedCiBlamesTheRunnerAndARunningOneKeepsWaiting() {
+    var linked = n("ci_checks", List.of("*"));
+    status = "queued";
+    conclusion = null;
+    var queued =
+        EvidenceVerifier.explainDelay(
+            EvidenceVerifier.assess(linked, github("/check-runs"), github("/status"), compared()),
+            900);
+    assertEquals("pending", queued.state());
+    assertEquals(true, queued.detail().get("stalled"));
+    assertTrue(queued.reason().contains("15 min en cola"), queued.reason());
+    assertTrue(queued.reason().contains("runner"), queued.reason());
+    status = "in_progress";
+    var running =
+        EvidenceVerifier.explainDelay(
+            EvidenceVerifier.assess(linked, github("/check-runs"), github("/status"), compared()),
+            900);
+    assertEquals("La CI sigue en marcha.", running.reason(), "a long test run is not stuck");
+    assertNull(running.detail().get("stalled"));
+  }
+
+  @Test
+  void verifyCountsTheWaitFromTheMomentTheCandidateArrived() throws Exception {
+    // state_since comes from a migration, so this test needs them on its database.
+    new SchemaMigrations(
+        store, work, new TelemetryService(store, clock), new NodeCredentials(store, clock));
+    candidate(report("unit", "mvn test", true));
+    var always =
+        new EvidenceVerifier(
+            store,
+            clock,
+            (repo, path) -> {
+              if (path.contains("/check-runs")) return n("total_count", 0);
+              return github(path);
+            },
+            () -> true,
+            600);
+    always.verify("verify-task");
+    assertEquals(
+        "La CI aún no ha empezado.", dossier().path("verification").path("reason").asText());
+    var later = Clock.offset(clock, java.time.Duration.ofMinutes(11));
+    new EvidenceVerifier(
+            store,
+            later,
+            (repo, path) -> {
+              if (path.contains("/check-runs")) return n("total_count", 0);
+              return github(path);
+            },
+            () -> true,
+            600)
+        .verify("verify-task");
+    var verification = dossier().path("verification");
+    assertEquals("pending", verification.path("state").asText());
+    assertTrue(verification.path("detail").path("stalled").asBoolean());
+    assertFalse(dossier().path("ready").asBoolean(), "explaining the wait doesn't open the gate");
+  }
+
+  @Test
   void testPolicyOnlyExcusesDocumentation() {
     assertTrue(TestPolicy.untestedCode(List.of("src/App.java"), "not_applicable", "passed"));
     assertTrue(TestPolicy.untestedCode(List.of("README.md", "app.py"), "passed", "not_applicable"));

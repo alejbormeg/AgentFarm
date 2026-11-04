@@ -1641,7 +1641,7 @@ class FarmConsole extends HTMLElement {
         ci === "missing" || !ci
           ? "CI sin leer: el panel la comprueba con su credencial de GitHub cada 30 segundos."
           : d.verification.reason,
-        ci === "failed" || ci === "unavailable" ? "warning" : "muted",
+        ci === "failed" || ci === "unavailable" || d.verification?.detail?.stalled ? "warning" : "muted",
       ),
     );
     for (const other of d.overlaps || [])

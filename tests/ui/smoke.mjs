@@ -147,6 +147,8 @@ const checkNotices = async () => {
     await js(`(()=>{const t=${all}.find(e=>e.tagName==='ARTICLE'&&e.textContent.includes('quizá no se pueda acreditar'));if(!t)return false;const d=t.querySelector(':scope > .decision'),l=t.querySelector(':scope > .links');return !!d&&!!l&&d.children.length>0&&!!(d.compareDocumentPosition(l)&Node.DOCUMENT_POSITION_FOLLOWING)})()`),
     "the decision comes before the evidence",
   );
+  await go("/overview?tarea=e2e-request-noci");
+  check(await until(() => visible("GitHub no ha lanzado ninguna comprobación")), "a task explains why its CI does not start");
   await go("/overview?tarea=e2e-request-adopt");
   check(await until(() => visible("Cambios respecto a la versión anterior")), "a corrected proposal lists what changed");
   await js(`${all}.find(e=>e.tagName==='SUMMARY'&&e.textContent.startsWith('Cambios respecto')).click()`);
