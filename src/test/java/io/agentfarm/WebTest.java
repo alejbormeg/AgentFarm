@@ -46,6 +46,8 @@ class WebTest {
             + hash
             + "\"},{\"username\":\"paula\",\"role\":\"owner\",\"password_hash\":\""
             + hash
+            + "\"},{\"username\":\"tomas\",\"role\":\"observer\",\"password_hash\":\""
+            + hash
             + "\"}]");
     r.add("agentfarm.users-file", users::toString);
   }
@@ -247,6 +249,33 @@ class WebTest {
     var owner = Json.parse(get("/api/health", true).body());
     assertEquals("UP", owner.path("status").asText());
     assertTrue(owner.has("waiting_for_owner") && owner.has("executors_fresh"));
+  }
+
+  private HttpResponse<String> basic(String user, String secret) throws Exception {
+    return client.send(
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/me"))
+            .header(
+                "Authorization",
+                "Basic "
+                    + Base64.getEncoder()
+                        .encodeToString((user + ":" + secret).getBytes(StandardCharsets.UTF_8)))
+            .build(),
+        HttpResponse.BodyHandlers.ofString());
+  }
+
+  @Test
+  void guessingAPasswordStopsAfterAFewFailures() throws Exception {
+    assertEquals(200, basic("tomas", TEAM_PASSWORD).statusCode());
+    for (int i = 0; i < 5; i++) assertEquals(401, basic("tomas", "not-the-password").statusCode());
+    var blocked = basic("tomas", TEAM_PASSWORD);
+    assertEquals(429, blocked.statusCode(), "not even the right password while blocked");
+    assertTrue(blocked.headers().firstValue("Retry-After").isPresent());
+    var page = form(client, "/login", "/login", "username=tomas&password=" + TEAM_PASSWORD);
+    assertTrue(
+        page.headers().firstValue("Location").orElse("").endsWith("/login?blocked"),
+        "the form says so too: " + page.headers().map());
+    assertEquals(200, get("/api/me", true).statusCode(), "another account keeps working");
+    assertTrue(get("/login?blocked", false).body().contains("Demasiados intentos"));
   }
 
   @Test

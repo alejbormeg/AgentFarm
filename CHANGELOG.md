@@ -6,6 +6,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 ## Sin publicar — camino a la versión 1.0
 
+- Tras 5 contraseñas fallidas seguidas, el panel hace esperar de 1 a 15 minutos, por cuenta y dirección. Con una dirección https, la cookie de sesión lleva `Secure`.
 - `jackson-databind` y `sqlite-jdbc` actualizados: la versión anterior de Jackson tenía 5 vulnerabilidades altas conocidas. Cada validación busca ahora vulnerabilidades y secretos.
 - La CI ya no guarda artefactos que nadie usa: 294 ocupaban 13,8 GB del espacio de Actions.
 - Si la CI de un repositorio no arranca o se queda en cola, el panel lo dice a los 10 minutos, con la causa probable y dónde mirar. Sigue sin integrarse nada sin ella.
