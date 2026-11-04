@@ -86,10 +86,25 @@ public class SecurityConfig {
   }
 
   @Bean
+  io.agentfarm.core.LoginThrottle loginThrottle(java.time.Clock clock) {
+    return new io.agentfarm.core.LoginThrottle(clock);
+  }
+
+  /** Behind a proxy with TLS the panel sees plain HTTP: its public address says what is true. */
+  @Bean
+  org.springframework.boot.web.servlet.ServletContextInitializer secureCookie(
+      @Value("${agentfarm.panel-url:}") String panelUrl) {
+    return context -> {
+      if (panelUrl.startsWith("https://")) context.getSessionCookieConfig().setSecure(true);
+    };
+  }
+
+  @Bean
   SecurityFilterChain security(
       HttpSecurity http,
       io.agentfarm.core.NodeCredentials nodes,
-      io.agentfarm.core.TwoFactor twoFactor)
+      io.agentfarm.core.TwoFactor twoFactor,
+      io.agentfarm.core.LoginThrottle throttle)
       throws Exception {
     String[] people = {"OWNER", "REVIEWER", "OBSERVER"};
     http.authorizeHttpRequests(a ->
@@ -126,6 +141,10 @@ public class SecurityConfig {
                 .hasRole("OWNER")
                 .anyRequest()
                 .hasAnyRole(people))
+        .addFilterBefore(
+            new LoginThrottleFilter(throttle),
+            org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+                .class)
         .addFilterBefore(
             new NodeTokenFilter(nodes),
             org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter

@@ -170,6 +170,14 @@ try {
   if (process.env.SMOKE_NOTICES) {
     await checkNotices();
   } else {
+    await send("Network.clearBrowserCookies");
+    for (let i = 0; i < 6; i++) {
+      await go("/login");
+      await js(`document.querySelector('[name=username]').value='alguien-que-prueba';
+        document.querySelector('[name=password]').value='no-es-esta';document.querySelector('form').submit()`);
+      await sleep(600);
+    }
+    check(await until(() => visible("Demasiados intentos")), "the login page says when guessing is blocked");
     await login("admin", password);
     for (const [view, marker] of Object.entries(views)) {
       exceptions.length = 0;

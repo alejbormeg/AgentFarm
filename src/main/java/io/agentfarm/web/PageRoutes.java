@@ -57,6 +57,10 @@ public class PageRoutes {
     String notice = "";
     if (request.getParameter("error") != null)
       notice = "<p class=\"notice\" role=\"alert\">Usuario o contraseña incorrectos.</p>";
+    else if (request.getParameter("blocked") != null)
+      notice =
+          "<p class=\"notice\" role=\"alert\">Demasiados intentos. Espera unos minutos y vuelve a"
+              + " probar.</p>";
     else if (request.getParameter("logout") != null)
       notice = "<p class=\"notice ok\" role=\"status\">Has cerrado la sesión.</p>";
     CsrfToken csrf = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
