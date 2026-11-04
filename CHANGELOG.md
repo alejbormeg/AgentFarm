@@ -13,6 +13,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 - Cada PR gasta menos minutos de Actions: Java 25 solo al fusionar, y la documentación no lanza la CI.
 - Con una GitHub App, el ejecutor usa un token de una hora limitado al repositorio. Solo se ha probado con dobles.
 - Las reglas de bloqueo de Claude Code se han probado con una cuenta real y un señuelo, también por enlaces simbólicos. Siguen sin ser un aislamiento del sistema, y el panel lo sigue avisando.
+- El ejecutor guarda el estado de cada orden en la propia orden, y las decisiones que aprueban un candidato tienen pruebas de módulo.
 
 ## Sin publicar — primer piloto integrado desde el panel con GitHub real
 

@@ -16,8 +16,9 @@ public class FarmDaemon extends CodexRunner {
   static final String IMPLEMENTER =
           System.getProperty("agentfarm.implementer", AGENT + SUFFIX + "-boxer"),
       REVIEWER = System.getProperty("agentfarm.reviewer", AGENT + SUFFIX + "-reviewer");
+  // Of the process, not of an order: the quota reading, the last failure seen, and the last agent session shown.
   static volatile JsonNode quota = JSON.createObjectNode();
-  static volatile String phase = "idle", active = "", model = "", session = "", failure = "";
+  static volatile String model = "", session = "", failure = "";
   static volatile long quotaAt = 0;
   static final List<Map<String, Object>> activity = new CopyOnWriteArrayList<>();
 
@@ -31,6 +32,13 @@ public class FarmDaemon extends CodexRunner {
     volatile List<io.agentfarm.core.McpCatalog.Server> mcpServers = List.of();
     volatile boolean mcpTurn;
     volatile io.agentfarm.core.Prompts.Rendered implementPrompt, reviewPrompt;
+    volatile String phase = "idle", active = "", provider = "codex";
+    // The quota window this order reserved in; 0 until it has a reservation.
+    volatile long reservedReset;
+    // A repository-limited token from the panel when it has a GitHub App; otherwise the gh login.
+    // In this process's memory, handed only to gh and git here, and never to an agent's turn.
+    volatile String githubToken;
+    volatile Instant githubTokenExpires = Instant.EPOCH;
 
     Task(JsonNode claim) {
       this.claim = claim;
@@ -55,7 +63,6 @@ public class FarmDaemon extends CodexRunner {
       DOCKER = System.getProperty("agentfarm.docker", "docker");
   static final Path JOURNAL = STATE.resolve("reservation-journal" + SUFFIX + ".json");
   static volatile long lastQuota = 0;
-  static volatile long reservedReset = 0;
 
   static String clean(String s) {
     return io.agentfarm.core.ExecutorWork.clean(s);
@@ -64,6 +71,7 @@ public class FarmDaemon extends CodexRunner {
   static void event(String kind, String message) {
     // The panel rejects a blank event, and one rejected batch would stop all later telemetry.
     if (message == null || message.isBlank()) return;
+    var running = task;
     activity.add(
         obj(
             "external_id",
@@ -71,7 +79,7 @@ public class FarmDaemon extends CodexRunner {
             "at",
             Instant.now().toString(),
             "worker",
-            active.isBlank() ? AGENT : active,
+            running == null || running.active.isBlank() ? AGENT : running.active,
             "kind",
             kind,
             "text",
@@ -85,9 +93,10 @@ public class FarmDaemon extends CodexRunner {
             .directory(cwd.toFile())
             .redirectErrorStream(true)
             .redirectOutput(log.toFile());
-    if (githubToken != null && (args[0].equals(GH) || args[0].equals("git"))) {
+    var running = task;
+    if (running != null && running.githubToken != null && (args[0].equals(GH) || args[0].equals("git"))) {
       githubAccess();
-      b.environment().put("GH_TOKEN", githubToken);
+      b.environment().put("GH_TOKEN", running.githubToken);
     }
     b.environment()
         .put("PATH", System.getProperty("user.home") + "/.local/bin:" + System.getenv("PATH"));
@@ -146,22 +155,17 @@ public class FarmDaemon extends CodexRunner {
     }
   }
 
-  // A repository-limited token from the panel when it has a GitHub App; otherwise the gh login.
-  // In this process's memory, handed only to gh and git here, and never to an agent's turn.
-  static String githubToken;
-  static java.time.Instant githubTokenExpires = java.time.Instant.EPOCH;
-
   static void githubAccess() throws Exception {
-    if (githubToken != null && java.time.Instant.now().isBefore(githubTokenExpires.minusSeconds(600))) return;
+    if (task.githubToken != null && Instant.now().isBefore(task.githubTokenExpires.minusSeconds(600))) return;
     var answer = post("/work/agent/commands/" + task.commandId + "/github-token", obj("agent", CLAIMANT));
-    githubToken = answer.path("token").isTextual() ? answer.path("token").asText() : null;
-    githubTokenExpires =
-        githubToken == null ? java.time.Instant.EPOCH : java.time.Instant.parse(answer.path("expires_at").asText());
+    task.githubToken = answer.path("token").isTextual() ? answer.path("token").asText() : null;
+    task.githubTokenExpires =
+        task.githubToken == null ? Instant.EPOCH : Instant.parse(answer.path("expires_at").asText());
   }
 
   static String gitAt(String... args) throws Exception {
     var a = new ArrayList<>(List.of("git", "-C", task.checkout.toString()));
-    if (githubToken != null)
+    if (task.githubToken != null)
       a.addAll(List.of("-c", "credential.helper=", "-c", "credential.helper=!" + GH + " auth git-credential"));
     a.addAll(List.of(args));
     return process(STATE, 120, a.toArray(String[]::new));
@@ -245,7 +249,7 @@ public class FarmDaemon extends CodexRunner {
   }
 
   static void guard() throws Exception {
-    if (reservedReset != 0 && quota.path("resets_at").asLong() != reservedReset)
+    if (task.reservedReset != 0 && quota.path("resets_at").asLong() != task.reservedReset)
       throw new IOException("Ventana de cuota cambió; requiere conciliación");
     if (cancelled()) throw new IOException("Cancelación o pausa solicitada");
     if (System.currentTimeMillis() - quotaAt > 60000
@@ -254,7 +258,7 @@ public class FarmDaemon extends CodexRunner {
       throw new IOException("Cuota desconocida o límite del 2 % alcanzado");
     // Admission is for new work. An active run already owns the reserved margin.
     // Rechecking free balance here would reject the run's own reservation.
-    if (reservedReset == 0) {
+    if (task.reservedReset == 0) {
       // The panel judges by the last snapshot it received, not by the reading just taken here.
       try {
         telemetry();
@@ -282,7 +286,7 @@ public class FarmDaemon extends CodexRunner {
       if (node.path("id").asText().equals(AGENT) && node.path("enabled").asInt() != 1)
         throw new IOException("Nodo deshabilitado");
     for (var w : overview.path("workers"))
-      if (w.path("id").asText().equals(active) && w.path("enabled").asInt() != 1)
+      if (w.path("id").asText().equals(task.active) && w.path("enabled").asInt() != 1)
         throw new IOException("Boxer deshabilitado");
   }
 
@@ -292,7 +296,6 @@ public class FarmDaemon extends CodexRunner {
       CLAUDE_MODEL = System.getProperty("agentfarm.claude-model", "");
   static final long CLAUDE_TURN_MICROS =
       Long.getLong("agentfarm.claude-turn-micros", 3_000_000L);
-  static volatile String provider = "codex";
 
   static String providerFor(String role) {
     String p = System.getProperty("agentfarm.provider." + role, "codex");
@@ -313,14 +316,14 @@ public class FarmDaemon extends CodexRunner {
   }
 
   static String agentTurn(String role, String prompt) throws Exception {
-    provider = providerFor(role);
+    task.provider = providerFor(role);
     task.mcpTurn = !role.equals("implement") && !task.mcpServers.isEmpty();
     try {
-      return provider.equals("claude-code")
+      return task.provider.equals("claude-code")
           ? claudeTurn(role, prompt)
           : turn(prompt, role);
     } finally {
-      provider = "codex";
+      task.provider = "codex";
     }
   }
 
@@ -578,8 +581,7 @@ public class FarmDaemon extends CodexRunner {
     Path receipt = STATE.resolve("receipts" + SUFFIX).resolve(task.itemId + ".json");
     if (!Files.exists(receipt)) return false;
     var saved = JSON.readTree(Files.readString(receipt));
-    return saved.path("version").asInt() == item.path("version").asInt()
-        && saved.path("sha").asText().equals(gitAt("rev-parse", branch).strip());
+    return io.agentfarm.core.ExecutorWork.receiptAtHead(saved, item, gitAt("rev-parse", branch).strip());
   }
 
   /** The base branch governs: a candidate cannot set the rules it is judged by or block its fix. */
@@ -602,8 +604,8 @@ public class FarmDaemon extends CodexRunner {
   }
 
   static void research(JsonNode item, JsonNode payload, int issue) throws Exception {
-    phase = "researching";
-    active = AGENT;
+    task.phase = "researching";
+    task.active = AGENT;
     workspace(item, issue, false);
     var memory = currentProjectMemory();
     var profile = baseProfile();
@@ -637,30 +639,15 @@ public class FarmDaemon extends CodexRunner {
     prompt += io.agentfarm.core.ExecutorWork.memoryContext(memory);
     JsonNode p = io.agentfarm.core.ExecutorWork.resultJson(agentTurn("research", prompt));
     io.agentfarm.core.ProposalShape.normalize(p);
-    ((com.fasterxml.jackson.databind.node.ObjectNode) p)
-        .set("prompt", JSON.valueToTree(rendered.reference()));
-    ((com.fasterxml.jackson.databind.node.ObjectNode) p).put("provider", providerFor("research"));
-    ((com.fasterxml.jackson.databind.node.ObjectNode) p)
-        .set("skills", JSON.valueToTree(skills.references()));
-    ((com.fasterxml.jackson.databind.node.ObjectNode) p)
-        .set("mcp", JSON.valueToTree(profile == null ? List.of() : profile.mcp()));
-    ((com.fasterxml.jackson.databind.node.ObjectNode) p).set("project_memory", memory);
-    if (!p.path("criteria").isArray() || p.path("criteria").isEmpty())
-      throw new IOException("Research must supply identifiable acceptance criteria");
-    if (profile != null) {
-      var object = (com.fasterxml.jackson.databind.node.ObjectNode) p;
-      object.put("profile_hash", profile.hash());
-      object.put("unit_test", profile.tests().get("unit"));
-      object.put("integration_test", profile.tests().get("integration"));
-      object.put("setup", profile.setup());
-      object.set("allowed_paths", JSON.valueToTree(profile.allowedPaths()));
-      object.set("quality", JSON.valueToTree(profile.quality()));
-      object.set("named_skills", JSON.valueToTree(profile.skills()));
-    }
-    ((com.fasterxml.jackson.databind.node.ObjectNode) p)
-        .set("sandbox", JSON.valueToTree(policy == null ? Map.of("mode", "host") : policy.summary()));
-    ((com.fasterxml.jackson.databind.node.ObjectNode) p)
-        .put("base_sha", gitAt("rev-parse", "HEAD"));
+    io.agentfarm.core.ExecutorWork.completeProposal(
+        p,
+        JSON.valueToTree(rendered.reference()),
+        providerFor("research"),
+        JSON.valueToTree(skills.references()),
+        memory,
+        profile,
+        JSON.valueToTree(policy == null ? Map.of("mode", "host") : policy.summary()),
+        gitAt("rev-parse", "HEAD"));
     github("PATCH", "repos/" + task.repo + "/issues/" + issue, obj("body", io.agentfarm.core.ExecutorWork.issueBody(marker(), item, p)));
     report("proposed", "issue", issue, "proposal", p);
   }
@@ -910,8 +897,8 @@ public class FarmDaemon extends CodexRunner {
   }
 
   static void implement(JsonNode item, int issue) throws Exception {
-    phase = "implementing";
-    active = IMPLEMENTER;
+    task.phase = "implementing";
+    task.active = IMPLEMENTER;
     workspace(item, issue, true);
     var p = JSON.readTree(item.path("proposal").asText());
     String baseSha = gitAt("rev-parse", "HEAD");
@@ -925,8 +912,7 @@ public class FarmDaemon extends CodexRunner {
     Path receipt = STATE.resolve("receipts" + SUFFIX).resolve(task.itemId + ".json");
     if (Files.exists(receipt)) {
       var saved = JSON.readTree(Files.readString(receipt));
-      if (saved.path("version").asInt() == item.path("version").asInt()
-          && saved.path("sha").asText().equals(baseSha)
+      if (io.agentfarm.core.ExecutorWork.receiptAtHead(saved, item, baseSha)
           && saved.path("base_sha").asText().equals(p.path("base_sha").asText())) {
         validateAndPublish(
             item, issue, p, saved.path("change"), saved.path("base_sha").asText(), baseSha);
@@ -961,58 +947,13 @@ public class FarmDaemon extends CodexRunner {
         .set("prompt", JSON.valueToTree(task.implementPrompt.reference()));
     ((com.fasterxml.jackson.databind.node.ObjectNode) change)
         .set("skills", JSON.valueToTree(implementSkills.references()));
-    var jobs = new LinkedHashMap<String, Object>();
-    for (String kind : List.of("unit", "integration")) {
-      String testCommand = p.path(kind + "_test").asText();
-      if (testCommand.isBlank()) throw new IOException("Falta estrategia de pruebas " + kind);
-      var steps = new ArrayList<Object>();
-      steps.add(obj("uses", "actions/checkout@v4", "with", obj("persist-credentials", false)));
-      if (!p.path("setup").asText().isBlank())
-        steps.add(obj("name", "Dependencies", "run", p.path("setup").asText()));
-      steps.add(
-          obj(
-              "name",
-              kind,
-              "run",
-              testCommand.startsWith("N/A:")
-                  ? "printf '%s\\n' " + io.agentfarm.core.ExecutorWork.shellQuote(testCommand)
-                  : testCommand));
-      jobs.put(
-          kind,
-          obj(
-              "name",
-              "AgentFarm " + kind,
-              "runs-on",
-              "ubuntu-24.04",
-              // Same image as the local sandbox: setup runs as root there, as in the container.
-              "container",
-              p.path("sandbox").path("mode").asText("container").equals("host")
-                  ? null
-                  : obj(
-                      "image",
-                      p.path("sandbox").path("image").asText(SANDBOX_IMAGE)),
-              "timeout-minutes",
-              15,
-              "steps",
-              steps));
-      jobs.values().forEach(job -> ((Map<?, ?>) job).values().removeIf(Objects::isNull));
-    }
+    var workflow = io.agentfarm.core.ExecutorWork.verificationWorkflow(p, SANDBOX_IMAGE);
     // Respect the project's own CI: only repositories without workflows get the template.
     if (!ownCi) {
-    Files.createDirectories(task.checkout.resolve(".github/workflows"));
-    Files.writeString(
-        task.checkout.resolve(".github/workflows/agentfarm.yml"),
-        JSON.writerWithDefaultPrettyPrinter()
-            .writeValueAsString(
-                obj(
-                    "name",
-                    "AgentFarm verification",
-                    "on",
-                    List.of("pull_request", "push"),
-                    "permissions",
-                    obj("contents", "read"),
-                    "jobs",
-                    jobs)));
+      Files.createDirectories(task.checkout.resolve(".github/workflows"));
+      Files.writeString(
+          task.checkout.resolve(".github/workflows/agentfarm.yml"),
+          JSON.writerWithDefaultPrettyPrinter().writeValueAsString(workflow));
     }
     gitAt("add", "-A");
     if (!gitAt("diff", "--cached", "--name-only").isBlank())
@@ -1052,7 +993,7 @@ public class FarmDaemon extends CodexRunner {
       publish(item, issue, p, previous, sha, previous);
       return;
     }
-    phase = "testing";
+    task.phase = "testing";
     var results = runTests(p, sha);
     var unit = results.get(0);
     var integration = results.get(1);
@@ -1062,8 +1003,8 @@ public class FarmDaemon extends CodexRunner {
     var profileValidation = candidateProfile(p, baseSha, sha);
     var quality = runQuality(io.agentfarm.core.ExecutorWork.withCandidateGates(p, profileValidation), baseSha, sha);
     var regression = proveRegression(item, p, baseSha, sha, unit, integration);
-    active = REVIEWER;
-    phase = "reviewing";
+    task.active = REVIEWER;
+    task.phase = "reviewing";
     var reviewSkills = skills("review", namedSkills(p));
     JsonNode review =
         io.agentfarm.core.ExecutorWork.resultJson(
@@ -1092,49 +1033,34 @@ public class FarmDaemon extends CodexRunner {
                                 unit + " " + integration)))
                     .text()
                     + reviewSkills.text()));
-    boolean pass =
-        unit.get("status").equals("passed") || unit.get("status").equals("not_applicable");
-    pass &=
-        integration.get("status").equals("passed")
-            || integration.get("status").equals("not_applicable");
-    pass &= review.path("passed").asBoolean(false);
+    var changed = gitAt("diff", "--name-only", baseSha, sha).lines().filter(f -> !f.isBlank()).toList();
     boolean untested =
         io.agentfarm.core.TestPolicy.untestedCode(
-            gitAt("diff", "--name-only", baseSha, sha).lines().filter(f -> !f.isBlank()).toList(),
-            String.valueOf(unit.get("status")),
-            String.valueOf(integration.get("status")));
-    if (untested) {
-      pass = false;
-      event("error", "El candidato cambia código con pruebas marcadas N/A");
-    }
-    if (!Files.isDirectory(task.checkout.resolve(".github/workflows"))) pass = false;
-    // A candidate that edits the project's own CI could weaken the gate it is judged by.
+            changed, String.valueOf(unit.get("status")), String.valueOf(integration.get("status")));
     var workflowChanges =
         gitAt("diff", "--name-only", baseSha, sha, "--", ".github/workflows/")
             .lines()
             .filter(f -> !f.isBlank() && !f.equals(".github/workflows/agentfarm.yml"))
             .toList();
-    if (!workflowChanges.isEmpty() && ownWorkflows(baseSha)) {
-      pass = false;
-      event("error", "El candidato modifica el CI del proyecto: " + workflowChanges);
-    }
-    var addedFiles = gitAt("diff", "--diff-filter=A", "--name-only", baseSha, sha).lines().toList();
     var protectedFiles =
         io.agentfarm.core.Commandments.protectedChanges(
-            gitAt("diff", "--name-only", baseSha, sha).lines().filter(f -> f.equals("agentfarm.yaml")).toList(),
-            addedFiles,
+            changed.stream().filter(f -> f.equals("agentfarm.yaml")).toList(),
+            gitAt("diff", "--diff-filter=A", "--name-only", baseSha, sha).lines().toList(),
             item.path("recipe").path("id").asText());
-    if (!protectedFiles.isEmpty()) {
-      pass = false;
-      event("error", "El candidato cambia las reglas del proyecto: " + protectedFiles);
-    }
-    if (profileValidation.get("status").equals("failed")) {
-      pass = false;
-      event("error", "agentfarm.yaml no es válido: " + profileValidation.get("error"));
-    } else if (profileValidation.containsKey("quality") && io.agentfarm.core.ExecutorWork.anyFailed(quality)) {
-      pass = false;
-      event("error", "Las puertas del nuevo agentfarm.yaml no pasan");
-    }
+    var verdict =
+        new io.agentfarm.core.ExecutorWork.Candidate(
+                String.valueOf(unit.get("status")),
+                String.valueOf(integration.get("status")),
+                review.path("passed").asBoolean(false),
+                untested,
+                Files.isDirectory(task.checkout.resolve(".github/workflows")),
+                ownWorkflows(baseSha) ? workflowChanges : List.of(),
+                protectedFiles,
+                profileValidation,
+                quality)
+            .verdict();
+    verdict.problems().forEach(problem -> event("error", problem));
+    boolean pass = verdict.passed();
     if (!gitAt("rev-parse", "HEAD").equals(sha) || !gitAt("status", "--porcelain").isBlank())
       throw new IOException("El candidato cambió durante la revisión");
     var evidence =
@@ -1213,12 +1139,8 @@ public class FarmDaemon extends CodexRunner {
       var profile = io.agentfarm.core.ProjectProfile.load(task.checkout.resolve("agentfarm.yaml"));
       if (!profile.hash().equals(p.path("profile_hash").asText()))
         throw new IOException("Project profile changed during execution");
-      for (String changed :
-          gitAt("diff", "--name-only", p.path("base_sha").asText(), sha).split("\\n"))
-        if (!changed.isBlank()
-            && !changed.equals(".github/workflows/agentfarm.yml")
-            && !profile.permits(changed))
-          throw new IOException("Out of approved profile scope: " + changed);
+      var outside = io.agentfarm.core.ExecutorWork.outOfScope(profile, gitAt("diff", "--name-only", p.path("base_sha").asText(), sha).lines().toList());
+      if (!outside.isEmpty()) throw new IOException("Out of approved profile scope: " + outside.getFirst());
     }
     // Once pushed a secret is exposed for good, so this check comes before the panel's own.
     var secrets =
@@ -1230,29 +1152,7 @@ public class FarmDaemon extends CodexRunner {
     guard();
     // A corrected candidate may restart from the base, so its branch is replaced, never merged over.
     gitAt("push", "-u", "--force-with-lease", "origin", branch);
-    String body =
-        "Closes #"
-            + issue
-            + "\n\n## Qué resuelve\n"
-            + (item.path("request").asText() + io.agentfarm.core.ExecutorWork.recipeContext(item))
-            + "\n\n"
-            + change.path("summary").asText()
-            + io.agentfarm.core.ExecutorWork.diagrams(change)
-            + "\n## Evidencias\nCommit: "
-            + sha
-            + "\n\nUnitarias: "
-            + JSON.writeValueAsString(unit)
-            + "\n\nIntegración: "
-            + JSON.writeValueAsString(integration)
-            + "\n\nRevisión: "
-            + review
-            + "\n\nMemoria candidata (validación de esquema, no aceptación funcional): "
-            + JSON.writeValueAsString(memoryValidation)
-            + io.agentfarm.core.ExecutorWork.memoryContext(p.path("project_memory"))
-            + "\n\n## Limitaciones\n"
-            + change.path("limitations").asText();
-    if (body.length() > 60000)
-      body = body.substring(0, 59000) + "\nSalida recortada; consultar ejecución.";
+    String body = io.agentfarm.core.ExecutorWork.pullRequestBody(item, issue, p, change, sha, unit, integration, review, JSON.valueToTree(memoryValidation));
     var prs =
         github(
             "GET",
@@ -1360,7 +1260,6 @@ public class FarmDaemon extends CodexRunner {
     int initial = 0;
     String reservation = "work-" + task.commandId;
     try {
-      githubToken = null;
       githubAccess();
       int issue = ensureIssue(item);
       report("checkpoint", "issue", issue);
@@ -1369,12 +1268,7 @@ public class FarmDaemon extends CodexRunner {
       guard();
       initial = (int) Math.ceil(quota.path("weekly_used_percent").asDouble() * 100);
       var balance = get("/budget/" + ACCOUNT);
-      int remaining = 0;
-      for (var w : balance.path("windows"))
-        if (w.path("period").asText().equals("weekly")) remaining = w.path("remaining").asInt();
-      if (remaining < 1) throw new IOException("Clover no tiene margen disponible");
-      // With several slots each run reserves its share, so the others can still be admitted.
-      int share = Math.max(1, remaining / Math.max(1, Integer.getInteger("agentfarm.slots", 1)));
+      int share = io.agentfarm.core.ExecutorWork.reservationShare(balance, Integer.getInteger("agentfarm.slots", 1));
       Files.writeString(
           JOURNAL,
           JSON.writeValueAsString(
@@ -1400,7 +1294,7 @@ public class FarmDaemon extends CodexRunner {
       if (!r.path("state").asText().equals("reserved"))
         throw new IOException("Clover rechazó la reserva: " + r);
       reserved = true;
-      reservedReset = quota.path("resets_at").asLong();
+      task.reservedReset = quota.path("resets_at").asLong();
       var payload = JSON.readTree(cmd.path("payload").asText());
       switch (kind) {
         case "research" -> research(item, payload, issue);
@@ -1433,10 +1327,7 @@ public class FarmDaemon extends CodexRunner {
       } catch (Exception ignored) {
       }
     } finally {
-      reservedReset = 0;
       task = null;
-      phase = "idle";
-      active = "";
     }
   }
 
@@ -1460,7 +1351,7 @@ public class FarmDaemon extends CodexRunner {
             "executor",
             CLAIMANT,
             "provider",
-            provider,
+            running == null ? "codex" : running.provider,
             "account",
             ACCOUNT,
             "host",
@@ -1474,9 +1365,9 @@ public class FarmDaemon extends CodexRunner {
             "source",
             "Servicio WSL y protocolo Codex",
             "run_state",
-            phase,
+            running == null ? "idle" : running.phase,
             "phase",
-            phase,
+            running == null ? "idle" : running.phase,
             "build",
             io.agentfarm.core.BuildInfo.commit(),
             "sandbox_failure",
@@ -1490,7 +1381,7 @@ public class FarmDaemon extends CodexRunner {
             "quota",
             quota,
             "active_worker",
-            active,
+            running == null ? "" : running.active,
             "session",
             session,
             "model",
@@ -1508,9 +1399,9 @@ public class FarmDaemon extends CodexRunner {
     var batch = new ArrayList<>(queued.subList(0, Math.min(30, queued.size())));
     post("/runtime/observations", obj("snapshot", snapshot, "events", batch));
     activity.removeAll(batch);
-    post("/heartbeat/node/" + AGENT, obj("state", task == null ? "idle" : "busy"));
+    post("/heartbeat/node/" + AGENT, obj("state", running == null ? "idle" : "busy"));
     for (String w : List.of(IMPLEMENTER, REVIEWER))
-      post("/heartbeat/worker/" + w, obj("state", active.equals(w) ? "busy" : "idle"));
+      post("/heartbeat/worker/" + w, obj("state", running != null && running.active.equals(w) ? "busy" : "idle"));
   }
 
   static ScheduledExecutorService observationLoops(
@@ -1607,13 +1498,7 @@ public class FarmDaemon extends CodexRunner {
         try {
           if (sandboxHolds()) {
             var claim = post("/work/agent/claim", obj("agent", CLAIMANT));
-            if (claim.has("command")) {
-              try {
-                work(claim);
-              } finally {
-                githubToken = null;
-              }
-            }
+            if (claim.has("command")) work(claim);
           }
           failures = 0;
         } catch (Exception e) {
