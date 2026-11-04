@@ -39,6 +39,7 @@ class WorkflowTest {
         "owner");
   }
 
+  @SuppressWarnings("unchecked")
   Map<String, Object> claim() {
     return (Map<String, Object>) service.claim("agent");
   }
@@ -373,7 +374,7 @@ class WorkflowTest {
     EvidenceFixtures.accept(store, Clock.systemUTC(), "request-123");
     service.action("request-123", "merge", n("sha", sha), "owner");
     assertEquals(Map.of(), service.claim("executor", false));
-    var broker = (Map<String, Object>) service.claimIntegration("control-plane");
+    var broker = (Map<?, ?>) service.claimIntegration("control-plane");
     assertEquals("merge", ((Map<?, ?>) broker.get("command")).get("kind"));
   }
 

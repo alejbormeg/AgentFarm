@@ -1,0 +1,925 @@
+{
+  "GET /api/audit" : {
+    "body" : [ {
+      "action" : "string",
+      "actor" : "string",
+      "at" : "string",
+      "id" : "number",
+      "subject" : "string"
+    } ],
+    "status" : 200
+  },
+  "GET /api/automation" : {
+    "body" : {
+      "autonomy" : [ {
+        "level" : "string",
+        "recipe" : "string",
+        "updated" : "number"
+      } ],
+      "github_configured" : "boolean",
+      "sentry_configured" : "boolean",
+      "triggers" : [ {
+        "enabled" : "number",
+        "kinds" : [ "string" ],
+        "last_error" : "null",
+        "last_run" : "null",
+        "max_new" : "number",
+        "options" : { },
+        "repo" : "string"
+      } ]
+    },
+    "status" : 200
+  },
+  "GET /api/budget/demo" : {
+    "body" : {
+      "account" : "string",
+      "mode" : "string",
+      "reasons" : [ ],
+      "state" : "string",
+      "unit" : "string",
+      "windows" : [ {
+        "cap" : "number",
+        "end" : "number",
+        "observed_at" : "number",
+        "period" : "string",
+        "remaining" : "number",
+        "reserved" : "number",
+        "source" : "string",
+        "start" : "number",
+        "used" : "number"
+      } ]
+    },
+    "status" : 200
+  },
+  "GET /api/budget/demo/reservations" : {
+    "body" : [ {
+      "actual" : "null|string",
+      "amounts" : "string",
+      "run_id" : "string",
+      "state" : "string"
+    } ],
+    "status" : 200
+  },
+  "GET /api/csrf" : {
+    "body" : {
+      "header" : "string",
+      "token" : "string"
+    },
+    "status" : 200
+  },
+  "GET /api/evidence" : {
+    "body" : [ {
+      "acceptance_state" : "string",
+      "agent_reports" : {
+        "content" : {
+          "integration" : {
+            "command" : "string",
+            "exit_code" : "number",
+            "status" : "string"
+          },
+          "passed" : "boolean",
+          "sha" : "string",
+          "unit" : {
+            "command" : "string",
+            "exit_code" : "number",
+            "status" : "string"
+          }
+        },
+        "sha_matches" : "boolean",
+        "trust" : "string"
+      },
+      "approved_proposal" : {
+        "acceptance" : "string",
+        "as_is" : "string",
+        "base_sha" : "string",
+        "criteria" : [ {
+          "description" : "string",
+          "id" : "string",
+          "method" : "string"
+        } ],
+        "doubtful_criteria" : [ ],
+        "integration_test" : "string",
+        "previous_changes" : [ ],
+        "risk" : "string",
+        "summary" : "string",
+        "to_be" : "string",
+        "unit_test" : "string"
+      },
+      "base_sha" : "string",
+      "basis" : "string",
+      "blockers" : [ ],
+      "branch" : "null|string",
+      "commandments" : [ {
+        "detail" : "string",
+        "id" : "string",
+        "status" : "string",
+        "text" : "string"
+      } ],
+      "criteria" : [ {
+        "checks" : "null",
+        "decision" : {
+          "actor" : "string",
+          "at" : "number",
+          "basis" : "string",
+          "criterion" : "string",
+          "environment" : "string",
+          "id" : "number",
+          "kind" : "string",
+          "reason" : "string",
+          "request_id" : "string",
+          "sha" : "string",
+          "version" : "number"
+        },
+        "description" : "string",
+        "id" : "string",
+        "method" : "string",
+        "status" : "string"
+      } ],
+      "exceptions" : "number",
+      "history" : [ {
+        "actor" : "string",
+        "at" : "number",
+        "basis" : "string",
+        "criterion" : "string",
+        "environment" : "string",
+        "id" : "number",
+        "kind" : "string",
+        "reason" : "string",
+        "request_id" : "string",
+        "sha" : "string",
+        "version" : "number"
+      } ],
+      "independent_verifier_available" : "boolean",
+      "issue" : "null",
+      "item" : "string",
+      "low_risk" : "boolean",
+      "overlaps" : [ ],
+      "pr" : "number",
+      "ready" : "boolean",
+      "repository" : "string",
+      "scope_hash" : "string",
+      "scope_missing" : "boolean",
+      "sha" : "string",
+      "state" : "string",
+      "title" : "string",
+      "verification" : {
+        "state" : "string"
+      },
+      "version" : "number"
+    } ],
+    "status" : 200
+  },
+  "GET /api/evidence/commandments" : {
+    "body" : [ {
+      "id" : "string",
+      "text" : "string"
+    } ],
+    "status" : 200
+  },
+  "GET /api/evidence/{id}" : {
+    "body" : {
+      "acceptance_state" : "string",
+      "agent_reports" : {
+        "content" : {
+          "integration" : {
+            "command" : "string",
+            "exit_code" : "number",
+            "status" : "string"
+          },
+          "passed" : "boolean",
+          "sha" : "string",
+          "unit" : {
+            "command" : "string",
+            "exit_code" : "number",
+            "status" : "string"
+          }
+        },
+        "sha_matches" : "boolean",
+        "trust" : "string"
+      },
+      "approved_proposal" : {
+        "acceptance" : "string",
+        "as_is" : "string",
+        "base_sha" : "string",
+        "criteria" : [ {
+          "description" : "string",
+          "id" : "string",
+          "method" : "string"
+        } ],
+        "doubtful_criteria" : [ ],
+        "integration_test" : "string",
+        "previous_changes" : [ ],
+        "risk" : "string",
+        "summary" : "string",
+        "to_be" : "string",
+        "unit_test" : "string"
+      },
+      "base_sha" : "string",
+      "basis" : "string",
+      "blockers" : [ "string" ],
+      "branch" : "null|string",
+      "commandments" : [ {
+        "detail" : "string",
+        "id" : "string",
+        "status" : "string",
+        "text" : "string"
+      } ],
+      "criteria" : [ {
+        "checks" : "null",
+        "decision" : {
+          "actor" : "string",
+          "at" : "number",
+          "basis" : "string",
+          "criterion" : "string",
+          "environment" : "string",
+          "id" : "number",
+          "kind" : "string",
+          "reason" : "string",
+          "request_id" : "string",
+          "sha" : "string",
+          "version" : "number"
+        },
+        "description" : "string",
+        "id" : "string",
+        "method" : "string",
+        "status" : "string"
+      } ],
+      "exceptions" : "number",
+      "history" : [ {
+        "actor" : "string",
+        "at" : "number",
+        "basis" : "string",
+        "criterion" : "string",
+        "environment" : "string",
+        "id" : "number",
+        "kind" : "string",
+        "reason" : "string",
+        "request_id" : "string",
+        "sha" : "string",
+        "version" : "number"
+      } ],
+      "independent_verifier_available" : "boolean",
+      "issue" : "null",
+      "item" : "string",
+      "low_risk" : "boolean",
+      "overlaps" : [ ],
+      "pr" : "null|number",
+      "ready" : "boolean",
+      "repository" : "string",
+      "scope_hash" : "string",
+      "scope_missing" : "boolean",
+      "sha" : "null|string",
+      "state" : "string",
+      "title" : "string",
+      "verification" : {
+        "state" : "string"
+      },
+      "version" : "number"
+    },
+    "status" : 200
+  },
+  "GET /api/executors" : {
+    "body" : [ {
+      "account" : "string",
+      "api_account" : "null",
+      "created" : "number",
+      "id" : "string",
+      "node" : "string",
+      "revoked" : "number"
+    } ],
+    "status" : 200
+  },
+  "GET /api/github-app" : {
+    "body" : {
+      "mode" : "string",
+      "slug" : "string"
+    },
+    "status" : 200
+  },
+  "GET /api/health" : {
+    "body" : {
+      "executors_fresh" : "number",
+      "paused" : "boolean",
+      "queued_commands" : "number",
+      "status" : "string",
+      "waiting_for_owner" : "number"
+    },
+    "status" : 200
+  },
+  "GET /api/initiatives" : {
+    "body" : [ {
+      "complete" : "boolean",
+      "goal" : "string",
+      "id" : "string",
+      "integrated" : "number",
+      "milestones" : [ {
+        "complete" : "boolean",
+        "id" : "string",
+        "integrated" : "number",
+        "title" : "string",
+        "total" : "number"
+      } ],
+      "paused" : "boolean",
+      "review_limit" : "number",
+      "review_slots" : "number",
+      "tasks" : [ {
+        "blockers" : [ ],
+        "depends_on" : [ ],
+        "id" : "string",
+        "in_progress" : "boolean",
+        "issue" : "null",
+        "milestone" : "string",
+        "pr" : "null",
+        "repo" : "string",
+        "state" : "string",
+        "title" : "string"
+      } ],
+      "title" : "string",
+      "total" : "number",
+      "version" : "number"
+    } ],
+    "status" : 200
+  },
+  "GET /api/initiatives/{id}" : {
+    "body" : {
+      "complete" : "boolean",
+      "goal" : "string",
+      "id" : "string",
+      "integrated" : "number",
+      "milestones" : [ {
+        "complete" : "boolean",
+        "id" : "string",
+        "integrated" : "number",
+        "title" : "string",
+        "total" : "number"
+      } ],
+      "paused" : "boolean",
+      "review_limit" : "number",
+      "review_slots" : "number",
+      "tasks" : [ {
+        "blockers" : [ ],
+        "depends_on" : [ ],
+        "id" : "string",
+        "in_progress" : "boolean",
+        "issue" : "null",
+        "milestone" : "string",
+        "pr" : "null",
+        "repo" : "string",
+        "state" : "string",
+        "title" : "string"
+      } ],
+      "title" : "string",
+      "total" : "number",
+      "version" : "number"
+    },
+    "status" : 200
+  },
+  "GET /api/installation" : {
+    "body" : {
+      "container_executor" : "boolean",
+      "execution_environment" : "string",
+      "integration_publisher" : "boolean",
+      "node_credentials" : "boolean",
+      "phase" : "string",
+      "secret_injection" : "boolean",
+      "worker_identity_isolated" : "boolean"
+    },
+    "status" : 200
+  },
+  "GET /api/me" : {
+    "body" : {
+      "demo" : "boolean",
+      "role" : "string",
+      "user" : "string"
+    },
+    "status" : 200
+  },
+  "GET /api/me/2fa" : {
+    "body" : {
+      "active" : "boolean",
+      "required_to_integrate" : "boolean"
+    },
+    "status" : 200
+  },
+  "GET /api/nodes" : {
+    "body" : [ {
+      "busy_until" : "null",
+      "enabled" : "number",
+      "heartbeat" : "null",
+      "id" : "string",
+      "reported_state" : "string",
+      "role" : "string",
+      "status" : "string"
+    } ],
+    "status" : 200
+  },
+  "GET /api/overview" : {
+    "body" : {
+      "budget_accounts" : [ {
+        "account" : "string",
+        "mode" : "string",
+        "shares" : "string"
+      } ],
+      "nodes" : [ {
+        "busy_until" : "null",
+        "enabled" : "number",
+        "heartbeat" : "null",
+        "id" : "string",
+        "reported_state" : "string",
+        "role" : "string",
+        "status" : "string"
+      } ],
+      "paused" : "boolean",
+      "provider_execution" : "string",
+      "tasks" : [ {
+        "cancel_requested" : "number",
+        "candidate_sha" : "null",
+        "hash" : "string",
+        "id" : "string",
+        "progress" : "null",
+        "project" : "string",
+        "spec" : "string",
+        "state" : "string",
+        "worker" : "null"
+      } ],
+      "workers" : [ {
+        "enabled" : "number",
+        "heartbeat" : "null",
+        "id" : "string",
+        "node" : "string",
+        "node_enabled" : "number",
+        "node_heartbeat" : "null",
+        "reported_state" : "string",
+        "status" : "string"
+      } ]
+    },
+    "status" : 200
+  },
+  "GET /api/providers" : {
+    "body" : {
+      "automatic_routing" : "boolean",
+      "contract_version" : "number",
+      "profiles" : [ "string" ],
+      "providers" : [ {
+        "additional_payment" : "boolean",
+        "artifacts" : "string",
+        "authentication" : "string",
+        "events" : "boolean",
+        "execution" : "string",
+        "id" : "string",
+        "independent_verification" : "boolean",
+        "interrupt" : "boolean",
+        "quota" : "string",
+        "resume" : "boolean",
+        "state" : "string"
+      } ]
+    },
+    "status" : 200
+  },
+  "GET /api/recipes" : {
+    "body" : [ {
+      "hash" : "string",
+      "id" : "string",
+      "purpose" : "string",
+      "required_evidence" : [ "string" ],
+      "research_steps" : [ "string" ],
+      "restrictions" : [ "string" ],
+      "title" : "string",
+      "version" : "number"
+    } ],
+    "status" : 200
+  },
+  "GET /api/runs" : {
+    "body" : [ {
+      "hash" : "string",
+      "id" : "number",
+      "mode" : "string",
+      "project" : "string",
+      "result" : {
+        "cost" : "null",
+        "implementation_evidence" : [ ],
+        "mode" : "string",
+        "project" : "string",
+        "run_id" : "number",
+        "spec_hash" : "string",
+        "state" : "string",
+        "summary" : "string",
+        "task" : "string"
+      },
+      "started" : "string",
+      "task" : "string"
+    } ],
+    "status" : 200
+  },
+  "GET /api/runtime" : {
+    "body" : {
+      "age_seconds" : "number",
+      "connected" : "boolean",
+      "events" : [ {
+        "at" : "string",
+        "id" : "number",
+        "kind" : "string",
+        "text" : "string",
+        "worker" : "string"
+      } ],
+      "executors" : [ {
+        "age_seconds" : "number",
+        "executor" : "string",
+        "fresh" : "boolean",
+        "snapshot" : {
+          "executor" : "string",
+          "node" : "string",
+          "quota" : {
+            "observed_at" : "string",
+            "weekly_used_percent" : "number"
+          }
+        }
+      } ],
+      "fresh" : "boolean",
+      "isolation_notices" : [ ],
+      "outdated_executors" : [ ],
+      "quota_fresh" : "boolean",
+      "snapshot" : {
+        "executor" : "string",
+        "node" : "string",
+        "quota" : {
+          "observed_at" : "string",
+          "weekly_used_percent" : "number"
+        }
+      },
+      "unisolated_executors" : [ ]
+    },
+    "status" : 200
+  },
+  "GET /api/skills" : {
+    "body" : [ {
+      "hash" : "string",
+      "id" : "string",
+      "roles" : [ "string" ],
+      "stacks" : [ "string" ],
+      "title" : "string",
+      "version" : "number"
+    } ],
+    "status" : 200
+  },
+  "GET /api/tasks" : {
+    "body" : [ {
+      "cancel_requested" : "number",
+      "candidate_sha" : "null",
+      "hash" : "string",
+      "id" : "string",
+      "progress" : "null",
+      "project" : "string",
+      "spec" : "string",
+      "state" : "string",
+      "worker" : "null"
+    } ],
+    "status" : 200
+  },
+  "GET /api/version" : {
+    "body" : {
+      "commit" : "string"
+    },
+    "status" : 200
+  },
+  "GET /api/work" : {
+    "body" : [ {
+      "branch" : "null|string",
+      "created" : "number",
+      "error" : "null|string",
+      "evidence" : "string",
+      "id" : "string",
+      "issue" : "null",
+      "pr" : "null|number",
+      "proposal" : "string",
+      "recipe" : {
+        "hash" : "string",
+        "id" : "string",
+        "purpose" : "string",
+        "required_evidence" : [ "string" ],
+        "research_steps" : [ "string" ],
+        "restrictions" : [ "string" ],
+        "title" : "string",
+        "version" : "number"
+      },
+      "repo" : "string",
+      "request" : "string",
+      "sha" : "null|string",
+      "state" : "string",
+      "state_since" : "number",
+      "title" : "string",
+      "version" : "number"
+    } ],
+    "status" : 200
+  },
+  "GET /api/work/costs" : {
+    "body" : {
+      "bugfix/research/subscription" : {
+        "kind" : "string",
+        "median" : "number",
+        "p90" : "number",
+        "recipe" : "string",
+        "runs" : "number",
+        "unit" : "string"
+      }
+    },
+    "status" : 200
+  },
+  "GET /api/work/digest" : {
+    "body" : {
+      "blocked" : [ {
+        "id" : "string",
+        "repo" : "string",
+        "title" : "string"
+      } ],
+      "days" : "number",
+      "in_progress" : "number",
+      "integrated" : [ {
+        "id" : "string",
+        "repo" : "string",
+        "title" : "string"
+      } ],
+      "ready" : [ {
+        "id" : "string",
+        "pr" : "number",
+        "repo" : "string",
+        "sha" : "string",
+        "title" : "string"
+      } ],
+      "waiting" : "number"
+    },
+    "status" : 200
+  },
+  "GET /api/work/metrics" : {
+    "body" : {
+      "cost" : {
+        "demo" : {
+          "runs" : "number",
+          "total" : "number",
+          "unit" : "string"
+        }
+      },
+      "totals" : {
+        "approval_rate" : "number",
+        "corrections" : "number",
+        "integrated" : "number",
+        "median_cycle_hours" : "number",
+        "proposals" : "number"
+      },
+      "weeks" : {
+        "{week}" : {
+          "approved" : "number",
+          "auto_approved" : "number",
+          "blocked" : "number",
+          "corrections" : "number",
+          "integrated" : "number",
+          "proposals" : "number"
+        }
+      }
+    },
+    "status" : 200
+  },
+  "GET /api/work/{id}/diff" : {
+    "body" : {
+      "error" : "string"
+    },
+    "status" : 409
+  },
+  "GET /api/workers" : {
+    "body" : [ {
+      "enabled" : "number",
+      "heartbeat" : "null",
+      "id" : "string",
+      "node" : "string",
+      "node_enabled" : "number",
+      "node_heartbeat" : "null",
+      "reported_state" : "string",
+      "status" : "string"
+    } ],
+    "status" : 200
+  },
+  "POST /api/automation/autonomy" : {
+    "body" : {
+      "level" : "string",
+      "recipe" : "string"
+    },
+    "status" : 200
+  },
+  "POST /api/automation/triggers" : {
+    "body" : {
+      "enabled" : "boolean",
+      "kinds" : [ "string" ],
+      "max_new" : "number",
+      "repository" : "string"
+    },
+    "status" : 200
+  },
+  "POST /api/budget/configure" : {
+    "body" : {
+      "state" : "string",
+      "unit" : "string"
+    },
+    "status" : 200
+  },
+  "POST /api/budget/{operation}" : {
+    "body" : {
+      "amounts" : {
+        "weekly" : "number"
+      },
+      "run_id" : "string",
+      "state" : "string"
+    },
+    "status" : 200
+  },
+  "POST /api/executors" : {
+    "body" : {
+      "account" : "string",
+      "api_account" : "string",
+      "capabilities" : [ "string" ],
+      "id" : "string",
+      "integration" : "boolean",
+      "node" : "string",
+      "token" : "string"
+    },
+    "status" : 200
+  },
+  "POST /api/governance/paused/{paused}" : {
+    "body" : {
+      "paused" : "boolean"
+    },
+    "status" : 200
+  },
+  "POST /api/initiatives" : {
+    "body" : {
+      "complete" : "boolean",
+      "goal" : "string",
+      "id" : "string",
+      "integrated" : "number",
+      "milestones" : [ {
+        "complete" : "boolean",
+        "id" : "string",
+        "integrated" : "number",
+        "title" : "string",
+        "total" : "number"
+      } ],
+      "paused" : "boolean",
+      "review_limit" : "number",
+      "review_slots" : "number",
+      "tasks" : [ ],
+      "title" : "string",
+      "total" : "number",
+      "version" : "number"
+    },
+    "status" : 200
+  },
+  "POST /api/initiatives/{id}/tasks" : {
+    "body" : {
+      "complete" : "boolean",
+      "goal" : "string",
+      "id" : "string",
+      "integrated" : "number",
+      "milestones" : [ {
+        "complete" : "boolean",
+        "id" : "string",
+        "integrated" : "number",
+        "title" : "string",
+        "total" : "number"
+      } ],
+      "paused" : "boolean",
+      "review_limit" : "number",
+      "review_slots" : "number",
+      "tasks" : [ {
+        "blockers" : [ ],
+        "depends_on" : [ ],
+        "id" : "string",
+        "in_progress" : "boolean",
+        "issue" : "null",
+        "milestone" : "string",
+        "pr" : "null",
+        "repo" : "string",
+        "state" : "string",
+        "title" : "string"
+      } ],
+      "title" : "string",
+      "total" : "number",
+      "version" : "number"
+    },
+    "status" : 200
+  },
+  "POST /api/nodes" : {
+    "body" : {
+      "state" : "string"
+    },
+    "status" : 200
+  },
+  "POST /api/runtime/observations" : {
+    "body" : {
+      "state" : "string"
+    },
+    "status" : 200
+  },
+  "POST /api/simulate" : {
+    "body" : {
+      "cost" : "null",
+      "implementation_evidence" : [ ],
+      "mode" : "string",
+      "project" : "string",
+      "run_id" : "number",
+      "spec_hash" : "string",
+      "state" : "string",
+      "summary" : "string",
+      "task" : "string"
+    },
+    "status" : 200
+  },
+  "POST /api/tasks" : {
+    "body" : {
+      "spec_hash" : "string",
+      "state" : "string"
+    },
+    "status" : 200
+  },
+  "POST /api/work" : {
+    "body" : {
+      "branch" : "null",
+      "created" : "number",
+      "error" : "null",
+      "evidence" : "string",
+      "id" : "string",
+      "issue" : "null",
+      "pr" : "null",
+      "proposal" : "string",
+      "repo" : "string",
+      "request" : "string",
+      "sha" : "null",
+      "state" : "string",
+      "state_since" : "number",
+      "title" : "string",
+      "version" : "number"
+    },
+    "status" : 200
+  },
+  "POST /api/work/agent/claim" : {
+    "body" : {
+      "command" : {
+        "claimed_by" : "string",
+        "id" : "string",
+        "item" : "string",
+        "kind" : "string",
+        "payload" : "string",
+        "state" : "string",
+        "updated" : "number"
+      },
+      "item" : {
+        "branch" : "null",
+        "created" : "number",
+        "error" : "null",
+        "evidence" : "string",
+        "id" : "string",
+        "issue" : "null",
+        "pr" : "null",
+        "proposal" : "string",
+        "repo" : "string",
+        "request" : "string",
+        "sha" : "null",
+        "state" : "string",
+        "state_since" : "number",
+        "title" : "string",
+        "version" : "number"
+      }
+    },
+    "status" : 200
+  },
+  "POST /api/work/agent/commands/{id}" : {
+    "body" : {
+      "state" : "string"
+    },
+    "status" : 200
+  },
+  "POST /api/work/{id}/actions/{action}" : {
+    "body" : {
+      "branch" : "null",
+      "created" : "number",
+      "error" : "null",
+      "evidence" : "string",
+      "id" : "string",
+      "issue" : "null",
+      "pr" : "null",
+      "proposal" : "string",
+      "repo" : "string",
+      "request" : "string",
+      "sha" : "null",
+      "state" : "string",
+      "state_since" : "number",
+      "title" : "string",
+      "version" : "number"
+    },
+    "status" : 200
+  },
+  "POST /api/workers" : {
+    "body" : {
+      "state" : "string"
+    },
+    "status" : 200
+  }
+}

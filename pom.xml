@@ -27,6 +27,11 @@
   <properties>
     <java.version>21</java.version>
     <mateu.version>3.0-beta.32</mateu.version>
+    <!-- Our code has no warnings left. Mateu's annotation processors raise three: true once it leaves (#89). -->
+    <compiler.failOnWarning>false</compiler.failOnWarning>
+    <archunit.version>1.5.1</archunit.version>
+    <jacoco.version>0.8.16</jacoco.version>
+    <spotbugs.version>4.10.5.0</spotbugs.version>
     <spotless.version>3.11.0</spotless.version>
     <google-java-format.version>2.0.0</google-java-format.version>
   </properties>
@@ -79,17 +84,26 @@
       <artifactId>spring-boot-starter-security-test</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <version>${archunit.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <profiles>
-    <!-- The format doesn't depend on the JDK, and the formatter reaches into javac's internals: Java 21 is enough. -->
+    <!-- Format and static analysis don't depend on the JDK, and the formatter reaches into javac's internals: Java 21 is enough. -->
     <profile>
-      <id>format-only-on-21</id>
+      <id>static-checks-only-on-21</id>
       <activation>
         <jdk>[22,)</jdk>
       </activation>
       <properties>
         <spotless.check.skip>true</spotless.check.skip>
+        <spotbugs.skip>true</spotbugs.skip>
+        <!-- A newer javac brings new lint categories: Java 21 decides what counts as a warning. -->
+        <compiler.failOnWarning>false</compiler.failOnWarning>
       </properties>
     </profile>
   </profiles>
@@ -113,6 +127,11 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
+          <showWarnings>true</showWarnings>
+          <failOnWarning>${compiler.failOnWarning}</failOnWarning>
+          <compilerArgs>
+            <arg>-Xlint:all,-processing,-serial</arg>
+          </compilerArgs>
           <annotationProcessorPaths>
             <path>
               <groupId>org.projectlombok</groupId>
@@ -126,6 +145,45 @@
             </path>
           </annotationProcessorPaths>
         </configuration>
+      </plugin>
+      <!-- Coverage is reported, not enforced: docs/QUALITY.md keeps the starting point to compare against. -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>com.github.spotbugs</groupId>
+        <artifactId>spotbugs-maven-plugin</artifactId>
+        <version>${spotbugs.version}</version>
+        <configuration>
+          <effort>Default</effort>
+          <threshold>Medium</threshold>
+          <xmlOutput>true</xmlOutput>
+          <excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
       <!-- One format, so a later diff shows what changed and not how it was wrapped. -->
       <plugin>

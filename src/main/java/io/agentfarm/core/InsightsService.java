@@ -199,7 +199,7 @@ public class InsightsService {
                 "actual",
                 parse(r.get("actual").toString())));
       }
-      var cost = new TreeMap<String, Object>();
+      var cost = new TreeMap<String, Map<String, Object>>();
       var readings = new HashMap<String, List<long[]>>();
       for (var s : spend) {
         var m = MAPPER.valueToTree(s);
@@ -208,25 +208,22 @@ public class InsightsService {
         long total = reading == null ? measured(m.path("actual")) : 0;
         if (reading != null) readings.computeIfAbsent(account, k -> new ArrayList<>()).add(reading);
         var entry =
-            (Map<String, Object>)
-                cost.computeIfAbsent(
-                    account,
-                    k ->
-                        new LinkedHashMap<>(
-                            obj(
-                                "unit",
-                                m.path("mode").asText().equals("api")
-                                    ? "usd_micros"
-                                    : "basis_points",
-                                "runs",
-                                0L,
-                                "total",
-                                0L)));
+            cost.computeIfAbsent(
+                account,
+                k ->
+                    new LinkedHashMap<>(
+                        obj(
+                            "unit",
+                            m.path("mode").asText().equals("api") ? "usd_micros" : "basis_points",
+                            "runs",
+                            0L,
+                            "total",
+                            0L)));
         entry.put("runs", (Long) entry.get("runs") + 1);
         entry.put("total", (Long) entry.get("total") + total);
       }
       for (var e : readings.entrySet()) {
-        var entry = (Map<String, Object>) cost.get(e.getKey());
+        var entry = cost.get(e.getKey());
         entry.put("observed", observedRise(e.getValue()));
         entry.put("attribution", "account");
       }

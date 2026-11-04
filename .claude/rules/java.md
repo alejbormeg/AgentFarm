@@ -12,6 +12,9 @@ paths:
 - Java 24 y 25 endurecen el uso de `sun.misc.Unsafe` y de JNI con avisos en el arranque, y eliminan el Security Manager. No los uses tú, y mira esos avisos al actualizar una dependencia nativa, como `sqlite-jdbc`.
 - Este equipo solo tiene JDK 21. Para Java 25 sin Actions: `validar-local.sh --java25`, que lo corre en un contenedor.
 
+- El formato lo fija `./mvnw spotless:apply`, y `verify` falla si no se ha aplicado.
+- `verify` también exige el contrato de la API, las reglas de arquitectura y SpotBugs. Si fallan, lee [docs/QUALITY.md](../../docs/QUALITY.md) antes de regenerar nada: un fallo se corrige en el producto.
+
 ## Errores que ya hemos cometido
 
 - **`store.tx` deshace la transacción si lanzas una excepción.** Si un contador de fallos debe persistir, devuelve un resultado y lanza fuera, como en `TwoFactor`. Fuera de un `return`, a veces hay que dar el tipo: `boolean ok = store.tx(...)`.

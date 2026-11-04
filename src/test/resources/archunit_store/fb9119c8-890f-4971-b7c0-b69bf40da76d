@@ -1,0 +1,4 @@
+Constructor <io.agentfarm.web.HealthApi.<init>(io.agentfarm.core.Store, io.agentfarm.core.TelemetryService, boolean)> has parameter of type <io.agentfarm.core.Store> in (HealthApi.java:0)
+Field <io.agentfarm.web.HealthApi.store> has type <io.agentfarm.core.Store> in (HealthApi.java:0)
+Method <io.agentfarm.web.HealthApi.health(java.security.Principal)> calls method <io.agentfarm.core.Store.one(java.sql.Connection, java.lang.String, [Ljava.lang.Object;)> in (HealthApi.java:51)
+Method <io.agentfarm.web.HealthApi.health(java.security.Principal)> calls method <io.agentfarm.core.Store.tx(io.agentfarm.core.Store$Work)> in (HealthApi.java:50)

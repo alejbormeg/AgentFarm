@@ -30,6 +30,21 @@ git -C "$work/repo" rev-parse HEAD > "$work/repo/.git/agentfarm-checked"
 allows "git push"
 git -C "$work/repo" -c user.name=t -c user.email=t@t commit -q --allow-empty -m next
 blocks "git push"
+# A commit that passed the full local validation doesn't repeat the shorter checks.
+check="$root/.claude/skills/resolver-issue/comprobar.sh"
+head="$(git -C "$work/repo" rev-parse HEAD)"
+git -C "$work/repo" rev-parse HEAD~1 > "$work/repo/.git/agentfarm-validated"
+rm -f "$work/repo/.git/agentfarm-checked"
+(cd "$work/repo" && bash "$check" HEAD > "$work/out" 2>&1) || true
+if grep -q 'validar-local.sh ya pasó' "$work/out"; then echo "FAIL: another commit's validation was accepted" >&2; exit 1; fi
+echo "ok   another commit's validation doesn't count"
+echo "$head" > "$work/repo/.git/agentfarm-validated"
+rm -f "$work/repo/.git/agentfarm-checked"
+(cd "$work/repo" && bash "$check" HEAD > "$work/out" 2>&1) || { cat "$work/out" >&2; echo "FAIL: comprobar.sh after validation" >&2; exit 1; }
+grep -q 'validar-local.sh ya pasó' "$work/out" || { echo "FAIL: comprobar.sh ran again after validation" >&2; exit 1; }
+[[ "$(cat "$work/repo/.git/agentfarm-checked")" == "$head" ]] || { echo "FAIL: validated commit not recorded as checked" >&2; exit 1; }
+echo "ok   a validated commit counts as checked"
+
 # An artifact without retention-days stays 90 days: 294 of them once filled the Actions quota.
 for workflow in "$root"/.github/workflows/*.yml; do
   uploads=$(grep -c 'actions/upload-artifact' "$workflow" || true)

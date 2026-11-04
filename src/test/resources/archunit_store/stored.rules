@@ -1,0 +1,5 @@
+#
+#Wed Nov 04 21:01:38 CET 2026
+no\ classes\ that\ reside\ in\ a\ package\ '..core..'\ should\ depend\ on\ classes\ that\ reside\ in\ any\ package\ ['java.sql..',\ 'java.net.http..']\ or\ should\ depend\ on\ classes\ that\ are\ assignable\ to\ java.lang.ProcessBuilder=992dadd0-efb9-4699-9c81-54312d287296
+no\ classes\ that\ reside\ in\ a\ package\ '..core..'\ should\ depend\ on\ classes\ that\ reside\ in\ any\ package\ ['org.springframework..',\ 'com.fasterxml.jackson..']=5b789fc7-8ffe-4a1b-b83a-af1757014f1f
+no\ classes\ that\ reside\ in\ any\ package\ ['..web..',\ '..ui..']\ should\ depend\ on\ classes\ that\ reside\ in\ a\ package\ 'java.sql..'\ or\ should\ depend\ on\ classes\ that\ have\ fully\ qualified\ name\ 'io.agentfarm.core.Store'=fb9119c8-890f-4971-b7c0-b69bf40da76d

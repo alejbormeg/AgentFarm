@@ -8,6 +8,12 @@ base="${1:-origin/main}"
 [[ -z "$(git status --porcelain)" ]] || { echo "Haz commit antes: se comprueba el commit, no el árbol de trabajo." >&2; exit 2; }
 git_dir="$(git rev-parse --absolute-git-dir)"
 head="$(git rev-parse HEAD)"
+# validar-local.sh runs all of this and more, in a clean checkout: no need to run it twice for one commit.
+if [[ "$(cat "$(git rev-parse --git-common-dir)/agentfarm-validated" 2>/dev/null || true)" == "$head" ]]; then
+  printf '%s\n' "$head" > "$git_dir/agentfarm-checked"
+  echo "Comprobado ${head:0:7}: validar-local.sh ya pasó sobre este commit."
+  exit 0
+fi
 changed="$(git diff --name-only "$(git merge-base "$base" HEAD)" HEAD)"
 touches() { grep -qE "$1" <<<"$changed"; }
 step() { echo; echo "== $*"; "$@"; }

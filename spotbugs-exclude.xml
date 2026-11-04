@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Each exclusion says why the finding is wrong here. A new one needs the same. -->
+<FindBugsFilter>
+  <!-- Beans and records hand references around inside one process; nothing untrusted subclasses them. -->
+  <Match><Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2,CT_CONSTRUCTOR_THROW"/></Match>
+  <!-- These are SecureRandom, which isn't weakened by being used once. -->
+  <Match><Bug pattern="DMI_RANDOM_USED_ONLY_ONCE"/></Match>
+  <!-- The sandbox profile names absolute system paths on purpose. -->
+  <Match><Bug pattern="DMI_HARDCODED_ABSOLUTE_FILENAME"/></Match>
+  <!-- getParent() of an absolute, normalized file path, and aggregates that always return a row. -->
+  <Match>
+    <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
+    <Or>
+      <Class name="io.agentfarm.core.Backups"/>
+      <Class name="io.agentfarm.core.GitHubAppSetup"/>
+      <Class name="io.agentfarm.core.SkillCatalog"/>
+      <Class name="io.agentfarm.core.Store"/>
+      <Class name="io.agentfarm.web.HealthApi"/>
+      <Class name="io.agentfarm.web.SecurityConfig"/>
+      <Class name="io.agentfarm.web.TwoFactorApi"/>
+    </Or>
+  </Match>
+  <!-- A failed probe or delivery of any kind is the result being reported, not an error to raise. -->
+  <Match>
+    <Bug pattern="REC_CATCH_EXCEPTION"/>
+    <Or>
+      <Class name="io.agentfarm.core.Diagnostics"/>
+      <Class name="io.agentfarm.core.NotificationService"/>
+    </Or>
+  </Match>
+  <!-- verify() records GitHub being unavailable; reconcile() only has nothing to add then. -->
+  <Match>
+    <Bug pattern="DE_MIGHT_IGNORE"/>
+    <Class name="io.agentfarm.core.EvidenceVerifier"/>
+  </Match>
+  <!-- The lock on the bean guards the cached App token; nothing else holds it. -->
+  <Match>
+    <Bug pattern="USO_UNSAFE_METHOD_SYNCHRONIZATION"/>
+    <Class name="io.agentfarm.core.GitHubCredentials"/>
+  </Match>
+  <!-- Table names come from a fixed list and columns from this database's own PRAGMA, never from the imported file. -->
+  <Match>
+    <Bug pattern="SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING"/>
+    <Class name="io.agentfarm.core.LegacyImporter"/>
+  </Match>
+  <!-- Mateu's generated controllers and declarative views: this package leaves with Mateu (#89). -->
+  <Match><Package name="io.agentfarm.ui"/></Match>
+</FindBugsFilter>

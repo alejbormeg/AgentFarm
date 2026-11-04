@@ -48,6 +48,7 @@ class ProviderSettlementTest {
     return b.execute(op, MAPPER.valueToTree(n), "test");
   }
 
+  @SuppressWarnings("unchecked")
   Map<?, ?> window() {
     return ((List<Map<?, ?>>) b.status("test").get("windows")).getFirst();
   }
