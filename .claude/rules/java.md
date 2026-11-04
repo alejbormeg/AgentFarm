@@ -10,7 +10,7 @@ paths:
 - En 21 puedes usar records, `switch` con patrones, bloques de texto, `List.getLast()` y hilos virtuales. Sigue el estilo del archivo que tocas: `core` ya usa records y `Map.of`.
 - Desde Java 23, `javac` solo procesa anotaciones si se configura de forma explícita. `pom.xml` declara Lombok y Mateu en `annotationProcessorPaths`: un procesador nuevo debe ir allí.
 - Java 24 y 25 endurecen el uso de `sun.misc.Unsafe` y de JNI con avisos en el arranque, y eliminan el Security Manager. No los uses tú, y mira esos avisos al actualizar una dependencia nativa, como `sqlite-jdbc`.
-- Este equipo solo tiene JDK 21: lo propio de Java 25 solo se comprueba en la CI.
+- Este equipo solo tiene JDK 21. Para Java 25 sin Actions: `validar-local.sh --java25`, que lo corre en un contenedor.
 
 ## Errores que ya hemos cometido
 
