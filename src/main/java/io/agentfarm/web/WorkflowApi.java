@@ -15,6 +15,7 @@ public class WorkflowApi {
   private final DigestService digest;
 
   private final io.agentfarm.core.TwoFactor twoFactor;
+  private final io.agentfarm.core.GitHubCredentials credentials;
 
   public WorkflowApi(
       WorkflowService work,
@@ -22,8 +23,10 @@ public class WorkflowApi {
       GitHubReader github,
       InsightsService insights,
       DigestService digest,
-      io.agentfarm.core.TwoFactor twoFactor) {
+      io.agentfarm.core.TwoFactor twoFactor,
+      io.agentfarm.core.GitHubCredentials credentials) {
     this.twoFactor = twoFactor;
+    this.credentials = credentials;
     this.work = work;
     this.publisher = publisher;
     this.github = github;
@@ -119,6 +122,20 @@ public class WorkflowApi {
   public Object claim(@RequestBody JsonNode n, Principal p) {
     checkAgent(n, p);
     return work.claim(Json.text(n, "agent"), !p.getName().startsWith("node:"));
+  }
+
+  @PostMapping("/agent/commands/{id}/github-token")
+  public Object githubToken(@PathVariable String id, @RequestBody JsonNode n, Principal p) throws Exception {
+    if (!p.getName().startsWith("node:"))
+      throw new org.springframework.security.access.AccessDeniedException("Only an executor");
+    checkAgent(n, p);
+    String repository = work.heldRepository(id, Json.text(n, "agent"));
+    try {
+      var token = credentials.repositoryToken(repository);
+      return token == null ? Json.obj("mode", credentials.mode()) : token;
+    } catch (java.io.IOException | IllegalStateException e) {
+      throw new IllegalArgumentException("GitHub no ha dado un token para " + repository + ": " + e.getMessage());
+    }
   }
 
   @PostMapping("/agent/commands/{id}")

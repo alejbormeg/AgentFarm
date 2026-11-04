@@ -94,6 +94,8 @@ class GitHubAppSetupTest {
     assertFalse(manifest.path("hook_attributes").path("active").asBoolean(true), "no webhook needed");
     assertEquals("write", manifest.path("default_permissions").path("contents").asText());
     assertEquals("read", manifest.path("default_permissions").path("checks").asText());
+    assertEquals("write", manifest.path("default_permissions").path("issues").asText(), "the executor opens issues");
+    assertEquals("write", manifest.path("default_permissions").path("workflows").asText(), "and may add the CI template");
     assertTrue(manifest.path("default_permissions").path("administration").isMissingNode());
     assertTrue(manifest.path("name").asText().matches("AgentFarm [A-Za-z0-9]{6}"));
   }

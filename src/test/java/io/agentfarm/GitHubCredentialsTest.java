@@ -68,4 +68,48 @@ class GitHubCredentialsTest {
     assertThrows(IllegalArgumentException.class, () -> new GitHubCredentials("", "abc", "", "2", (i, j) -> "{}", Clock.systemUTC()));
     assertEquals("none", GitHubCredentials.file("").mode());
   }
+
+  private GitHubCredentials withApp(String selection, java.util.List<String> bodies) throws Exception {
+    var keys = KeyPairGenerator.getInstance("RSA");
+    keys.initialize(2048);
+    Path key = dir.resolve("scoped.pem");
+    Files.writeString(
+        key,
+        "-----BEGIN PRIVATE KEY-----\n"
+            + Base64.getEncoder().encodeToString(keys.generateKeyPair().getPrivate().getEncoded())
+            + "\n-----END PRIVATE KEY-----\n");
+    return new GitHubCredentials(
+        "", "1", key.toString(), "2",
+        new GitHubCredentials.Exchange() {
+          @Override
+          public String tokenResponse(String installation, String jwt) {
+            throw new AssertionError("the unlimited call must not be used");
+          }
+
+          @Override
+          public String tokenResponse(String installation, String jwt, String body) {
+            bodies.add(body);
+            return "{\"token\":\"ghs_x\",\"expires_at\":\"2099-01-01T00:00:00Z\",\"repository_selection\":\"" + selection + "\"}";
+          }
+        },
+        Clock.systemUTC());
+  }
+
+  @Test
+  void anExecutorTokenIsLimitedToItsRepository() throws Exception {
+    var bodies = new ArrayList<String>();
+    var token = withApp("selected", bodies).repositoryToken("owner/forja");
+    assertEquals("ghs_x", token.get("token"));
+    assertEquals("{\"repositories\":[\"forja\"]}", bodies.get(0));
+  }
+
+  @Test
+  void aWiderTokenThanRequestedIsRefused() throws Exception {
+    assertThrows(IllegalStateException.class, () -> withApp("all", new ArrayList<>()).repositoryToken("owner/forja"));
+  }
+
+  @Test
+  void withoutAnAppThereIsNoExecutorToken() throws Exception {
+    assertNull(GitHubCredentials.file("").repositoryToken("owner/forja"));
+  }
 }

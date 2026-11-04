@@ -399,3 +399,12 @@ AGENTFARM_DB="$work/panel/agentfarm.db" AGENTFARM_GITHUB_API="http://127.0.0.1:$
 python3 -c 'import json,sys;r=json.load(open(sys.argv[1]));assert r["credential"]=="github-app",r;print("GitHub App connected from the panel:",r["state"])' "$work/app-check.json" \
   || fail "the stored App was not used"
 
+# With an App, the executor needs no gh login: each order gets a token for its repository from the panel.
+if owner /work/agent/commands/none/github-token '{"agent":"admin"}' > /dev/null 2>&1; then fail "a person obtained an executor token"; fi
+item=e2e-request-app
+owner /work '{"request_id":"e2e-request-app","repository":"e2e/demo","title":"Con la App","request":"Crea greeting.txt con un saludo."}' > /dev/null
+sleep 3
+wait_for proposed 60
+grep -qx ghs_e2e_repo_demo "$work/gh.json.tokens" || fail "the executor did not use a token limited to the repository"
+if grep -qx ghs_e2e "$work/gh.json.tokens"; then fail "the executor used a token for every repository"; fi
+echo "The executor used a short-lived token for one repository"

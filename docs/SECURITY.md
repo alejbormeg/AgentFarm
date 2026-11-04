@@ -9,7 +9,7 @@ así que **no sustituye a una revisión independiente**, y el repositorio no deb
 | Activo | Dónde está | Si se pierde |
 | --- | --- | --- |
 | Credencial de GitHub del panel | Volumen del panel | Fusionar y escribir en los repositorios a su alcance |
-| Sesión de `gh` y de Codex | Home del usuario del ejecutor | Publicar como esa persona y gastar su cuota |
+| Sesión de `gh` y de Codex | Home del usuario del ejecutor. Con una GitHub App en el panel, el ejecutor no necesita sesión de `gh`: recibe por orden un token de una hora limitado a ese repositorio. Solo probado con dobles | Publicar como esa persona y gastar su cuota |
 | Token del nodo | `AGENTFARM_STATE/node-token` | Reclamar trabajo e informar como ese nodo, sin poder fusionar |
 | Contraseña del panel y claves de segundo factor | Volumen del panel y sus copias | Aprobar e integrar como esa persona |
 | Docker del ejecutor | Socket del equipo | Equivale a root en el equipo |

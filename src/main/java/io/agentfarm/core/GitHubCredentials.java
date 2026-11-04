@@ -16,7 +16,8 @@ import org.springframework.stereotype.Component;
 /**
  * GitHub token for the control plane: a GitHub App installation token (preferred, minted and
  * cached here) or a personal token file. The App comes from the environment or from what
- * GitHubAppSetup stored beside the database. Tokens are never logged or returned by the API.
+ * GitHubAppSetup stored beside the database. Tokens are never logged. The API returns only
+ * repositoryToken, and only to the node running an order on that repository.
  */
 @Component
 public class GitHubCredentials {
@@ -30,7 +31,25 @@ public class GitHubCredentials {
   @FunctionalInterface
   public interface Exchange {
     String tokenResponse(String installation, String jwt) throws Exception;
+
+    /** Limited by the request body. Never falls back to the unlimited call: see REAL. */
+    default String tokenResponse(String installation, String jwt, String body) throws Exception {
+      throw new UnsupportedOperationException("Limited tokens need their own exchange");
+    }
   }
+
+  private static final Exchange REAL =
+      new Exchange() {
+        @Override
+        public String tokenResponse(String installation, String jwt) throws Exception {
+          return github(installation, jwt, null);
+        }
+
+        @Override
+        public String tokenResponse(String installation, String jwt, String body) throws Exception {
+          return github(installation, jwt, body);
+        }
+      };
   private record App(String id, String key, String installation) {}
   private String cached;
   private Instant expires = Instant.EPOCH;
@@ -47,7 +66,7 @@ public class GitHubCredentials {
         appId,
         keyFile,
         installation,
-        GitHubCredentials::github,
+        REAL,
         Clock.systemUTC(),
         db == null || db.isBlank() ? null : Path.of(db).toAbsolutePath().getParent());
   }
@@ -71,7 +90,7 @@ public class GitHubCredentials {
   }
 
   public static GitHubCredentials file(String tokenFile) {
-    return new GitHubCredentials(tokenFile, "", "", "", GitHubCredentials::github, Clock.systemUTC());
+    return new GitHubCredentials(tokenFile, "", "", "", REAL, Clock.systemUTC());
   }
 
   /** The operator's environment wins. A stored App counts once it has its installation. */
@@ -121,13 +140,30 @@ public class GitHubCredentials {
     return cached;
   }
 
+  /**
+   * A token for the executor, limited to one repository, so it needs no login of its own. Null without
+   * an App. A wider answer than requested is refused: the executor would hold more than it should.
+   */
+  public java.util.Map<String, Object> repositoryToken(String repository) throws Exception {
+    var app = app();
+    if (app == null) return null;
+    String name = repository.substring(repository.indexOf('/') + 1);
+    var body =
+        parse(
+            exchange.tokenResponse(
+                app.installation(), jwtFor(app.id(), app.key()), encode(obj("repositories", java.util.List.of(name)))));
+    if (!body.path("repository_selection").asText().equals("selected"))
+      throw new IllegalStateException("GitHub answered with a token wider than one repository");
+    return obj("token", body.path("token").asText(), "expires_at", body.path("expires_at").asText());
+  }
+
   /** A token minted for another App must not outlive the change to this one. */
   synchronized void forgetToken() {
     cached = null;
     expires = Instant.EPOCH;
   }
 
-  static String github(String installation, String jwt) throws Exception {
+  static String github(String installation, String jwt, String body) throws Exception {
     var response =
         HttpClient.newHttpClient()
             .send(
@@ -136,7 +172,7 @@ public class GitHubCredentials {
                     .timeout(Duration.ofSeconds(20))
                     .header("Authorization", "Bearer " + jwt)
                     .header("Accept", "application/vnd.github+json")
-                    .POST(HttpRequest.BodyPublishers.noBody())
+                    .POST(body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body))
                     .build(),
                 HttpResponse.BodyHandlers.ofString());
     if (response.statusCode() != 201)
