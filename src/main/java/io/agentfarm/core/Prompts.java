@@ -43,7 +43,8 @@ public final class Prompts {
     Matcher m = SLOT.matcher(template);
     while (m.find()) {
       String key = m.group(1);
-      if (!values.containsKey(key)) throw new IllegalArgumentException("Missing prompt value " + key);
+      if (!values.containsKey(key))
+        throw new IllegalArgumentException("Missing prompt value " + key);
       used.add(key);
       m.appendReplacement(out, Matcher.quoteReplacement(values.get(key)));
     }

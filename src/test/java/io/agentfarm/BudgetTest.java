@@ -377,17 +377,15 @@ class BudgetTest {
     var barrier = new CyclicBarrier(2);
     try (var pool = Executors.newFixedThreadPool(2)) {
       var a =
-          pool.submit(
-              () -> {
-                barrier.await(10, TimeUnit.SECONDS);
-                return reserve("a", 3000).get("state");
-              });
+          pool.submit(() -> {
+            barrier.await(10, TimeUnit.SECONDS);
+            return reserve("a", 3000).get("state");
+          });
       var b =
-          pool.submit(
-              () -> {
-                barrier.await(10, TimeUnit.SECONDS);
-                return reserve("b", 3000).get("state");
-              });
+          pool.submit(() -> {
+            barrier.await(10, TimeUnit.SECONDS);
+            return reserve("b", 3000).get("state");
+          });
       assertEquals(Set.of("reserved", "paused"), Set.of(a.get(), b.get()));
     }
     service = new BudgetService(new Store(dir.resolve("budget.db").toString()), clock);

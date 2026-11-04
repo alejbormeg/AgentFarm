@@ -51,7 +51,8 @@ public class GitHubAppSetup {
   private final Map<String, Instant> states = new ConcurrentHashMap<>();
 
   @Autowired
-  public GitHubAppSetup(Store store, GitHubCredentials credentials, @Value("${agentfarm.db}") String db) {
+  public GitHubAppSetup(
+      Store store, GitHubCredentials credentials, @Value("${agentfarm.db}") String db) {
     this(
         store,
         credentials,
@@ -60,7 +61,8 @@ public class GitHubAppSetup {
         Clock.systemUTC());
   }
 
-  public GitHubAppSetup(Store store, GitHubCredentials credentials, Path dir, Api api, Clock clock) {
+  public GitHubAppSetup(
+      Store store, GitHubCredentials credentials, Path dir, Api api, Clock clock) {
     this.store = store;
     this.credentials = credentials;
     config = dir.resolve(GitHubCredentials.STORED_APP);
@@ -80,7 +82,8 @@ public class GitHubAppSetup {
   private void consume(String state) {
     Instant until = state == null ? null : states.remove(state);
     if (until == null || clock.instant().isAfter(until))
-      throw new IllegalArgumentException("Este enlace ya no vale. Empieza otra vez desde Gobierno.");
+      throw new IllegalArgumentException(
+          "Este enlace ya no vale. Empieza otra vez desde Gobierno.");
   }
 
   private static String web() {
@@ -95,42 +98,54 @@ public class GitHubAppSetup {
     String state = newState();
     var manifest =
         obj(
-            "name", "AgentFarm " + suffix,
-            "url", panel,
-            "redirect_url", panel + "/github-app/created",
-            "setup_url", panel + "/github-app/installed",
-            "public", false,
-            "default_permissions", PERMISSIONS,
-            "default_events", List.of(),
-            "hook_attributes", obj("url", panel + "/github-app/unused", "active", false));
+            "name",
+            "AgentFarm " + suffix,
+            "url",
+            panel,
+            "redirect_url",
+            panel + "/github-app/created",
+            "setup_url",
+            panel + "/github-app/installed",
+            "public",
+            false,
+            "default_permissions",
+            PERMISSIONS,
+            "default_events",
+            List.of(),
+            "hook_attributes",
+            obj("url", panel + "/github-app/unused", "active", false));
     return obj("action", web() + "/settings/apps/new?state=" + state, "manifest", encode(manifest));
   }
 
-  /** GitHub came back with a one-time code: it turns into the App and its key. Returns where to install it. */
+  /**
+   * GitHub came back with a one-time code: it turns into the App and its key. Returns where to
+   * install it.
+   */
   public String created(String code, String state, String actor) throws Exception {
     consume(state);
     if (code == null || !code.matches("[A-Za-z0-9_-]{1,100}"))
       throw new IllegalArgumentException("GitHub no devolvió un código válido.");
     var response =
         api.send(
-            HttpRequest.newBuilder(URI.create(GitHubApi.base() + "/app-manifests/" + code + "/conversions"))
+            HttpRequest.newBuilder(
+                    URI.create(GitHubApi.base() + "/app-manifests/" + code + "/conversions"))
                 .timeout(Duration.ofSeconds(20))
                 .header("Accept", "application/vnd.github+json")
                 .POST(HttpRequest.BodyPublishers.noBody())
                 .build());
     if (response.statusCode() != 201)
-      throw new IllegalStateException("GitHub rechazó crear la App (HTTP " + response.statusCode() + ").");
+      throw new IllegalStateException(
+          "GitHub rechazó crear la App (HTTP " + response.statusCode() + ").");
     var app = parse(response.body());
     String id = app.path("id").asText(), slug = app.path("slug").asText();
     if (!id.matches("[0-9]{1,12}") || !slug.matches("[a-z0-9-]{1,100}"))
       throw new IllegalStateException("GitHub devolvió una App que no se reconoce.");
     writePrivate(key, pkcs8(app.path("pem").asText()));
     writePrivate(config, encode(obj("app_id", id, "slug", slug)));
-    store.tx(
-        c -> {
-          Store.audit(c, actor, "github-app.create", slug);
-          return null;
-        });
+    store.tx(c -> {
+      Store.audit(c, actor, "github-app.create", slug);
+      return null;
+    });
     return web() + "/apps/" + slug + "/installations/new?state=" + newState();
   }
 
@@ -144,23 +159,31 @@ public class GitHubAppSetup {
     String jwt = credentials.jwtFor(stored.path("app_id").asText(), key.toString());
     var response =
         api.send(
-            HttpRequest.newBuilder(URI.create(GitHubApi.base() + "/app/installations/" + installation))
+            HttpRequest.newBuilder(
+                    URI.create(GitHubApi.base() + "/app/installations/" + installation))
                 .timeout(Duration.ofSeconds(20))
                 .header("Authorization", "Bearer " + jwt)
                 .header("Accept", "application/vnd.github+json")
                 .GET()
                 .build());
     if (response.statusCode() != 200)
-      throw new IllegalArgumentException("Esa instalación no es de esta App (HTTP " + response.statusCode() + ").");
+      throw new IllegalArgumentException(
+          "Esa instalación no es de esta App (HTTP " + response.statusCode() + ").");
     writePrivate(
         config,
-        encode(obj("app_id", stored.path("app_id").asText(), "slug", stored.path("slug").asText(), "installation_id", installation)));
+        encode(
+            obj(
+                "app_id",
+                stored.path("app_id").asText(),
+                "slug",
+                stored.path("slug").asText(),
+                "installation_id",
+                installation)));
     credentials.forgetToken();
-    store.tx(
-        c -> {
-          Store.audit(c, actor, "github-app.install", installation);
-          return null;
-        });
+    store.tx(c -> {
+      Store.audit(c, actor, "github-app.install", installation);
+      return null;
+    });
   }
 
   public Map<String, Object> status() throws Exception {
@@ -172,21 +195,43 @@ public class GitHubAppSetup {
   private static void writePrivate(Path file, String content) throws Exception {
     Path temp =
         Files.createTempFile(
-            file.getParent(), ".github-app-", ".tmp", PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
+            file.getParent(),
+            ".github-app-",
+            ".tmp",
+            PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
     Files.writeString(temp, content);
     Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
   }
 
-  /** GitHub hands out PKCS#1 and Java reads PKCS#8: wrapping it saves the owner a step with openssl. */
+  /**
+   * GitHub hands out PKCS#1 and Java reads PKCS#8: wrapping it saves the owner a step with openssl.
+   */
   public static String pkcs8(String pem) {
     if (!pem.contains("BEGIN RSA PRIVATE KEY")) {
       if (pem.contains("BEGIN PRIVATE KEY")) return pem;
       throw new IllegalArgumentException("GitHub devolvió una clave que no se reconoce.");
     }
-    byte[] pkcs1 = Base64.getDecoder().decode(pem.replaceAll("-----[A-Z ]+-----", "").replaceAll("\\s", ""));
+    byte[] pkcs1 =
+        Base64.getDecoder().decode(pem.replaceAll("-----[A-Z ]+-----", "").replaceAll("\\s", ""));
     byte[] algorithm = {
-      0x02, 0x01, 0x00, // version 0
-      0x30, 0x0d, 0x06, 0x09, 0x2a, (byte) 0x86, 0x48, (byte) 0x86, (byte) 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00 // rsaEncryption
+      0x02,
+      0x01,
+      0x00, // version 0
+      0x30,
+      0x0d,
+      0x06,
+      0x09,
+      0x2a,
+      (byte) 0x86,
+      0x48,
+      (byte) 0x86,
+      (byte) 0xf7,
+      0x0d,
+      0x01,
+      0x01,
+      0x01,
+      0x05,
+      0x00 // rsaEncryption
     };
     byte[] octets = der((byte) 0x04, pkcs1);
     byte[] body = new byte[algorithm.length + octets.length];
@@ -202,7 +247,9 @@ public class GitHubAppSetup {
     byte[] length =
         n < 128
             ? new byte[] {(byte) n}
-            : n < 256 ? new byte[] {(byte) 0x81, (byte) n} : new byte[] {(byte) 0x82, (byte) (n >> 8), (byte) n};
+            : n < 256
+                ? new byte[] {(byte) 0x81, (byte) n}
+                : new byte[] {(byte) 0x82, (byte) (n >> 8), (byte) n};
     byte[] out = new byte[1 + length.length + n];
     out[0] = tag;
     System.arraycopy(length, 0, out, 1, length.length);

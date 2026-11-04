@@ -52,7 +52,15 @@ class EvidenceVerifierTest {
 
   void candidate(Map<String, Object> reportUnit) {
     work.create(
-        n("request_id", "verify-task", "repository", "owner/repo", "title", "Fix", "request", "Fix"),
+        n(
+            "request_id",
+            "verify-task",
+            "repository",
+            "owner/repo",
+            "title",
+            "Fix",
+            "request",
+            "Fix"),
         "owner");
     work.report(
         id(work.claim("worker")),
@@ -181,21 +189,20 @@ class EvidenceVerifierTest {
     candidate(report("unit", "mvn test", true));
     verifier.verify("verify-task");
     assertEquals(0, dossier().path("overlaps").size());
-    store.tx(
-        c -> {
-          Store.exec(
-              c,
-              "INSERT INTO work_items(id,repo,title,request,state,version,proposal,evidence,pr,sha,created)"
-                  + " SELECT 'other',repo,'Otra','x','review',1,'{}','{}',9,?,1 FROM work_items WHERE id='verify-task'",
-              sha);
-          Store.exec(
-              c,
-              "INSERT INTO evidence_verifications(item,basis,sha,state,reason,detail,at)"
-                  + " VALUES('other','b',?,'success','ok',?,1)",
-              sha,
-              "{\"files\":[\"src/App.java\",\"docs/x.md\"]}");
-          return null;
-        });
+    store.tx(c -> {
+      Store.exec(
+          c,
+          "INSERT INTO work_items(id,repo,title,request,state,version,proposal,evidence,pr,sha,created)"
+              + " SELECT 'other',repo,'Otra','x','review',1,'{}','{}',9,?,1 FROM work_items WHERE id='verify-task'",
+          sha);
+      Store.exec(
+          c,
+          "INSERT INTO evidence_verifications(item,basis,sha,state,reason,detail,at)"
+              + " VALUES('other','b',?,'success','ok',?,1)",
+          sha,
+          "{\"files\":[\"src/App.java\",\"docs/x.md\"]}");
+      return null;
+    });
     var overlap = dossier().path("overlaps").get(0);
     assertEquals("other", overlap.path("item").asText());
     assertEquals("[\"src/App.java\"]", overlap.path("files").toString());
@@ -267,11 +274,10 @@ class EvidenceVerifierTest {
   void aNewCandidateInvalidatesTheVerification() {
     candidate(report("unit", "mvn test", true));
     verifier.verify("verify-task");
-    store.tx(
-        c -> {
-          Store.exec(c, "UPDATE work_items SET sha=? WHERE id='verify-task'", "c".repeat(40));
-          return null;
-        });
+    store.tx(c -> {
+      Store.exec(c, "UPDATE work_items SET sha=? WHERE id='verify-task'", "c".repeat(40));
+      return null;
+    });
     assertEquals("missing", dossier().path("verification").path("state").asText());
     assertFalse(dossier().path("ready").asBoolean());
   }
@@ -308,14 +314,17 @@ class EvidenceVerifierTest {
   @Test
   void aBrokenCommandmentBlocksUntilItsExceptionIsSigned() {
     candidate(report("unit", "mvn test", true));
-    store.tx(
-        c -> {
-          var evidence = (com.fasterxml.jackson.databind.node.ObjectNode)
-              parse(Store.one(c, "SELECT evidence FROM work_items WHERE id='verify-task'").get("evidence").toString());
-          evidence.set("regression", n("status", "not_proved", "reason", "Ya pasaban"));
-          Store.exec(c, "UPDATE work_items SET evidence=? WHERE id='verify-task'", encode(evidence));
-          return null;
-        });
+    store.tx(c -> {
+      var evidence =
+          (com.fasterxml.jackson.databind.node.ObjectNode)
+              parse(
+                  Store.one(c, "SELECT evidence FROM work_items WHERE id='verify-task'")
+                      .get("evidence")
+                      .toString());
+      evidence.set("regression", n("status", "not_proved", "reason", "Ya pasaban"));
+      Store.exec(c, "UPDATE work_items SET evidence=? WHERE id='verify-task'", encode(evidence));
+      return null;
+    });
     verifier.verify("verify-task");
     var d = dossier();
     assertFalse(d.path("ready").asBoolean());
@@ -345,7 +354,8 @@ class EvidenceVerifierTest {
     assertEquals("exception", d.path("commandments").get(1).path("status").asText());
     var reject = ((com.fasterxml.jackson.databind.node.ObjectNode) request.deepCopy());
     reject.put("request_id", UUID.randomUUID().toString()).put("kind", "reject");
-    assertThrows(IllegalArgumentException.class, () -> evidence.decide("verify-task", reject, "owner"));
+    assertThrows(
+        IllegalArgumentException.class, () -> evidence.decide("verify-task", reject, "owner"));
     var other = ((com.fasterxml.jackson.databind.node.ObjectNode) request.deepCopy());
     other.put("request_id", UUID.randomUUID().toString()).put("criterion", "CM-6");
     assertThrows(
@@ -357,10 +367,7 @@ class EvidenceVerifierTest {
   @Test
   void aSecretInTheDiffFailsTheVerification() {
     var compare =
-        n(
-            "files",
-            List.of(
-                obj("filename", "app.env", "patch", "+KEY=ghp_" + "a".repeat(36))));
+        n("files", List.of(obj("filename", "app.env", "patch", "+KEY=ghp_" + "a".repeat(36))));
     var result = EvidenceVerifier.assess(reportWith("passed"), runs(), github("/status"), compare);
     assertEquals("failed", result.state());
     assertFalse(Json.encode(result.detail()).contains("a".repeat(36)));
@@ -423,8 +430,7 @@ class EvidenceVerifierTest {
   @Test
   void assessNeedsLinkedChecksAndEveryExpectedOne() {
     assertEquals(
-        "failed",
-        EvidenceVerifier.assess(n(), runs(), github("/status"), compared()).state());
+        "failed", EvidenceVerifier.assess(n(), runs(), github("/status"), compared()).state());
     assertEquals(
         "failed",
         EvidenceVerifier.assess(
@@ -444,15 +450,26 @@ class EvidenceVerifierTest {
   void testPolicyOnlyExcusesDocumentation() {
     assertTrue(TestPolicy.untestedCode(List.of("src/App.java"), "not_applicable", "passed"));
     assertTrue(TestPolicy.untestedCode(List.of("README.md", "app.py"), "passed", "not_applicable"));
-    assertFalse(TestPolicy.untestedCode(List.of("README.md", "docs/x.png"), "not_applicable", "not_applicable"));
+    assertFalse(
+        TestPolicy.untestedCode(
+            List.of("README.md", "docs/x.png"), "not_applicable", "not_applicable"));
     assertFalse(TestPolicy.untestedCode(List.of("src/App.java"), "passed", "passed"));
-    assertFalse(TestPolicy.untestedCode(List.of("agentfarm-memory.json"), "not_applicable", "passed"));
+    assertFalse(
+        TestPolicy.untestedCode(List.of("agentfarm-memory.json"), "not_applicable", "passed"));
   }
 
   @Test
   void aTestCriterionCannotRelyOnAnNaCommand() {
     work.create(
-        n("request_id", "na-task-0001", "repository", "owner/repo", "title", "Fix", "request", "Fix"),
+        n(
+            "request_id",
+            "na-task-0001",
+            "repository",
+            "owner/repo",
+            "title",
+            "Fix",
+            "request",
+            "Fix"),
         "owner");
     assertThrows(
         IllegalArgumentException.class,

@@ -80,26 +80,37 @@ public final class TestSandbox {
   }
 
   /**
-   * Exports {@code sha} from {@code repository}, runs setup and the given test commands, and
-   * always removes the container and the exported tree. Returns one result per test, in order.
+   * Exports {@code sha} from {@code repository}, runs setup and the given test commands, and always
+   * removes the container and the exported tree. Returns one result per test, in order.
    */
   public List<Map<String, Object>> run(
       Path repository, String sha, Policy policy, String setup, Map<String, String> tests)
       throws Exception {
     if (!sha.matches("[a-f0-9]{40}")) throw new IllegalArgumentException("Full SHA required");
     Path tree = Files.createTempDirectory("agentfarm-sandbox-");
-    String name = "agentfarm-" + sha.substring(0, 12) + "-" + UUID.randomUUID().toString().substring(0, 8);
+    String name =
+        "agentfarm-" + sha.substring(0, 12) + "-" + UUID.randomUUID().toString().substring(0, 8);
     Duration limit = Duration.ofMinutes(policy.timeoutMinutes());
     try {
       Path archive = tree.resolveSibling(tree.getFileName() + ".tar");
       try {
         check(
             runner.run(
-                List.of("git", "-C", repository.toString(), "archive", "--format=tar", "-o", archive.toString(), sha),
+                List.of(
+                    "git",
+                    "-C",
+                    repository.toString(),
+                    "archive",
+                    "--format=tar",
+                    "-o",
+                    archive.toString(),
+                    sha),
                 Duration.ofMinutes(2)),
             "git archive");
         check(
-            runner.run(List.of("tar", "-xf", archive.toString(), "-C", tree.toString()), Duration.ofMinutes(2)),
+            runner.run(
+                List.of("tar", "-xf", archive.toString(), "-C", tree.toString()),
+                Duration.ofMinutes(2)),
             "tar");
       } finally {
         Files.deleteIfExists(archive);
@@ -111,16 +122,20 @@ public final class TestSandbox {
       if (!setup.isBlank()) {
         // Package managers need root inside the container; hand the tree back afterwards.
         var out = runner.run(exec(name, "0:0", setup), limit);
-        runner.run(exec(name, "0:0", "chown -R " + user + " /workspace /tmp"), Duration.ofMinutes(2));
+        runner.run(
+            exec(name, "0:0", "chown -R " + user + " /workspace /tmp"), Duration.ofMinutes(2));
         if (out.exit() != 0) {
           for (var test : tests.entrySet())
-            results.add(result(test.getKey(), "failed", test.getValue(), "setup failed: " + out.text()));
+            results.add(
+                result(test.getKey(), "failed", test.getValue(), "setup failed: " + out.text()));
           return results;
         }
       }
       if (policy.network().equals("setup"))
         check(
-            runner.run(List.of(docker, "network", "disconnect", "-f", "bridge", name), Duration.ofMinutes(1)),
+            runner.run(
+                List.of(docker, "network", "disconnect", "-f", "bridge", name),
+                Duration.ofMinutes(1)),
             "docker network disconnect");
       for (var test : tests.entrySet()) {
         String command = test.getValue();
@@ -149,8 +164,12 @@ public final class TestSandbox {
    * falls back to an anonymous pull, which is enough for public images.
    */
   void ensureImage(String image) throws Exception {
-    if (runner.run(List.of(docker, "image", "inspect", "--format", "{{.Id}}", image), Duration.ofSeconds(30)).exit() == 0)
-      return;
+    if (runner
+            .run(
+                List.of(docker, "image", "inspect", "--format", "{{.Id}}", image),
+                Duration.ofSeconds(30))
+            .exit()
+        == 0) return;
     String last = "";
     for (int attempt = 1; attempt <= 3; attempt++) {
       var out = runner.run(List.of(docker, "pull", "-q", image), Duration.ofMinutes(15));
@@ -169,7 +188,8 @@ public final class TestSandbox {
           Files.deleteIfExists(anonymous);
         }
       }
-      if (!(last.contains("timeout") || last.contains("TLS") || last.contains("connection reset"))) break;
+      if (!(last.contains("timeout") || last.contains("TLS") || last.contains("connection reset")))
+        break;
     }
     throw new IllegalStateException(
         "Sandbox image "
@@ -185,7 +205,9 @@ public final class TestSandbox {
     // Files written as root (setup, or a test that escalated inside the container) must be
     // handed back before the host user can delete the exported tree.
     for (var argv :
-        List.of(exec(name, "0:0", "chown -R " + user + " /workspace /tmp"), List.of(docker, "rm", "-f", name)))
+        List.of(
+            exec(name, "0:0", "chown -R " + user + " /workspace /tmp"),
+            List.of(docker, "rm", "-f", name)))
       try {
         runner.run(argv, Duration.ofMinutes(2));
       } catch (Exception ignored) {
@@ -251,7 +273,8 @@ public final class TestSandbox {
     return List.of(docker, "exec", "--user", as, name, "bash", "-lc", command);
   }
 
-  private static Map<String, Object> result(String kind, String status, String command, String out) {
+  private static Map<String, Object> result(
+      String kind, String status, String command, String out) {
     return obj("kind", kind, "status", status, "command", command, "output", out);
   }
 

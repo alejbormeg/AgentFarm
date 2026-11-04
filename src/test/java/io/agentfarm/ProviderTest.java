@@ -72,10 +72,8 @@ class ProviderTest {
 
   @Test
   void authenticationCannotSilentlySwitchToApiBilling() {
-    assertDoesNotThrow(
-        () ->
-            AgentAdapters.get("codex")
-                .validateAuthentication(n("account", obj("type", "chatgpt"))));
+    assertDoesNotThrow(() ->
+        AgentAdapters.get("codex").validateAuthentication(n("account", obj("type", "chatgpt"))));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -129,7 +127,17 @@ class ProviderTest {
         1_234_568,
         AgentAdapters.get("claude-code")
             .normalizeQuota(
-                n("type", "result", "subtype", "success", "is_error", false, "result", "ok", "total_cost_usd", 1.2345671),
+                n(
+                    "type",
+                    "result",
+                    "subtype",
+                    "success",
+                    "is_error",
+                    false,
+                    "result",
+                    "ok",
+                    "total_cost_usd",
+                    1.2345671),
                 now)
             .path("used")
             .asLong());
@@ -238,11 +246,22 @@ class ProviderTest {
         state(claude, n("state", "paused", "mode", "api", "account", "api-a"), runtime()));
     assertEquals(
         "blocked",
-        state(claude, n("state", "available", "mode", "subscription", "account", "api-a"), runtime()));
+        state(
+            claude,
+            n("state", "available", "mode", "subscription", "account", "api-a"),
+            runtime()));
     assertEquals(
         "blocked",
         state(
-            n("provider", "claude-code", "profile", "balanced", "account", "api-a", "additional_payment", true),
+            n(
+                "provider",
+                "claude-code",
+                "profile",
+                "balanced",
+                "account",
+                "api-a",
+                "additional_payment",
+                true),
             n("state", "available", "mode", "api", "account", "api-a"),
             runtime()));
   }
@@ -252,14 +271,17 @@ class ProviderTest {
     var review = ClaudeCodeAdapter.command("claude", "review", "");
     assertTrue(review.containsAll(List.of("-p", "--output-format", "json", "Read,Glob,Grep")));
     assertEquals("Bash", review.get(review.indexOf("--disallowedTools") + 1));
+    assertEquals("acceptEdits", ClaudeCodeAdapter.command("claude", "implement", "").get(5));
+    assertThrows(
+        IllegalArgumentException.class, () -> ClaudeCodeAdapter.command("claude", "merge", ""));
     assertEquals(
-        "acceptEdits",
-        ClaudeCodeAdapter.command("claude", "implement", "").get(5));
-    assertThrows(IllegalArgumentException.class, () -> ClaudeCodeAdapter.command("claude", "merge", ""));
-    assertEquals("user", review.get(review.indexOf("--setting-sources") + 1), "a repository's settings are not trusted");
+        "user",
+        review.get(review.indexOf("--setting-sources") + 1),
+        "a repository's settings are not trusted");
     var rules =
         Json.parse(
-            ClaudeCodeAdapter.command("claude", "implement", "", List.of(), null, List.of("/home/a/.ssh"))
+            ClaudeCodeAdapter.command(
+                    "claude", "implement", "", List.of(), null, List.of("/home/a/.ssh"))
                 .stream()
                 .filter(a -> a.startsWith("{"))
                 .findFirst()
@@ -268,7 +290,8 @@ class ProviderTest {
         "[\"Read(//home/a/.ssh)\",\"Read(//home/a/.ssh/**)\",\"Edit(//home/a/.ssh)\",\"Edit(//home/a/.ssh/**)\"]",
         rules.path("permissions").path("deny").toString());
     assertThrows(
-        IllegalArgumentException.class, () -> ClaudeCodeAdapter.command("claude", "review", "x; rm -rf /"));
+        IllegalArgumentException.class,
+        () -> ClaudeCodeAdapter.command("claude", "review", "x; rm -rf /"));
     var ok =
         ClaudeCodeAdapter.parse(
             "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"{}\","

@@ -9,7 +9,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.HtmlUtils;
 
-/** The owner's side of GitHub's manifest flow. The two GET addresses are where GitHub sends the browser back. */
+/**
+ * The owner's side of GitHub's manifest flow. The two GET addresses are where GitHub sends the
+ * browser back.
+ */
 @RestController
 public class GitHubAppApi {
   private final GitHubAppSetup setup;
@@ -31,7 +34,9 @@ public class GitHubAppApi {
 
   @GetMapping("/github-app/created")
   public ResponseEntity<String> created(
-      @RequestParam(required = false) String code, @RequestParam(required = false) String state, Principal p) {
+      @RequestParam(required = false) String code,
+      @RequestParam(required = false) String state,
+      Principal p) {
     try {
       return redirect(setup.created(code, state, p.getName()));
     } catch (Exception e) {

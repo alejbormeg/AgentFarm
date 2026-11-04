@@ -25,10 +25,9 @@ class IntegrationGateTest {
 
   @Test
   void onlyMatchingCandidateWithPassingChecksIsEligible() {
-    assertDoesNotThrow(
-        () ->
-            IntegrationPublisher.validate(
-                remote(), evidence(), checks(), parse("{\"total_count\":0}"), parse("[]"), sha));
+    assertDoesNotThrow(() ->
+        IntegrationPublisher.validate(
+            remote(), evidence(), checks(), parse("{\"total_count\":0}"), parse("[]"), sha));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -73,14 +72,14 @@ class IntegrationGateTest {
 
   @Test
   void projectCiWildcardRequiresEveryRunToPass() {
-    var own = MAPPER.valueToTree(obj("passed", true, "sha", sha, "ci_checks", java.util.List.of("*")));
+    var own =
+        MAPPER.valueToTree(obj("passed", true, "sha", sha, "ci_checks", java.util.List.of("*")));
     var runs =
         "{\"total_count\":2,\"check_runs\":[{\"name\":\"build\",\"status\":\"completed\",\"conclusion\":\"success\"},"
             + "{\"name\":\"lint\",\"status\":\"completed\",\"conclusion\":\"%s\"}]}";
-    assertDoesNotThrow(
-        () ->
-            IntegrationPublisher.validate(
-                remote(), own, parse(runs.formatted("success")), parse("{}"), parse("[]"), sha));
+    assertDoesNotThrow(() ->
+        IntegrationPublisher.validate(
+            remote(), own, parse(runs.formatted("success")), parse("{}"), parse("[]"), sha));
     assertThrows(
         IllegalArgumentException.class,
         () ->

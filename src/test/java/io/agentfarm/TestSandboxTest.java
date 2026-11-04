@@ -30,7 +30,8 @@ class TestSandboxTest {
         return new Output(0, "");
       }
       if (argv.get(0).equals("tar")) return new Output(0, "");
-      if (argv.contains("inspect")) return answers.getOrDefault("inspect", new Output(0, "sha256:x"));
+      if (argv.contains("inspect"))
+        return answers.getOrDefault("inspect", new Output(0, "sha256:x"));
       if (argv.contains("pull"))
         return argv.contains("--config")
             ? answers.getOrDefault("anonymous-pull", new Output(0, ""))
@@ -42,7 +43,9 @@ class TestSandboxTest {
     List<String> docker() {
       return calls.stream()
           .filter(c -> c.get(0).equals("docker") && !c.contains("inspect"))
-          .map(c -> c.get(1) + (c.get(1).equals("exec") ? " " + c.get(3) + " " + c.get(c.size() - 1) : ""))
+          .map(c ->
+              c.get(1)
+                  + (c.get(1).equals("exec") ? " " + c.get(3) + " " + c.get(c.size() - 1) : ""))
           .toList();
     }
   }
@@ -60,7 +63,12 @@ class TestSandboxTest {
     fake.answers.put("make it", new Output(2, "boom"));
     var results =
         new TestSandbox(fake, "docker", "1000:1000")
-            .run(repo, SHA, Policy.defaults("img:1"), "apt-get install -y x", tests("make test", "make it"));
+            .run(
+                repo,
+                SHA,
+                Policy.defaults("img:1"),
+                "apt-get install -y x",
+                tests("make test", "make it"));
     assertEquals(
         List.of(
             "create",
@@ -80,7 +88,9 @@ class TestSandboxTest {
     assertTrue(create.containsAll(List.of("--cap-drop", "ALL", "no-new-privileges", "HOME=/tmp")));
     assertTrue(create.stream().noneMatch(a -> a.contains(".config") || a.contains("docker.sock")));
     assertTrue(
-        create.stream().filter(a -> a.endsWith(":/workspace")).allMatch(a -> !a.startsWith(repo.toString())),
+        create.stream()
+            .filter(a -> a.endsWith(":/workspace"))
+            .allMatch(a -> !a.startsWith(repo.toString())),
         "the checkout itself (with .git) is never mounted");
   }
 
@@ -90,7 +100,12 @@ class TestSandboxTest {
     fake.answers.put("bad setup", new Output(1, "no package"));
     var results =
         new TestSandbox(fake, "docker", "1000:1000")
-            .run(repo, SHA, Policy.defaults("img:1"), "bad setup", tests("make test", "N/A: no integration layer"));
+            .run(
+                repo,
+                SHA,
+                Policy.defaults("img:1"),
+                "bad setup",
+                tests("make test", "N/A: no integration layer"));
     assertTrue(results.stream().allMatch(r -> r.get("status").equals("failed")));
     assertTrue(fake.docker().stream().noneMatch(c -> c.contains("make test")));
     assertEquals("rm", fake.docker().getLast());
@@ -101,7 +116,12 @@ class TestSandboxTest {
     var fake = new Fake();
     var results =
         new TestSandbox(fake, "docker", "1000:1000")
-            .run(repo, SHA, new Policy("img:1", "none", 1, 512, 1), "", tests("make test", "N/A: no integration layer"));
+            .run(
+                repo,
+                SHA,
+                new Policy("img:1", "none", 1, 512, 1),
+                "",
+                tests("make test", "N/A: no integration layer"));
     var create = fake.calls.stream().filter(c -> c.contains("create")).findFirst().orElseThrow();
     assertEquals("none", create.get(create.indexOf("--network") + 1));
     assertFalse(fake.docker().contains("network"));
@@ -112,18 +132,30 @@ class TestSandboxTest {
   void missingImageIsPulledWithRetriesAndWithoutAStaleCredentialHelper() throws Exception {
     var fake = new Fake();
     fake.answers.put("inspect", new Output(1, "No such image"));
-    fake.answers.put("pull", new Output(1, "error getting credentials - err: exec: \"docker-credential-desktop.exe\": executable file not found"));
-    new TestSandbox(fake, "docker", "1000:1000").run(repo, SHA, Policy.defaults("img:1"), "", tests("a", "b"));
-    assertTrue(fake.calls.stream().anyMatch(c -> c.contains("--config") && c.contains("pull")), "anonymous fallback");
+    fake.answers.put(
+        "pull",
+        new Output(
+            1,
+            "error getting credentials - err: exec: \"docker-credential-desktop.exe\": executable file not found"));
+    new TestSandbox(fake, "docker", "1000:1000")
+        .run(repo, SHA, Policy.defaults("img:1"), "", tests("a", "b"));
+    assertTrue(
+        fake.calls.stream().anyMatch(c -> c.contains("--config") && c.contains("pull")),
+        "anonymous fallback");
     var failing = new Fake();
     failing.answers.put("inspect", new Output(1, "No such image"));
     failing.answers.put("pull", new Output(1, "net/http: TLS handshake timeout"));
     var error =
         assertThrows(
             IllegalStateException.class,
-            () -> new TestSandbox(failing, "docker", "1000:1000").run(repo, SHA, Policy.defaults("img:1"), "", tests("a", "b")));
+            () ->
+                new TestSandbox(failing, "docker", "1000:1000")
+                    .run(repo, SHA, Policy.defaults("img:1"), "", tests("a", "b")));
     assertTrue(error.getMessage().contains("img:1"));
-    assertEquals(3, failing.calls.stream().filter(c -> c.contains("pull")).count(), "transient failures retried");
+    assertEquals(
+        3,
+        failing.calls.stream().filter(c -> c.contains("pull")).count(),
+        "transient failures retried");
     assertEquals("rm", failing.docker().getLast(), "cleanup still runs");
   }
 
@@ -133,7 +165,8 @@ class TestSandboxTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> sandbox.run(repo, "HEAD", Policy.defaults("img:1"), "", tests("a", "b")));
-    assertThrows(IllegalArgumentException.class, () -> new TestSandbox(new Fake(), "docker", "root"));
+    assertThrows(
+        IllegalArgumentException.class, () -> new TestSandbox(new Fake(), "docker", "root"));
     assertThrows(IllegalArgumentException.class, () -> Policy.defaults("--privileged"));
     assertThrows(IllegalArgumentException.class, () -> new Policy("img:1", "host", 1, 512, 1));
   }
@@ -141,9 +174,11 @@ class TestSandboxTest {
   // Real Docker: the container sees the commit tree only, offline, without host credentials.
   @Test
   void dockerIsolationEndToEnd() throws Exception {
-    Assumptions.assumeTrue(available(List.of("docker", "info"), Duration.ofSeconds(20)), "Docker unavailable");
     Assumptions.assumeTrue(
-        available(List.of("docker", "pull", "-q", "bash:5.2"), Duration.ofMinutes(3)), "Image unavailable");
+        available(List.of("docker", "info"), Duration.ofSeconds(20)), "Docker unavailable");
+    Assumptions.assumeTrue(
+        available(List.of("docker", "pull", "-q", "bash:5.2"), Duration.ofMinutes(3)),
+        "Image unavailable");
     git("init", "-q");
     Files.writeString(repo.resolve("hello.txt"), "tree content");
     git("add", ".");
@@ -163,7 +198,19 @@ class TestSandboxTest {
                     "! wget -q -T 3 -O /dev/null http://example.com"));
     assertEquals("passed", results.get(0).get("status"), results.get(0).toString());
     assertEquals("passed", results.get(1).get("status"), results.get(1).toString());
-    assertEquals("", run(List.of("docker", "ps", "-aq", "--filter", "label=agentfarm.sandbox=1", "--filter", "ancestor=bash:5.2"), Duration.ofSeconds(20)).text());
+    assertEquals(
+        "",
+        run(
+                List.of(
+                    "docker",
+                    "ps",
+                    "-aq",
+                    "--filter",
+                    "label=agentfarm.sandbox=1",
+                    "--filter",
+                    "ancestor=bash:5.2"),
+                Duration.ofSeconds(20))
+            .text());
   }
 
   String git(String... args) throws Exception {

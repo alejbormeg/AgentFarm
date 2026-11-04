@@ -22,22 +22,28 @@ class SkillCatalogTest {
   void everySkillInTheCatalogHasItsFileAndFrontmatter() {
     var list = SkillCatalog.list();
     assertTrue(list.size() >= 10);
-    for (var skill : list) assertEquals(64, skill.get("hash").toString().length(), skill.toString());
+    for (var skill : list)
+      assertEquals(64, skill.get("hash").toString().length(), skill.toString());
   }
 
   @Test
   void eachRoleGetsWhatItsWorkNeeds() throws Exception {
     var java = Set.of("java");
     assertEquals(
-        Set.of("software-design", "test-design"), ids(SkillCatalog.select("research", java, List.of(), null)));
+        Set.of("software-design", "test-design"),
+        ids(SkillCatalog.select("research", java, List.of(), null)));
     assertEquals(
         Set.of("change-discipline", "test-design", "secure-coding", "java-spring"),
         ids(SkillCatalog.select("implement", java, List.of(), null)));
     assertEquals(
         Set.of("code-review", "test-design", "secure-coding", "java-spring"),
         ids(SkillCatalog.select("review", java, List.of(), null)));
-    assertFalse(ids(SkillCatalog.select("implement", Set.of("python"), List.of(), null)).contains("java-spring"));
-    assertTrue(ids(SkillCatalog.select("implement", Set.of("node", "ui"), List.of(), null)).contains("web-ui"));
+    assertFalse(
+        ids(SkillCatalog.select("implement", Set.of("python"), List.of(), null))
+            .contains("java-spring"));
+    assertTrue(
+        ids(SkillCatalog.select("implement", Set.of("node", "ui"), List.of(), null))
+            .contains("web-ui"));
   }
 
   @Test
@@ -73,8 +79,13 @@ class SkillCatalogTest {
     Files.writeString(operator.resolve("house-style/SKILL.md"), "Usa tabuladores.");
     var named = SkillCatalog.select("review", Set.of(), List.of("house-style"), operator);
     assertTrue(ids(named).contains("house-style"));
-    assertEquals(sha256("Usa tabuladores."), named.references().stream()
-        .filter(r -> r.get("id").equals("house-style")).findFirst().orElseThrow().get("hash"));
+    assertEquals(
+        sha256("Usa tabuladores."),
+        named.references().stream()
+            .filter(r -> r.get("id").equals("house-style"))
+            .findFirst()
+            .orElseThrow()
+            .get("hash"));
     assertThrows(
         IllegalArgumentException.class,
         () -> SkillCatalog.select("review", Set.of(), List.of("unknown"), operator),
@@ -83,7 +94,8 @@ class SkillCatalogTest {
         IllegalArgumentException.class,
         () -> SkillCatalog.select("review", Set.of(), List.of("../../etc"), operator));
     assertTrue(
-        ids(SkillCatalog.select("research", Set.of(), List.of("python"), operator)).contains("python"),
+        ids(SkillCatalog.select("research", Set.of(), List.of("python"), operator))
+            .contains("python"),
         "a project can ask for a built-in outside its stack");
   }
 
@@ -93,7 +105,9 @@ class SkillCatalogTest {
         "version: 1\nrepository: o/r\ntests:\n  unit: u\n  integration: i\nallowed_paths: [src/]\n"
             + "environment: local\nreview: independent\n";
     assertEquals(List.of("python"), ProjectProfile.parse(base + "skills: [python]\n").skills());
-    assertThrows(IllegalArgumentException.class, () -> ProjectProfile.parse(base + "skills: [../x]\n"));
-    assertThrows(IllegalArgumentException.class, () -> ProjectProfile.parse(base + "skills: python\n"));
+    assertThrows(
+        IllegalArgumentException.class, () -> ProjectProfile.parse(base + "skills: [../x]\n"));
+    assertThrows(
+        IllegalArgumentException.class, () -> ProjectProfile.parse(base + "skills: python\n"));
   }
 }

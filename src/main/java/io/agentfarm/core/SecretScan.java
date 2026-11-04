@@ -7,7 +7,8 @@ import java.util.regex.Pattern;
 public final class SecretScan {
   private static final Map<String, Pattern> KINDS =
       Map.of(
-          "token de GitHub", Pattern.compile("\\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})"),
+          "token de GitHub",
+              Pattern.compile("\\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})"),
           "clave de API", Pattern.compile("\\bsk-(?:ant-)?[A-Za-z0-9_-]{20,}"),
           "clave de AWS", Pattern.compile("\\bAKIA[0-9A-Z]{16}\\b"),
           "clave de Google", Pattern.compile("\\bAIza[0-9A-Za-z_-]{35}\\b"),

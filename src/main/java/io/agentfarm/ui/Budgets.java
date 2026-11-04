@@ -11,7 +11,8 @@ public class Budgets {
   Element console = new Element("farm-console", Map.of("id", "farm-console-live"), "");
 
   @Label(" ")
-  MicroFrontend status = MicroFrontend.builder().route("/budget-status").style("width:100%").build();
+  MicroFrontend status =
+      MicroFrontend.builder().route("/budget-status").style("width:100%").build();
 
   @Label(" ")
   Element reconcile = new Element("farm-advanced", Map.of("kind", "budgets"), "");

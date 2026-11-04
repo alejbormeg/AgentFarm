@@ -40,7 +40,8 @@ public final class SkillCatalog {
   private static Skill builtin(JsonNode entry) {
     String id = entry.path("id").asText();
     int version = entry.path("version").asInt();
-    try (var in = SkillCatalog.class.getResourceAsStream("/skills/" + id + ".v" + version + ".md")) {
+    try (var in =
+        SkillCatalog.class.getResourceAsStream("/skills/" + id + ".v" + version + ".md")) {
       if (in == null) throw new IllegalStateException("Skill file missing: " + id);
       return new Skill(id, version, new String(in.readAllBytes(), StandardCharsets.UTF_8));
     } catch (java.io.IOException e) {
@@ -69,20 +70,18 @@ public final class SkillCatalog {
     if (exists(root, "go.mod")) stacks.add("go");
     try (Stream<Path> files = Files.walk(root, 6)) {
       if (files
-          .filter(
-              p -> {
-                String path = root.relativize(p).toString();
-                return !path.startsWith(".git") && !path.contains("node_modules");
-              })
+          .filter(p -> {
+            String path = root.relativize(p).toString();
+            return !path.startsWith(".git") && !path.contains("node_modules");
+          })
           .map(p -> p.getFileName().toString().toLowerCase(Locale.ROOT))
-          .anyMatch(
-              n ->
-                  n.endsWith(".html")
-                      || n.endsWith(".tsx")
-                      || n.endsWith(".jsx")
-                      || n.endsWith(".vue")
-                      || n.endsWith(".svelte")
-                      || n.endsWith(".css"))) stacks.add("ui");
+          .anyMatch(n ->
+              n.endsWith(".html")
+                  || n.endsWith(".tsx")
+                  || n.endsWith(".jsx")
+                  || n.endsWith(".vue")
+                  || n.endsWith(".svelte")
+                  || n.endsWith(".css"))) stacks.add("ui");
     }
     return stacks;
   }
@@ -97,7 +96,8 @@ public final class SkillCatalog {
    * unknown name is an error, never skipped.
    */
   public static Selection select(
-      String role, Set<String> stacks, List<String> named, Path operatorDir) throws java.io.IOException {
+      String role, Set<String> stacks, List<String> named, Path operatorDir)
+      throws java.io.IOException {
     var chosen = new LinkedHashMap<String, Skill>();
     for (var entry : CATALOG) {
       boolean inRole = contains(entry.path("roles"), role),

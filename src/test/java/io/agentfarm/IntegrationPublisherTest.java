@@ -90,41 +90,40 @@ class IntegrationPublisherTest {
     when(http.send(
             any(HttpRequest.class),
             org.mockito.ArgumentMatchers.<HttpResponse.BodyHandler<String>>any()))
-        .thenAnswer(
-            invocation -> {
-              HttpRequest request = invocation.getArgument(0);
-              String body;
-              if (request.method().equals("PUT")) {
-                puts.incrementAndGet();
-                if (disconnect) throw new java.io.IOException("uncertain");
-                body = encode(obj("merged", confirmed));
-              } else if (request.uri().getPath().endsWith("/check-runs"))
-                body =
-                    encode(
-                        obj(
-                            "total_count",
-                            1,
-                            "check_runs",
-                            List.of(obj("name", "unit", "status", "completed", "conclusion", ci))));
-              else if (request.uri().getPath().endsWith("/status")) body = "{\"total_count\":0}";
-              else if (request.uri().getPath().endsWith("/reviews")) body = "[]";
-              else
-                body =
-                    encode(
-                        obj(
-                            "head",
-                            obj("sha", candidate),
-                            "state",
-                            remoteMerged ? "closed" : "open",
-                            "draft",
-                            false,
-                            "merged",
-                            remoteMerged));
-              HttpResponse<String> response = mock(HttpResponse.class);
-              when(response.statusCode()).thenReturn(githubStatus);
-              when(response.body()).thenReturn(body);
-              return response;
-            });
+        .thenAnswer(invocation -> {
+          HttpRequest request = invocation.getArgument(0);
+          String body;
+          if (request.method().equals("PUT")) {
+            puts.incrementAndGet();
+            if (disconnect) throw new java.io.IOException("uncertain");
+            body = encode(obj("merged", confirmed));
+          } else if (request.uri().getPath().endsWith("/check-runs"))
+            body =
+                encode(
+                    obj(
+                        "total_count",
+                        1,
+                        "check_runs",
+                        List.of(obj("name", "unit", "status", "completed", "conclusion", ci))));
+          else if (request.uri().getPath().endsWith("/status")) body = "{\"total_count\":0}";
+          else if (request.uri().getPath().endsWith("/reviews")) body = "[]";
+          else
+            body =
+                encode(
+                    obj(
+                        "head",
+                        obj("sha", candidate),
+                        "state",
+                        remoteMerged ? "closed" : "open",
+                        "draft",
+                        false,
+                        "merged",
+                        remoteMerged));
+          HttpResponse<String> response = mock(HttpResponse.class);
+          when(response.statusCode()).thenReturn(githubStatus);
+          when(response.body()).thenReturn(body);
+          return response;
+        });
     publisher = new IntegrationPublisher(work, token.toString(), http);
   }
 

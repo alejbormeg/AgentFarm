@@ -12,8 +12,8 @@ import java.time.Duration;
 import java.util.*;
 
 /**
- * Model Context Protocol server over stdio (newline-delimited JSON-RPC 2.0). It lets Claude Code
- * or Claude Desktop read the decision inbox, proposals and metrics and file new requests. It
+ * Model Context Protocol server over stdio (newline-delimited JSON-RPC 2.0). It lets Claude Code or
+ * Claude Desktop read the decision inbox, proposals and metrics and file new requests. It
  * deliberately has no tool to approve, implement or merge: a model must not approve agent work.
  */
 public final class McpServer {
@@ -74,7 +74,8 @@ public final class McpServer {
     };
   }
 
-  static Map<String, Object> tool(String name, String description, Map<String, Object> props, List<String> required) {
+  static Map<String, Object> tool(
+      String name, String description, Map<String, Object> props, List<String> required) {
     return obj(
         "name",
         name,
@@ -100,11 +101,23 @@ public final class McpServer {
               "agentfarm_create_request",
               "Crea una petición: AgentFarm abrirá una issue e investigará antes de proponer cambios. No aprueba nada.",
               Map.of(
-                  "repository", obj("type", "string", "description", "owner/repo"),
-                  "title", obj("type", "string"),
-                  "request", obj("type", "string"),
+                  "repository",
+                  obj("type", "string", "description", "owner/repo"),
+                  "title",
+                  obj("type", "string"),
+                  "request",
+                  obj("type", "string"),
                   "recipe",
-                  obj("type", "string", "enum", List.of("bugfix", "dependency-update", "test-improvement", "migration", "project-memory"))),
+                  obj(
+                      "type",
+                      "string",
+                      "enum",
+                      List.of(
+                          "bugfix",
+                          "dependency-update",
+                          "test-improvement",
+                          "migration",
+                          "project-memory"))),
               List.of("repository", "title", "request")),
           tool(
               "agentfarm_metrics",
@@ -129,7 +142,8 @@ public final class McpServer {
                     "repository", w.path("repo").asText(),
                     "title", w.path("title").asText(),
                     "state", w.path("state").asText(),
-                    "needs_owner", Set.of("proposed", "review", "blocked").contains(w.path("state").asText()),
+                    "needs_owner",
+                        Set.of("proposed", "review", "blocked").contains(w.path("state").asText()),
                     "version", w.path("version").asInt(),
                     "pr", w.path("pr").isNull() ? null : w.path("pr").asInt(),
                     "error", w.path("error").isNull() ? null : w.path("error").asText()));
@@ -154,7 +168,8 @@ public final class McpServer {
                 "sandbox", p.path("sandbox"),
                 "sha", w.path("sha").asText(null),
                 "pr", w.path("pr").isNull() ? null : w.path("pr").asInt(),
-                "evidence_passed", e.path("passed").isMissingNode() ? null : e.path("passed").asBoolean(),
+                "evidence_passed",
+                    e.path("passed").isMissingNode() ? null : e.path("passed").asBoolean(),
                 "review_findings", e.path("review").path("findings").asText(null),
                 "panel_action", "Aprobar, corregir o integrar se hace en el panel de AgentFarm.");
           }
@@ -167,7 +182,8 @@ public final class McpServer {
                 "repository", text(args, "repository"),
                 "title", text(args, "title"),
                 "request", text(args, "request"));
-        if (args.hasNonNull("recipe")) body.put("recipe", obj("id", args.path("recipe").asText(), "version", 1));
+        if (args.hasNonNull("recipe"))
+          body.put("recipe", obj("id", args.path("recipe").asText(), "version", 1));
         var created = panel.post("/work", body);
         yield obj("id", created.path("id").asText(), "state", created.path("state").asText());
       }
@@ -177,12 +193,20 @@ public final class McpServer {
         var overview = panel.get("/overview");
         var executors = new ArrayList<Object>();
         for (var x : runtime.path("executors"))
-          executors.add(obj("executor", x.path("executor").asText(), "fresh", x.path("fresh").asBoolean(), "phase", x.path("snapshot").path("run_state").asText()));
+          executors.add(
+              obj(
+                  "executor",
+                  x.path("executor").asText(),
+                  "fresh",
+                  x.path("fresh").asBoolean(),
+                  "phase",
+                  x.path("snapshot").path("run_state").asText()));
         yield obj(
             "paused", overview.path("paused").asBoolean(),
             "executors", executors,
             "quota_fresh", runtime.path("quota_fresh").asBoolean(),
-            "weekly_used_percent", runtime.path("snapshot").path("quota").path("weekly_used_percent"));
+            "weekly_used_percent",
+                runtime.path("snapshot").path("quota").path("weekly_used_percent"));
       }
       default -> throw new IllegalArgumentException("Unknown tool " + name);
     };
@@ -198,9 +222,12 @@ public final class McpServer {
           switch (method) {
             case "initialize" ->
                 obj(
-                    "protocolVersion", message.path("params").path("protocolVersion").asText(VERSION),
-                    "capabilities", obj("tools", obj("listChanged", false)),
-                    "serverInfo", obj("name", "agentfarm", "version", "0.2"),
+                    "protocolVersion",
+                    message.path("params").path("protocolVersion").asText(VERSION),
+                    "capabilities",
+                    obj("tools", obj("listChanged", false)),
+                    "serverInfo",
+                    obj("name", "agentfarm", "version", "0.2"),
                     "instructions",
                     "AgentFarm gobierna un equipo de agentes. Puedes consultar y crear peticiones; las aprobaciones e integraciones las hace el propietario en el panel.");
             case "ping" -> Map.of();
@@ -211,18 +238,33 @@ public final class McpServer {
                 var value = call(params.path("name").asText(), params.path("arguments"));
                 yield obj(
                     "content",
-                    List.of(obj("type", "text", "text", MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(value))),
+                    List.of(
+                        obj(
+                            "type",
+                            "text",
+                            "text",
+                            MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(value))),
                     "isError",
                     false);
               } catch (Exception e) {
-                yield obj("content", List.of(obj("type", "text", "text", String.valueOf(e.getMessage()))), "isError", true);
+                yield obj(
+                    "content",
+                    List.of(obj("type", "text", "text", String.valueOf(e.getMessage()))),
+                    "isError",
+                    true);
               }
             }
             default -> throw new UnsupportedOperationException(method);
           };
       return obj("jsonrpc", "2.0", "id", id, "result", result);
     } catch (UnsupportedOperationException e) {
-      return obj("jsonrpc", "2.0", "id", id, "error", obj("code", -32601, "message", "Method not found: " + method));
+      return obj(
+          "jsonrpc",
+          "2.0",
+          "id",
+          id,
+          "error",
+          obj("code", -32601, "message", "Method not found: " + method));
     }
   }
 
@@ -234,7 +276,14 @@ public final class McpServer {
       try {
         response = handle(parse(line));
       } catch (Exception e) {
-        response = obj("jsonrpc", "2.0", "id", null, "error", obj("code", -32700, "message", "Parse error"));
+        response =
+            obj(
+                "jsonrpc",
+                "2.0",
+                "id",
+                null,
+                "error",
+                obj("code", -32700, "message", "Parse error"));
       }
       if (response != null) {
         out.println(encode(response));
@@ -245,6 +294,7 @@ public final class McpServer {
 
   public static void main(String panelUrl, String user, Path passwordFile) throws IOException {
     var server = new McpServer(http(panelUrl, user, Files.readString(passwordFile).trim()));
-    server.serve(new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)), System.out);
+    server.serve(
+        new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)), System.out);
   }
 }

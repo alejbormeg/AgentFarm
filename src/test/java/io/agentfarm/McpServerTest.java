@@ -40,7 +40,8 @@ class McpServerTest {
             new BufferedReader(new StringReader(String.join("\n", lines))),
             new PrintStream(out, true, StandardCharsets.UTF_8));
     var replies = new ArrayList<JsonNode>();
-    for (String l : out.toString(StandardCharsets.UTF_8).split("\n")) if (!l.isBlank()) replies.add(parse(l));
+    for (String l : out.toString(StandardCharsets.UTF_8).split("\n"))
+      if (!l.isBlank()) replies.add(parse(l));
     return replies;
   }
 
@@ -57,7 +58,10 @@ class McpServerTest {
     var names = new ArrayList<String>();
     r.get(1).path("result").path("tools").forEach(t -> names.add(t.path("name").asText()));
     assertTrue(names.contains("agentfarm_inbox"));
-    assertTrue(names.stream().noneMatch(n -> n.contains("approve") || n.contains("merge") || n.contains("implement")));
+    assertTrue(
+        names.stream()
+            .noneMatch(
+                n -> n.contains("approve") || n.contains("merge") || n.contains("implement")));
     assertEquals(-32601, r.get(2).path("error").path("code").asInt());
   }
 

@@ -11,9 +11,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
- * Turns repository signals into research proposals, never into implementation or merge. Each
- * signal is processed once (trigger_events), each repository opens at most {@code max_new}
- * proposals per pass, and a paused farm creates nothing.
+ * Turns repository signals into research proposals, never into implementation or merge. Each signal
+ * is processed once (trigger_events), each repository opens at most {@code max_new} proposals per
+ * pass, and a paused farm creates nothing.
  */
 @Service
 public class TriggerService {
@@ -38,32 +38,30 @@ public class TriggerService {
     this.work = work;
     this.github = github;
     this.sentry = sentry;
-    db.tx(
-        c -> {
-          statement(
-              c,
-              "CREATE TABLE IF NOT EXISTS trigger_policies(repo TEXT PRIMARY KEY,kinds TEXT NOT"
-                  + " NULL,max_new INTEGER NOT NULL,enabled INTEGER NOT NULL,last_run"
-                  + " INTEGER,last_error TEXT)");
-          statement(
-              c,
-              "CREATE TABLE IF NOT EXISTS trigger_events(key TEXT PRIMARY KEY,repo TEXT NOT"
-                  + " NULL,kind TEXT NOT NULL,item TEXT NOT NULL,at INTEGER NOT NULL)");
-          Store.ensureColumn(c, "trigger_policies", "options", "TEXT");
-          return null;
-        });
+    db.tx(c -> {
+      statement(
+          c,
+          "CREATE TABLE IF NOT EXISTS trigger_policies(repo TEXT PRIMARY KEY,kinds TEXT NOT"
+              + " NULL,max_new INTEGER NOT NULL,enabled INTEGER NOT NULL,last_run"
+              + " INTEGER,last_error TEXT)");
+      statement(
+          c,
+          "CREATE TABLE IF NOT EXISTS trigger_events(key TEXT PRIMARY KEY,repo TEXT NOT"
+              + " NULL,kind TEXT NOT NULL,item TEXT NOT NULL,at INTEGER NOT NULL)");
+      Store.ensureColumn(c, "trigger_policies", "options", "TEXT");
+      return null;
+    });
   }
 
   public List<Map<String, Object>> policies() {
-    return db.tx(
-        c -> {
-          var rows = rows(c, "SELECT * FROM trigger_policies ORDER BY repo");
-          for (var r : rows) {
-            r.put("kinds", parse(r.get("kinds").toString()));
-            r.put("options", parse(r.get("options") == null ? "{}" : r.get("options").toString()));
-          }
-          return rows;
-        });
+    return db.tx(c -> {
+      var rows = rows(c, "SELECT * FROM trigger_policies ORDER BY repo");
+      for (var r : rows) {
+        r.put("kinds", parse(r.get("kinds").toString()));
+        r.put("options", parse(r.get("options") == null ? "{}" : r.get("options").toString()));
+      }
+      return rows;
+    });
   }
 
   public Map<String, Object> configure(JsonNode n, String actor) {
@@ -86,21 +84,20 @@ public class TriggerService {
         throw new IllegalArgumentException("Sentry trigger needs organization and project slugs");
       options.put("sentry", obj("organization", org, "project", project));
     }
-    return db.tx(
-        c -> {
-          exec(
-              c,
-              "INSERT INTO trigger_policies(repo,kinds,max_new,enabled,options) VALUES(?,?,?,?,?)"
-                  + " ON CONFLICT(repo) DO UPDATE SET kinds=excluded.kinds,max_new=excluded.max_new,"
-                  + "enabled=excluded.enabled,options=excluded.options",
-              repo,
-              encode(kinds),
-              max,
-              enabled ? 1 : 0,
-              encode(options));
-          audit(c, actor, "trigger.configure", repo + " " + kinds + (enabled ? "" : " disabled"));
-          return obj("repository", repo, "kinds", kinds, "max_new", max, "enabled", enabled);
-        });
+    return db.tx(c -> {
+      exec(
+          c,
+          "INSERT INTO trigger_policies(repo,kinds,max_new,enabled,options) VALUES(?,?,?,?,?)"
+              + " ON CONFLICT(repo) DO UPDATE SET kinds=excluded.kinds,max_new=excluded.max_new,"
+              + "enabled=excluded.enabled,options=excluded.options",
+          repo,
+          encode(kinds),
+          max,
+          enabled ? 1 : 0,
+          encode(options));
+      audit(c, actor, "trigger.configure", repo + " " + kinds + (enabled ? "" : " disabled"));
+      return obj("repository", repo, "kinds", kinds, "max_new", max, "enabled", enabled);
+    });
   }
 
   @Scheduled(fixedDelayString = "${agentfarm.trigger-interval-ms:300000}", initialDelay = 60000)
@@ -109,7 +106,11 @@ public class TriggerService {
   }
 
   public List<String> tick(GitHubReader.Source source) {
-    return tick(source, path -> { throw new IllegalStateException("Sentry is not configured"); });
+    return tick(
+        source,
+        path -> {
+          throw new IllegalStateException("Sentry is not configured");
+        });
   }
 
   /** One pass over every enabled policy. Returns the request ids created or corrected. */
@@ -134,14 +135,13 @@ public class TriggerService {
         error = TelemetryService.clean(String.valueOf(e.getMessage()));
       }
       String failure = error;
-      db.tx(
-          c ->
-              exec(
-                  c,
-                  "UPDATE trigger_policies SET last_run=?,last_error=? WHERE repo=?",
-                  clock.instant().getEpochSecond(),
-                  failure,
-                  repo));
+      db.tx(c ->
+          exec(
+              c,
+              "UPDATE trigger_policies SET last_run=?,last_error=? WHERE repo=?",
+              clock.instant().getEpochSecond(),
+              failure,
+              repo));
     }
     return touched;
   }
@@ -167,11 +167,16 @@ public class TriggerService {
                   "issue:" + repo + "#" + issue.path("number").asInt(),
                   "labeled_issue",
                   "#" + issue.path("number").asInt() + " " + issue.path("title").asText(),
-                  "Origen: issue " + issue.path("html_url").asText() + "\n\n" + issue.path("body").asText(""),
+                  "Origen: issue "
+                      + issue.path("html_url").asText()
+                      + "\n\n"
+                      + issue.path("body").asText(""),
                   null));
     if (wanted.contains("failing_ci")) {
       String branch = gh.get(repo, "/").path("default_branch").asText("main");
-      for (var run : gh.get(repo, "/actions/runs?branch=" + branch + "&status=completed&per_page=1").path("workflow_runs"))
+      for (var run :
+          gh.get(repo, "/actions/runs?branch=" + branch + "&status=completed&per_page=1")
+              .path("workflow_runs"))
         if (run.path("conclusion").asText().equals("failure"))
           signals.add(
               new Signal(
@@ -194,9 +199,14 @@ public class TriggerService {
             new Signal(
                 "dep:" + repo + ":" + alert.path("number").asInt(),
                 "dependabot",
-                "Seguridad: " + alert.path("dependency").path("package").path("name").asText()
-                    + " (" + advisory.path("severity").asText() + ")",
-                "Alerta Dependabot " + alert.path("html_url").asText() + ": "
+                "Seguridad: "
+                    + alert.path("dependency").path("package").path("name").asText()
+                    + " ("
+                    + advisory.path("severity").asText()
+                    + ")",
+                "Alerta Dependabot "
+                    + alert.path("html_url").asText()
+                    + ": "
                     + advisory.path("summary").asText()
                     + ". Propón la actualización mínima que la corrige y su impacto.",
                 "dependency-update"));
@@ -231,7 +241,8 @@ public class TriggerService {
     }
     if (wanted.contains("weekly")) {
       var date = LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC);
-      String week = date.get(IsoFields.WEEK_BASED_YEAR) + "-W" + date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+      String week =
+          date.get(IsoFields.WEEK_BASED_YEAR) + "-W" + date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
       signals.add(
           new Signal(
               "weekly:" + repo + ":" + week,
@@ -247,31 +258,30 @@ public class TriggerService {
       if (touched.size() >= max) break;
       String id = "trg-" + sha256(s.key()).substring(0, 32);
       boolean created =
-          db.tx(
-              c -> {
-                if (one(c, "SELECT 1 FROM trigger_events WHERE key=?", s.key()) != null) return false;
-                var request =
-                    obj(
-                        "request_id",
-                        id,
-                        "repository",
-                        repo,
-                        "title",
-                        s.title().length() > 180 ? s.title().substring(0, 180) : s.title(),
-                        "request",
-                        s.request().length() > 18000 ? s.request().substring(0, 18000) : s.request());
-                if (s.recipe() != null) request.put("recipe", obj("id", s.recipe(), "version", 1));
-                work.create(c, MAPPER.valueToTree(request), "trigger:" + s.kind());
-                exec(
-                    c,
-                    "INSERT INTO trigger_events VALUES(?,?,?,?,?)",
-                    s.key(),
-                    repo,
-                    s.kind(),
+          db.tx(c -> {
+            if (one(c, "SELECT 1 FROM trigger_events WHERE key=?", s.key()) != null) return false;
+            var request =
+                obj(
+                    "request_id",
                     id,
-                    clock.instant().getEpochSecond());
-                return true;
-              });
+                    "repository",
+                    repo,
+                    "title",
+                    s.title().length() > 180 ? s.title().substring(0, 180) : s.title(),
+                    "request",
+                    s.request().length() > 18000 ? s.request().substring(0, 18000) : s.request());
+            if (s.recipe() != null) request.put("recipe", obj("id", s.recipe(), "version", 1));
+            work.create(c, MAPPER.valueToTree(request), "trigger:" + s.kind());
+            exec(
+                c,
+                "INSERT INTO trigger_events VALUES(?,?,?,?,?)",
+                s.key(),
+                repo,
+                s.kind(),
+                id,
+                clock.instant().getEpochSecond());
+            return true;
+          });
       if (created) touched.add(id);
     }
     if (wanted.contains("pr_feedback")) touched.addAll(feedback(gh, repo));
@@ -282,13 +292,12 @@ public class TriggerService {
   private List<String> feedback(GitHubReader.Source gh, String repo) throws Exception {
     var touched = new ArrayList<String>();
     var reviewing =
-        db.tx(
-            c ->
-                rows(
-                    c,
-                    "SELECT id,pr,sha FROM work_items WHERE repo=? AND state='review' AND pr IS NOT"
-                        + " NULL",
-                    repo));
+        db.tx(c ->
+            rows(
+                c,
+                "SELECT id,pr,sha FROM work_items WHERE repo=? AND state='review' AND pr IS NOT"
+                    + " NULL",
+                repo));
     for (var item : reviewing) {
       String id = item.get("id").toString(), sha = Objects.toString(item.get("sha"), "");
       var notes = new ArrayList<String>();
@@ -297,44 +306,49 @@ public class TriggerService {
         if (review.path("state").asText().equals("CHANGES_REQUESTED")
             && review.path("commit_id").asText().equals(sha)) {
           keys.add("review:" + repo + ":" + review.path("id").asLong());
-          notes.add(review.path("user").path("login").asText() + ": " + review.path("body").asText());
+          notes.add(
+              review.path("user").path("login").asText() + ": " + review.path("body").asText());
         }
-      for (var check : gh.get(repo, "/commits/" + sha + "/check-runs?per_page=100").path("check_runs"))
+      for (var check :
+          gh.get(repo, "/commits/" + sha + "/check-runs?per_page=100").path("check_runs"))
         if (Set.of("failure", "timed_out").contains(check.path("conclusion").asText())) {
           keys.add("check:" + repo + ":" + check.path("id").asLong());
-          notes.add("Check " + check.path("name").asText() + " falla: " + check.path("html_url").asText());
+          notes.add(
+              "Check "
+                  + check.path("name").asText()
+                  + " falla: "
+                  + check.path("html_url").asText());
         }
       if (keys.isEmpty()) continue;
       boolean fresh =
-          db.tx(
-              c -> {
-                for (String k : keys)
-                  if (one(c, "SELECT 1 FROM trigger_events WHERE key=?", k) == null) return true;
-                return false;
-              });
+          db.tx(c -> {
+            for (String k : keys)
+              if (one(c, "SELECT 1 FROM trigger_events WHERE key=?", k) == null) return true;
+            return false;
+          });
       if (!fresh) continue;
       try {
         work.action(
             id,
             "correct",
-            MAPPER.valueToTree(obj("feedback", "Comentarios de la PR y CI:\n" + String.join("\n", notes))),
+            MAPPER.valueToTree(
+                obj("feedback", "Comentarios de la PR y CI:\n" + String.join("\n", notes))),
             "trigger:pr_feedback");
       } catch (IllegalArgumentException busy) {
         continue; // an operation is already pending; retry next pass
       }
-      db.tx(
-          c -> {
-            for (String k : keys)
-              exec(
-                  c,
-                  "INSERT OR IGNORE INTO trigger_events VALUES(?,?,?,?,?)",
-                  k,
-                  repo,
-                  "pr_feedback",
-                  id,
-                  clock.instant().getEpochSecond());
-            return null;
-          });
+      db.tx(c -> {
+        for (String k : keys)
+          exec(
+              c,
+              "INSERT OR IGNORE INTO trigger_events VALUES(?,?,?,?,?)",
+              k,
+              repo,
+              "pr_feedback",
+              id,
+              clock.instant().getEpochSecond());
+        return null;
+      });
       touched.add(id);
     }
     return touched;

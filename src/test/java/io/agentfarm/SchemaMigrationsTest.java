@@ -17,7 +17,9 @@ class SchemaMigrationsTest {
   void migrationsRunOnceInOrderAndRefuseNewerDatabases() {
     var store = new Store(dir.resolve("db").toString());
     new SchemaMigrations(
-        store, new WorkflowService(store, Clock.systemUTC()), new TelemetryService(store, Clock.systemUTC()),
+        store,
+        new WorkflowService(store, Clock.systemUTC()),
+        new TelemetryService(store, Clock.systemUTC()),
         new NodeCredentials(store, Clock.systemUTC()));
     int latest = SchemaMigrations.ALL.getLast().version();
     assertEquals(latest, SchemaMigrations.version(store));
@@ -33,7 +35,8 @@ class SchemaMigrationsTest {
     var newer = new java.util.ArrayList<>(SchemaMigrations.ALL);
     newer.add(new Migration(latest + 1, "future", List.of("CREATE TABLE future(x)")));
     SchemaMigrations.apply(store, newer);
-    assertThrows(IllegalStateException.class, () -> SchemaMigrations.apply(store, SchemaMigrations.ALL));
+    assertThrows(
+        IllegalStateException.class, () -> SchemaMigrations.apply(store, SchemaMigrations.ALL));
   }
 
   @Test

@@ -20,6 +20,7 @@ public final class Commandments {
           "Ninguna métrica de calidad empeora sin una excepción firmada.",
           "Ningún secreto ni vulnerabilidad conocida llega a la rama principal.",
           "Ningún agente cambia estos mandamientos.");
+
   /** The owner may sign an exception only where the rule itself allows for one. */
   public static final Set<String> EXCEPTABLE = Set.of("CM-2", "CM-5");
 
@@ -47,7 +48,12 @@ public final class Commandments {
   }
 
   public static List<Map<String, Object>> assess(
-      JsonNode proposal, JsonNode reports, String ci, String ciReason, JsonNode ciDetail, String recipe) {
+      JsonNode proposal,
+      JsonNode reports,
+      String ci,
+      String ciReason,
+      JsonNode ciDetail,
+      String recipe) {
     boolean read = ci != null && !ci.equals("unavailable");
     var files = new ArrayList<String>();
     ciDetail.path("files").forEach(f -> files.add(f.asText()));
@@ -68,7 +74,14 @@ public final class Commandments {
 
   private static Map<String, Object> entry(int number, Verdict v) {
     return obj(
-        "id", "CM-" + number, "text", TEXT.get(number - 1), "status", v.status(), "detail", v.detail());
+        "id",
+        "CM-" + number,
+        "text",
+        TEXT.get(number - 1),
+        "status",
+        v.status(),
+        "detail",
+        v.detail());
   }
 
   private static Verdict tested(JsonNode reports, String ci, String reason) {
@@ -82,7 +95,8 @@ public final class Commandments {
   private static Verdict regression(JsonNode reports) {
     var r = reports.path("regression");
     return switch (r.path("status").asText()) {
-      case "proved" -> new Verdict("ok", r.path("reason").asText("La prueba nueva falla sin el cambio."));
+      case "proved" ->
+          new Verdict("ok", r.path("reason").asText("La prueba nueva falla sin el cambio."));
       case "not_proved" -> new Verdict("failed", r.path("reason").asText());
       case "not_required" -> new Verdict("not_applicable", "Esta tarea no corrige un bug.");
       default -> new Verdict("not_evaluated", r.path("reason").asText("Sin datos del ejecutor."));
@@ -107,7 +121,8 @@ public final class Commandments {
     var allowed = proposal.path("allowed_paths");
     if (!allowed.isArray() || allowed.isEmpty())
       return new Verdict("not_evaluated", "Sin agentfarm.yaml no hay rutas aprobadas.");
-    if (!read || files.isEmpty()) return new Verdict("pending", "Falta leer los archivos cambiados.");
+    if (!read || files.isEmpty())
+      return new Verdict("pending", "Falta leer los archivos cambiados.");
     var paths = new ArrayList<String>();
     allowed.forEach(p -> paths.add(p.asText()));
     var outside =
@@ -122,7 +137,8 @@ public final class Commandments {
   private static Verdict quality(JsonNode reports) {
     var q = reports.path("quality");
     if (q.path("checks").isEmpty() && q.path("metrics").isEmpty())
-      return new Verdict("not_evaluated", "El proyecto no declara comprobaciones en agentfarm.yaml.");
+      return new Verdict(
+          "not_evaluated", "El proyecto no declara comprobaciones en agentfarm.yaml.");
     var failed = new ArrayList<String>();
     for (var c : q.path("checks"))
       if (!c.path("status").asText().equals("passed")) failed.add(c.path("kind").asText());
@@ -160,7 +176,8 @@ public final class Commandments {
 
   private static Verdict untouched(
       List<String> files, List<String> added, String recipe, boolean read) {
-    if (!read || files.isEmpty()) return new Verdict("pending", "Falta leer los archivos cambiados.");
+    if (!read || files.isEmpty())
+      return new Verdict("pending", "Falta leer los archivos cambiados.");
     var changed = protectedChanges(files, added, recipe);
     return changed.isEmpty()
         ? new Verdict("ok", "No toca agentfarm.yaml ni la CI del proyecto.")

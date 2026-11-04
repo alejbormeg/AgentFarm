@@ -13,25 +13,36 @@ class PromptsTest {
     var research =
         Prompts.render(
             "research",
-            Map.of("repo", "o/r", "sandbox", "imagen x", "request", "Arregla {{repo}}", "feedback", ""));
+            Map.of(
+                "repo",
+                "o/r",
+                "sandbox",
+                "imagen x",
+                "request",
+                "Arregla {{repo}}",
+                "feedback",
+                ""));
     assertEquals("research.v5", research.id());
     assertEquals(Json.sha256(Prompts.template("research.v5")), research.hash());
     assertTrue(research.text().contains("Arregla {{repo}}"), "values are not re-expanded");
     assertFalse(research.text().contains("{{sandbox}}"));
     assertDoesNotThrow(
         () -> Prompts.render("implement", Map.of("ci", "x", "proposal", "{}", "request", "r")));
-    assertDoesNotThrow(
-        () ->
-            Prompts.render(
-                "review", Map.of("base", "a", "sha", "b", "proposal", "{}", "platform", "{}", "tests", "t")));
+    assertDoesNotThrow(() ->
+        Prompts.render(
+            "review",
+            Map.of("base", "a", "sha", "b", "proposal", "{}", "platform", "{}", "tests", "t")));
   }
 
   @Test
   void missingOrUnusedValuesAndUnknownTemplatesFail() {
-    assertThrows(IllegalArgumentException.class, () -> Prompts.render("review", Map.of("base", "a")));
+    assertThrows(
+        IllegalArgumentException.class, () -> Prompts.render("review", Map.of("base", "a")));
     assertThrows(
         IllegalArgumentException.class,
-        () -> Prompts.render("implement", Map.of("ci", "x", "proposal", "{}", "request", "r", "extra", "y")));
+        () ->
+            Prompts.render(
+                "implement", Map.of("ci", "x", "proposal", "{}", "request", "r", "extra", "y")));
     assertThrows(IllegalArgumentException.class, () -> Prompts.template("../secret"));
     assertThrows(IllegalArgumentException.class, () -> Prompts.render("deploy", Map.of()));
   }

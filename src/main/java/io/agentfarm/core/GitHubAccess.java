@@ -4,7 +4,9 @@ import static io.agentfarm.core.Json.obj;
 
 import java.util.*;
 
-/** Tries the reads integration depends on, so a missing permission shows up before a task needs it. */
+/**
+ * Tries the reads integration depends on, so a missing permission shows up before a task needs it.
+ */
 public final class GitHubAccess {
   private static final Map<String, String> READS =
       Map.of(
@@ -22,10 +24,22 @@ public final class GitHubAccess {
     try {
       var push = github.get(repo, "").path("permissions").path("push");
       if (push.isMissingNode())
-        return obj("id", "write", "state", "unknown", "detail", "GitHub no informa de los permisos de esta credencial.");
+        return obj(
+            "id",
+            "write",
+            "state",
+            "unknown",
+            "detail",
+            "GitHub no informa de los permisos de esta credencial.");
       return push.asBoolean()
           ? obj("id", "write", "state", "passed")
-          : obj("id", "write", "state", "failed", "detail", "Sin permiso de escritura: el panel no podrá integrar.");
+          : obj(
+              "id",
+              "write",
+              "state",
+              "failed",
+              "detail",
+              "Sin permiso de escritura: el panel no podrá integrar.");
     } catch (Exception e) {
       return obj("id", "write", "state", "failed", "detail", e.getMessage());
     }
@@ -46,7 +60,16 @@ public final class GitHubAccess {
     var write = writeAccess(repo, github);
     checks.add(write);
     passed &= !write.get("state").equals("failed");
-    var result = obj("state", passed ? "passed" : "failed", "credential", kind, "repository", repo, "checks", checks);
+    var result =
+        obj(
+            "state",
+            passed ? "passed" : "failed",
+            "credential",
+            kind,
+            "repository",
+            repo,
+            "checks",
+            checks);
     if (kind.equals("fine-grained-token"))
       result.put(
           "advice",

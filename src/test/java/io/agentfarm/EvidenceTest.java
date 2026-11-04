@@ -118,14 +118,13 @@ class EvidenceTest {
   void candidateOrReportChangesInvalidateDecisions() {
     var stale = decision("manual");
     evidence.decide("evidence-task", stale, "owner");
-    store.tx(
-        c -> {
-          Store.exec(
-              c,
-              "UPDATE work_items SET evidence=? WHERE id='evidence-task'",
-              encode(obj("sha", sha, "passed", true, "summary", "changed")));
-          return null;
-        });
+    store.tx(c -> {
+      Store.exec(
+          c,
+          "UPDATE work_items SET evidence=? WHERE id='evidence-task'",
+          encode(obj("sha", sha, "passed", true, "summary", "changed")));
+      return null;
+    });
     assertFalse(dossier().path("ready").asBoolean());
     var another = stale.deepCopy();
     ((com.fasterxml.jackson.databind.node.ObjectNode) another)
@@ -134,11 +133,10 @@ class EvidenceTest {
         IllegalArgumentException.class, () -> evidence.decide("evidence-task", another, "owner"));
     evidence.decide("evidence-task", decision("manual"), "owner");
     assertTrue(dossier().path("ready").asBoolean());
-    store.tx(
-        c -> {
-          Store.exec(c, "UPDATE work_items SET sha=? WHERE id='evidence-task'", "c".repeat(40));
-          return null;
-        });
+    store.tx(c -> {
+      Store.exec(c, "UPDATE work_items SET sha=? WHERE id='evidence-task'", "c".repeat(40));
+      return null;
+    });
     assertFalse(dossier().path("ready").asBoolean());
     assertEquals(2, dossier().path("history").size());
   }
@@ -165,24 +163,22 @@ class EvidenceTest {
     assertThrows(
         IllegalArgumentException.class, () -> evidence.decide("evidence-task", wrong, "owner"));
     evidence.decide("evidence-task", decision("manual"), "owner");
-    store.tx(
-        c -> {
-          Store.exec(
-              c,
-              "UPDATE work_items SET proposal=? WHERE id='evidence-task'",
-              encode(obj("acceptance", "Changed")));
-          return null;
-        });
+    store.tx(c -> {
+      Store.exec(
+          c,
+          "UPDATE work_items SET proposal=? WHERE id='evidence-task'",
+          encode(obj("acceptance", "Changed")));
+      return null;
+    });
     assertFalse(dossier().path("ready").asBoolean());
   }
 
   @Test
   void legacyScopeNeedsExplicitImport() {
-    store.tx(
-        c -> {
-          Store.exec(c, "DELETE FROM acceptance_scopes");
-          return null;
-        });
+    store.tx(c -> {
+      Store.exec(c, "DELETE FROM acceptance_scopes");
+      return null;
+    });
     assertTrue(dossier().path("scope_missing").asBoolean());
     assertFalse(dossier().path("ready").asBoolean());
     assertThrows(
@@ -246,14 +242,13 @@ class EvidenceTest {
   @Test
   void dossierRedactsCredentialFieldsAndKnownTokenFormats() {
     String secret = "afn_" + "a".repeat(43);
-    store.tx(
-        c -> {
-          Store.exec(
-              c,
-              "UPDATE work_items SET evidence=? WHERE id='evidence-task'",
-              encode(obj("sha", sha, "password", "private-value", "output", secret)));
-          return null;
-        });
+    store.tx(c -> {
+      Store.exec(
+          c,
+          "UPDATE work_items SET evidence=? WHERE id='evidence-task'",
+          encode(obj("sha", sha, "password", "private-value", "output", secret)));
+      return null;
+    });
     String exported = Json.encode(evidence.get("evidence-task"));
     assertFalse(exported.contains("private-value"));
     assertFalse(exported.contains(secret));
@@ -287,20 +282,19 @@ class EvidenceTest {
                     List.of(
                         obj("id", "AC-1", "description", "X", "method", "manual"),
                         obj("id", "AC-1", "description", "Y", "method", "manual")))));
-    assertDoesNotThrow(
-        () ->
-            EvidenceService.criteria(
-                n(
-                    "criteria",
-                    List.of(
-                        obj(
-                            "id",
-                            "AC-1",
-                            "description",
-                            "X",
-                            "method",
-                            "test",
-                            "checks",
-                            List.of("unit"))))));
+    assertDoesNotThrow(() ->
+        EvidenceService.criteria(
+            n(
+                "criteria",
+                List.of(
+                    obj(
+                        "id",
+                        "AC-1",
+                        "description",
+                        "X",
+                        "method",
+                        "test",
+                        "checks",
+                        List.of("unit"))))));
   }
 }

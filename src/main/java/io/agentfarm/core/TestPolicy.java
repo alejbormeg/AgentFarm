@@ -10,7 +10,12 @@ import java.util.Set;
  */
 public final class TestPolicy {
   private static final Set<String> DOCUMENTS =
-      Set.of("license", "notice", "agentfarm-memory.json", ".github/workflows/agentfarm.yml", "agentfarm.yaml");
+      Set.of(
+          "license",
+          "notice",
+          "agentfarm-memory.json",
+          ".github/workflows/agentfarm.yml",
+          "agentfarm.yaml");
 
   private TestPolicy() {}
 

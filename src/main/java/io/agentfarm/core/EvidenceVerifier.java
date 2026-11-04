@@ -63,46 +63,45 @@ public class EvidenceVerifier {
     boolean merged = pull.path("merged").asBoolean();
     // GitHub answers mergeable null while it computes; only an explicit false is a conflict.
     boolean conflict = pull.path("mergeable").isBoolean() && !pull.path("mergeable").asBoolean();
-    db.tx(
-        c -> {
-          if (!"review".equals(EvidenceService.item(c, id).get("state"))) return null;
-          if (merged) {
-            exec(
-                c,
-                "UPDATE work_items SET state='integrated',error=? WHERE id=?",
-                "Integrada fuera del panel: no pasó por sus puertas de integración.",
-                id);
-            Store.audit(c, "github", "work.merged-externally", id + " PR " + item.get("pr"));
-            return null;
-          }
-          var row = one(c, "SELECT detail FROM evidence_verifications WHERE item=?", id);
-          if (row == null) return null;
-          var detail = (com.fasterxml.jackson.databind.node.ObjectNode) parse(row.get("detail").toString());
-          detail.put("pull_conflict", conflict);
-          exec(c, "UPDATE evidence_verifications SET detail=? WHERE item=?", encode(detail), id);
-          return null;
-        });
+    db.tx(c -> {
+      if (!"review".equals(EvidenceService.item(c, id).get("state"))) return null;
+      if (merged) {
+        exec(
+            c,
+            "UPDATE work_items SET state='integrated',error=? WHERE id=?",
+            "Integrada fuera del panel: no pasó por sus puertas de integración.",
+            id);
+        Store.audit(c, "github", "work.merged-externally", id + " PR " + item.get("pr"));
+        return null;
+      }
+      var row = one(c, "SELECT detail FROM evidence_verifications WHERE item=?", id);
+      if (row == null) return null;
+      var detail =
+          (com.fasterxml.jackson.databind.node.ObjectNode) parse(row.get("detail").toString());
+      detail.put("pull_conflict", conflict);
+      exec(c, "UPDATE evidence_verifications SET detail=? WHERE item=?", encode(detail), id);
+      return null;
+    });
   }
 
   /** Reads GitHub outside any transaction and stores the outcome only if the candidate held. */
   public void verify(String id) {
     var snapshot =
-        db.tx(
-            c -> {
-              var item = EvidenceService.item(c, id);
-              var scope =
-                  one(
-                      c,
-                      "SELECT * FROM acceptance_scopes WHERE item=? AND version=?",
-                      id,
-                      item.get("version"));
-              if (scope == null || item.get("sha") == null) return null;
-              String basis = EvidenceService.basis(item, scope);
-              var row = one(c, "SELECT * FROM evidence_verifications WHERE item=?", id);
-              if (row != null && basis.equals(row.get("basis")) && "success".equals(row.get("state")))
-                return null;
-              return Map.of("item", item, "scope", scope, "basis", basis);
-            });
+        db.tx(c -> {
+          var item = EvidenceService.item(c, id);
+          var scope =
+              one(
+                  c,
+                  "SELECT * FROM acceptance_scopes WHERE item=? AND version=?",
+                  id,
+                  item.get("version"));
+          if (scope == null || item.get("sha") == null) return null;
+          String basis = EvidenceService.basis(item, scope);
+          var row = one(c, "SELECT * FROM evidence_verifications WHERE item=?", id);
+          if (row != null && basis.equals(row.get("basis")) && "success".equals(row.get("state")))
+            return null;
+          return Map.of("item", item, "scope", scope, "basis", basis);
+        });
     if (snapshot == null) return;
     @SuppressWarnings("unchecked")
     var item = (Map<String, Object>) snapshot.get("item");
@@ -121,25 +120,29 @@ public class EvidenceVerifier {
       result = new Assessment("unavailable", "No se pudo leer GitHub: " + e.getMessage(), Map.of());
     }
     var outcome = result;
-    db.tx(
-        c -> {
-          var now = EvidenceService.item(c, id);
-          var held = one(c, "SELECT * FROM acceptance_scopes WHERE item=? AND version=?", id, now.get("version"));
-          if (held == null || !EvidenceService.basis(now, held).equals(snapshot.get("basis")))
-            return null;
-          exec(
+    db.tx(c -> {
+      var now = EvidenceService.item(c, id);
+      var held =
+          one(
               c,
-              "INSERT OR REPLACE INTO evidence_verifications(item,basis,sha,state,reason,detail,at)"
-                  + " VALUES(?,?,?,?,?,?,?)",
+              "SELECT * FROM acceptance_scopes WHERE item=? AND version=?",
               id,
-              snapshot.get("basis"),
-              sha,
-              outcome.state(),
-              outcome.reason(),
-              encode(outcome.detail()),
-              clock.instant().getEpochSecond());
-          return null;
-        });
+              now.get("version"));
+      if (held == null || !EvidenceService.basis(now, held).equals(snapshot.get("basis")))
+        return null;
+      exec(
+          c,
+          "INSERT OR REPLACE INTO evidence_verifications(item,basis,sha,state,reason,detail,at)"
+              + " VALUES(?,?,?,?,?,?,?)",
+          id,
+          snapshot.get("basis"),
+          sha,
+          outcome.state(),
+          outcome.reason(),
+          encode(outcome.detail()),
+          clock.instant().getEpochSecond());
+      return null;
+    });
   }
 
   /** Pure decision over GitHub's answers: pending until CI ends, then success or failed. */
@@ -150,26 +153,24 @@ public class EvidenceVerifier {
     var runs = new ArrayList<Map<String, Object>>();
     checks
         .path("check_runs")
-        .forEach(
-            r ->
-                runs.add(
-                    obj(
-                        "name",
-                        r.path("name").asText(),
-                        "status",
-                        r.path("status").asText(),
-                        "conclusion",
-                        r.path("conclusion").asText())));
+        .forEach(r ->
+            runs.add(
+                obj(
+                    "name",
+                    r.path("name").asText(),
+                    "status",
+                    r.path("status").asText(),
+                    "conclusion",
+                    r.path("conclusion").asText())));
     var added = new ArrayList<String>();
     var secrets = new ArrayList<String>();
     compare
         .path("files")
-        .forEach(
-            f -> {
-              if (f.path("status").asText().equals("added")) added.add(f.path("filename").asText());
-              secrets.addAll(
-                  SecretScan.findings(f.path("filename").asText(), f.path("patch").asText()));
-            });
+        .forEach(f -> {
+          if (f.path("status").asText().equals("added")) added.add(f.path("filename").asText());
+          secrets.addAll(
+              SecretScan.findings(f.path("filename").asText(), f.path("patch").asText()));
+        });
     var detail = obj("checks", runs, "files", files, "added", added, "secrets", secrets);
     var required = evidence.path("ci_checks");
     if (!required.isArray() || required.isEmpty())
@@ -196,11 +197,10 @@ public class EvidenceVerifier {
     for (var expected : required) {
       boolean found =
           runs.stream()
-              .anyMatch(
-                  r ->
-                      "success".equals(r.get("conclusion"))
-                          && (expected.asText().equals("*")
-                              || expected.asText().equals(r.get("name"))));
+              .anyMatch(r ->
+                  "success".equals(r.get("conclusion"))
+                      && (expected.asText().equals("*")
+                          || expected.asText().equals(r.get("name"))));
       if (!found)
         return new Assessment("failed", "Falta en CI: " + expected.asText() + ".", detail);
     }
@@ -211,9 +211,10 @@ public class EvidenceVerifier {
             .toList();
     if (!workflows.isEmpty())
       return new Assessment(
-          "failed", "El candidato cambia la propia CI: " + String.join(", ", workflows) + ".", detail);
-    if (!secrets.isEmpty())
-      return new Assessment("failed", "Posible secreto en el diff.", detail);
+          "failed",
+          "El candidato cambia la propia CI: " + String.join(", ", workflows) + ".",
+          detail);
+    if (!secrets.isEmpty()) return new Assessment("failed", "Posible secreto en el diff.", detail);
     if (TestPolicy.untestedCode(
         files,
         evidence.path("unit").path("status").asText(),

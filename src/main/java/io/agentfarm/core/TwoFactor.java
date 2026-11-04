@@ -14,8 +14,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Optional TOTP second factor (RFC 6238), compatible with any authenticator app. A code works once,
- * and repeated failures lock the account for a while. Verifying returns a result instead of throwing,
- * because the failure count must survive the transaction.
+ * and repeated failures lock the account for a while. Verifying returns a result instead of
+ * throwing, because the failure count must survive the transaction.
  */
 @Component
 public class TwoFactor {
@@ -81,11 +81,13 @@ public class TwoFactor {
   }
 
   public boolean enabled(String user) {
-    return store.tx(c -> one(c, "SELECT 1 FROM user_totp WHERE username=? AND confirmed=1", user) != null);
+    return store.tx(
+        c -> one(c, "SELECT 1 FROM user_totp WHERE username=? AND confirmed=1", user) != null);
   }
 
   public boolean requiredToIntegrate() {
-    return store.tx(c -> num(one(c, "SELECT require_2fa_merge v FROM governance WHERE id=1"), "v") == 1);
+    return store.tx(
+        c -> num(one(c, "SELECT require_2fa_merge v FROM governance WHERE id=1"), "v") == 1);
   }
 
   /** A new secret, unusable until a code from the app confirms it was saved. */
@@ -94,37 +96,37 @@ public class TwoFactor {
     byte[] bytes = new byte[20];
     new SecureRandom().nextBytes(bytes);
     String secret = encode(bytes);
-    store.tx(
-        c ->
-            exec(
-                c,
-                "INSERT INTO user_totp(username,secret) VALUES(?,?) ON CONFLICT(username) DO UPDATE SET"
-                    + " secret=excluded.secret,last_step=0,failures=0,locked_until=0",
-                user,
-                secret));
-    String label = URLEncoder.encode("AgentFarm:" + user, StandardCharsets.UTF_8).replace("+", "%20");
+    store.tx(c ->
+        exec(
+            c,
+            "INSERT INTO user_totp(username,secret) VALUES(?,?) ON CONFLICT(username) DO UPDATE SET"
+                + " secret=excluded.secret,last_step=0,failures=0,locked_until=0",
+            user,
+            secret));
+    String label =
+        URLEncoder.encode("AgentFarm:" + user, StandardCharsets.UTF_8).replace("+", "%20");
     return new Enrollment(
-        secret, "otpauth://totp/" + label + "?secret=" + secret + "&issuer=AgentFarm&digits=6&period=30");
+        secret,
+        "otpauth://totp/" + label + "?secret=" + secret + "&issuer=AgentFarm&digits=6&period=30");
   }
 
   public void confirm(String user, String code) {
     boolean accepted =
-        store.tx(
-            c -> {
-              if (!matches(c, user, code)) return false;
-              exec(c, "UPDATE user_totp SET confirmed=1 WHERE username=?", user);
-              audit(c, user, "2fa.enable", user);
-              return true;
-            });
-    if (!accepted) throw new IllegalArgumentException("Código incorrecto. Comprueba la hora del teléfono.");
+        store.tx(c -> {
+          if (!matches(c, user, code)) return false;
+          exec(c, "UPDATE user_totp SET confirmed=1 WHERE username=?", user);
+          audit(c, user, "2fa.enable", user);
+          return true;
+        });
+    if (!accepted)
+      throw new IllegalArgumentException("Código incorrecto. Comprueba la hora del teléfono.");
   }
 
   /** Whether this code is good for an account with the second factor active. */
   public boolean verify(String user, String code) {
-    return store.tx(
-        c ->
-            one(c, "SELECT 1 FROM user_totp WHERE username=? AND confirmed=1", user) != null
-                && matches(c, user, code));
+    return store.tx(c ->
+        one(c, "SELECT 1 FROM user_totp WHERE username=? AND confirmed=1", user) != null
+            && matches(c, user, code));
   }
 
   /** An owner cannot switch it off while integrating depends on it, or nobody could integrate. */
@@ -132,37 +134,33 @@ public class TwoFactor {
     if (owner && requiredToIntegrate())
       throw new IllegalArgumentException("Antes deja de exigir el segundo factor para integrar");
     boolean accepted =
-        store.tx(
-            c -> {
-              if (one(c, "SELECT 1 FROM user_totp WHERE username=? AND confirmed=1", user) == null
-                  || !matches(c, user, code)) return false;
-              exec(c, "DELETE FROM user_totp WHERE username=?", user);
-              audit(c, user, "2fa.disable", user);
-              return true;
-            });
+        store.tx(c -> {
+          if (one(c, "SELECT 1 FROM user_totp WHERE username=? AND confirmed=1", user) == null
+              || !matches(c, user, code)) return false;
+          exec(c, "DELETE FROM user_totp WHERE username=?", user);
+          audit(c, user, "2fa.disable", user);
+          return true;
+        });
     if (!accepted) throw new IllegalArgumentException("Código incorrecto.");
   }
 
   /** For whoever has lost their phone; needs access to the host, not to the panel. */
   public boolean reset(String user, String actor) {
-    return store.tx(
-        c -> {
-          boolean removed = exec(c, "DELETE FROM user_totp WHERE username=?", user) > 0;
-          if (removed) audit(c, actor, "2fa.reset", user);
-          return removed;
-        });
+    return store.tx(c -> {
+      boolean removed = exec(c, "DELETE FROM user_totp WHERE username=?", user) > 0;
+      if (removed) audit(c, actor, "2fa.reset", user);
+      return removed;
+    });
   }
 
   /** Only someone with the factor active can change this, in either direction. */
   public void requireToIntegrate(boolean required, String actor) {
-    if (!enabled(actor))
-      throw new IllegalArgumentException("Activa primero tu segundo factor");
-    store.tx(
-        c -> {
-          exec(c, "UPDATE governance SET require_2fa_merge=? WHERE id=1", required ? 1 : 0);
-          audit(c, actor, required ? "2fa.require" : "2fa.optional", "integration");
-          return null;
-        });
+    if (!enabled(actor)) throw new IllegalArgumentException("Activa primero tu segundo factor");
+    store.tx(c -> {
+      exec(c, "UPDATE governance SET require_2fa_merge=? WHERE id=1", required ? 1 : 0);
+      audit(c, actor, required ? "2fa.require" : "2fa.optional", "integration");
+      return null;
+    });
   }
 
   public void checkIntegration(String user) {
@@ -181,10 +179,15 @@ public class TwoFactor {
     if (num(row, "locked_until") > now) return false;
     long current = step(), used = num(row, "last_step");
     for (long s = current - DRIFT_STEPS; s <= current + DRIFT_STEPS; s++) {
-      if (s <= used || !java.security.MessageDigest.isEqual(
+      if (s <= used
+          || !java.security.MessageDigest.isEqual(
               code(row.get("secret").toString(), s).getBytes(StandardCharsets.UTF_8),
               code.getBytes(StandardCharsets.UTF_8))) continue;
-      exec(c, "UPDATE user_totp SET last_step=?,failures=0,locked_until=0 WHERE username=?", s, user);
+      exec(
+          c,
+          "UPDATE user_totp SET last_step=?,failures=0,locked_until=0 WHERE username=?",
+          s,
+          user);
       return true;
     }
     long failures = num(row, "failures") + 1;

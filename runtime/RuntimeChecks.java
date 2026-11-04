@@ -51,7 +51,9 @@ public class RuntimeChecks {
     }
     String value = "quoted ' text $(not-a-command)";
     var process =
-        new ProcessBuilder("bash", "-c", "printf '%s' " + io.agentfarm.core.ExecutorWork.shellQuote(value)).start();
+        new ProcessBuilder(
+                "bash", "-c", "printf '%s' " + io.agentfarm.core.ExecutorWork.shellQuote(value))
+            .start();
     check(
         new String(process.getInputStream().readAllBytes()).equals(value)
             && process.waitFor() == 0);
@@ -81,7 +83,8 @@ public class RuntimeChecks {
         CodexRunner.JSON.readTree(
             "{\"recipe\":{\"id\":\"bugfix\",\"version\":1,\"hash\":\"abc\"}}");
     check(io.agentfarm.core.ExecutorWork.recipeContext(recipeItem).contains("bugfix"));
-    check(io.agentfarm.core.ExecutorWork.recipeContext(recipeItem).contains("no concede aprobación"));
+    check(
+        io.agentfarm.core.ExecutorWork.recipeContext(recipeItem).contains("no concede aprobación"));
     memoryChecks(isolatedState);
     try (var files = java.nio.file.Files.walk(isolatedState)) {
       for (var file : files.sorted(java.util.Comparator.reverseOrder()).toList())
@@ -93,7 +96,9 @@ public class RuntimeChecks {
   static void memoryChecks(java.nio.file.Path state) throws Exception {
     var repo = java.nio.file.Files.createDirectory(state.resolve("repo"));
     FarmDaemon.task =
-        new FarmDaemon.Task(CodexRunner.JSON.readTree("{\"item\":{\"id\":\"i\",\"repo\":\"owner/repo\"},\"command\":{\"id\":\"c\"}}"));
+        new FarmDaemon.Task(
+            CodexRunner.JSON.readTree(
+                "{\"item\":{\"id\":\"i\",\"repo\":\"owner/repo\"},\"command\":{\"id\":\"c\"}}"));
     FarmDaemon.task.checkout = repo;
     FarmDaemon.gitAt("init");
     FarmDaemon.gitAt("config", "user.email", "fixture@example.invalid");

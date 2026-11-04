@@ -18,11 +18,10 @@ public class InitiativeService {
   public InitiativeService(Store db, Clock clock) {
     this.db = db;
     this.clock = clock;
-    db.tx(
-        c -> {
-          schema(c);
-          return null;
-        });
+    db.tx(c -> {
+      schema(c);
+      return null;
+    });
   }
 
   static void schema(Connection c) throws Exception {
@@ -85,48 +84,46 @@ public class InitiativeService {
         throw new IllegalArgumentException("Invalid or duplicate milestone");
     }
     String hash = sha256(canonical(n));
-    return db.tx(
-        c -> {
-          var old = one(c, "SELECT * FROM initiatives WHERE id=?", id);
-          if (old != null) {
-            if (!old.get("request_hash").equals(hash))
-              throw new IllegalArgumentException("Initiative request id already used");
-            return snapshot(c, old);
-          }
-          exec(
-              c,
-              "INSERT INTO"
-                  + " initiatives(id,title,goal,review_limit,milestones,request_hash,created,actor)"
-                  + " VALUES(?,?,?,?,?,?,?,?)",
-              id,
-              title,
-              goal,
-              limit,
-              encode(milestones),
-              hash,
-              clock.instant().getEpochSecond(),
-              actor);
-          audit(c, actor, "initiative.create", id);
-          return snapshot(c, initiative(c, id));
-        });
+    return db.tx(c -> {
+      var old = one(c, "SELECT * FROM initiatives WHERE id=?", id);
+      if (old != null) {
+        if (!old.get("request_hash").equals(hash))
+          throw new IllegalArgumentException("Initiative request id already used");
+        return snapshot(c, old);
+      }
+      exec(
+          c,
+          "INSERT INTO"
+              + " initiatives(id,title,goal,review_limit,milestones,request_hash,created,actor)"
+              + " VALUES(?,?,?,?,?,?,?,?)",
+          id,
+          title,
+          goal,
+          limit,
+          encode(milestones),
+          hash,
+          clock.instant().getEpochSecond(),
+          actor);
+      audit(c, actor, "initiative.create", id);
+      return snapshot(c, initiative(c, id));
+    });
   }
 
   public Object pause(String id, JsonNode n, String actor) {
     human(actor);
     if (!n.path("paused").isBoolean())
       throw new IllegalArgumentException("Boolean pause state required");
-    return db.tx(
-        c -> {
-          var row = initiative(c, id);
-          version(row, n);
-          exec(
-              c,
-              "UPDATE initiatives SET paused=?,version=version+1 WHERE id=?",
-              n.path("paused").asBoolean() ? 1 : 0,
-              id);
-          audit(c, actor, "initiative.pause", id + "=" + n.path("paused").asBoolean());
-          return snapshot(c, initiative(c, id));
-        });
+    return db.tx(c -> {
+      var row = initiative(c, id);
+      version(row, n);
+      exec(
+          c,
+          "UPDATE initiatives SET paused=?,version=version+1 WHERE id=?",
+          n.path("paused").asBoolean() ? 1 : 0,
+          id);
+      audit(c, actor, "initiative.pause", id + "=" + n.path("paused").asBoolean());
+      return snapshot(c, initiative(c, id));
+    });
   }
 
   public Object link(String id, JsonNode n, String actor) {
@@ -142,68 +139,61 @@ public class InitiativeService {
           || !dependencies.add(predecessor.asText()))
         throw new IllegalArgumentException("Invalid or duplicate dependency");
     }
-    return db.tx(
-        c -> {
-          var row = initiative(c, id);
-          boolean valid = false;
-          for (var entry : parse(row.get("milestones").toString()))
-            if (entry.path("id").asText().equals(milestone)) valid = true;
-          if (!valid) throw new IllegalArgumentException("Unknown milestone");
-          var work = one(c, "SELECT * FROM work_items WHERE id=?", item);
-          if (work == null) throw new IllegalArgumentException("Unknown task");
-          var old = one(c, "SELECT * FROM initiative_tasks WHERE item=?", item);
-          if (old != null && !old.get("initiative").equals(id))
-            throw new IllegalArgumentException("Task already belongs to another initiative");
-          var existing = dependencies(c, item);
-          if (old != null
-              && old.get("milestone").equals(milestone)
-              && new TreeSet<>(existing).equals(dependencies)) return snapshot(c, row);
-          version(row, n);
-          if (one(c, "SELECT id FROM work_commands WHERE item=? AND state='claimed'", item) != null)
-            throw new IllegalArgumentException(
-                "Cannot change coordination while an order is executing");
-          boolean frozen =
-              Set.of("review", "integrating", "integrated", "cancelled")
-                  .contains(work.get("state").toString());
-          if (frozen
-              && (old != null
-                  || !dependencies.isEmpty()
-                  || !Set.of("review", "integrated").contains(work.get("state"))))
-            throw new IllegalArgumentException(
-                "Reviewed or completed tasks cannot change dependencies");
-          for (String predecessor : dependencies) {
-            if (predecessor.equals(item)
-                || one(
-                        c,
-                        "SELECT item FROM initiative_tasks WHERE item=? AND initiative=?",
-                        predecessor,
-                        id)
-                    == null)
-              throw new IllegalArgumentException(
-                  "Predecessor must be another task in this initiative");
-          }
-          if (old == null)
-            exec(c, "INSERT INTO initiative_tasks VALUES(?,?,?)", item, id, milestone);
-          else exec(c, "UPDATE initiative_tasks SET milestone=? WHERE item=?", milestone, item);
-          exec(c, "DELETE FROM work_dependencies WHERE item=?", item);
-          for (String predecessor : dependencies)
-            exec(c, "INSERT INTO work_dependencies VALUES(?,?)", item, predecessor);
-          if (one(
-                  c,
-                  "WITH RECURSIVE ancestors(id) AS (SELECT predecessor FROM work_dependencies WHERE"
-                      + " item=? UNION SELECT d.predecessor FROM work_dependencies d JOIN ancestors"
-                      + " a ON d.item=a.id) SELECT id FROM ancestors WHERE id=?",
-                  item,
-                  item)
-              != null) throw new IllegalArgumentException("Dependency cycle rejected");
-          exec(c, "UPDATE initiatives SET version=version+1 WHERE id=?", id);
-          audit(
+    return db.tx(c -> {
+      var row = initiative(c, id);
+      boolean valid = false;
+      for (var entry : parse(row.get("milestones").toString()))
+        if (entry.path("id").asText().equals(milestone)) valid = true;
+      if (!valid) throw new IllegalArgumentException("Unknown milestone");
+      var work = one(c, "SELECT * FROM work_items WHERE id=?", item);
+      if (work == null) throw new IllegalArgumentException("Unknown task");
+      var old = one(c, "SELECT * FROM initiative_tasks WHERE item=?", item);
+      if (old != null && !old.get("initiative").equals(id))
+        throw new IllegalArgumentException("Task already belongs to another initiative");
+      var existing = dependencies(c, item);
+      if (old != null
+          && old.get("milestone").equals(milestone)
+          && new TreeSet<>(existing).equals(dependencies)) return snapshot(c, row);
+      version(row, n);
+      if (one(c, "SELECT id FROM work_commands WHERE item=? AND state='claimed'", item) != null)
+        throw new IllegalArgumentException(
+            "Cannot change coordination while an order is executing");
+      boolean frozen =
+          Set.of("review", "integrating", "integrated", "cancelled")
+              .contains(work.get("state").toString());
+      if (frozen
+          && (old != null
+              || !dependencies.isEmpty()
+              || !Set.of("review", "integrated").contains(work.get("state"))))
+        throw new IllegalArgumentException(
+            "Reviewed or completed tasks cannot change dependencies");
+      for (String predecessor : dependencies) {
+        if (predecessor.equals(item)
+            || one(
+                    c,
+                    "SELECT item FROM initiative_tasks WHERE item=? AND initiative=?",
+                    predecessor,
+                    id)
+                == null)
+          throw new IllegalArgumentException("Predecessor must be another task in this initiative");
+      }
+      if (old == null) exec(c, "INSERT INTO initiative_tasks VALUES(?,?,?)", item, id, milestone);
+      else exec(c, "UPDATE initiative_tasks SET milestone=? WHERE item=?", milestone, item);
+      exec(c, "DELETE FROM work_dependencies WHERE item=?", item);
+      for (String predecessor : dependencies)
+        exec(c, "INSERT INTO work_dependencies VALUES(?,?)", item, predecessor);
+      if (one(
               c,
-              actor,
-              "initiative.link",
-              id + "/" + item + " -> " + String.join(",", dependencies));
-          return snapshot(c, initiative(c, id));
-        });
+              "WITH RECURSIVE ancestors(id) AS (SELECT predecessor FROM work_dependencies WHERE"
+                  + " item=? UNION SELECT d.predecessor FROM work_dependencies d JOIN ancestors"
+                  + " a ON d.item=a.id) SELECT id FROM ancestors WHERE id=?",
+              item,
+              item)
+          != null) throw new IllegalArgumentException("Dependency cycle rejected");
+      exec(c, "UPDATE initiatives SET version=version+1 WHERE id=?", id);
+      audit(c, actor, "initiative.link", id + "/" + item + " -> " + String.join(",", dependencies));
+      return snapshot(c, initiative(c, id));
+    });
   }
 
   static List<String> dependencies(Connection c, String item) throws Exception {
@@ -251,13 +241,12 @@ public class InitiativeService {
   }
 
   public Object list() {
-    return db.tx(
-        c -> {
-          var result = new ArrayList<>();
-          for (var row : rows(c, "SELECT * FROM initiatives ORDER BY created,id"))
-            result.add(snapshot(c, row));
-          return result;
-        });
+    return db.tx(c -> {
+      var result = new ArrayList<>();
+      for (var row : rows(c, "SELECT * FROM initiatives ORDER BY created,id"))
+        result.add(snapshot(c, row));
+      return result;
+    });
   }
 
   public Object get(String id) {

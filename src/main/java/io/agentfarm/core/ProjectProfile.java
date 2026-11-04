@@ -140,7 +140,9 @@ public record ProjectProfile(
       if (!n.path("mcp").isArray() || n.path("mcp").size() > 8)
         throw new IllegalArgumentException("mcp must be a list of at most 8 server names");
       for (var m : n.path("mcp")) {
-        if (!m.isTextual() || !m.asText().matches("[a-z0-9][a-z0-9-]{0,39}") || mcp.contains(m.asText()))
+        if (!m.isTextual()
+            || !m.asText().matches("[a-z0-9][a-z0-9-]{0,39}")
+            || mcp.contains(m.asText()))
           throw new IllegalArgumentException("Invalid MCP server name");
         mcp.add(m.asText());
       }

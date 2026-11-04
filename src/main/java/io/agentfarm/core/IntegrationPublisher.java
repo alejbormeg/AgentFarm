@@ -8,7 +8,6 @@ import java.net.http.*;
 import java.nio.file.*;
 import java.time.Duration;
 import java.util.*;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +27,8 @@ public class IntegrationPublisher {
     this(work, GitHubCredentials.file(tokenFile), http);
   }
 
-  public IntegrationPublisher(WorkflowService work, GitHubCredentials credentials, HttpClient http) {
+  public IntegrationPublisher(
+      WorkflowService work, GitHubCredentials credentials, HttpClient http) {
     this.work = work;
     this.credentials = credentials;
     this.http = http;
@@ -134,8 +134,7 @@ public class IntegrationPublisher {
       boolean found = false;
       // "*" binds to the project's own CI: any successful run, and every run must pass below.
       for (var check : checks.path("check_runs"))
-        if ((expected.asText().equals("*")
-                || check.path("name").asText().equals(expected.asText()))
+        if ((expected.asText().equals("*") || check.path("name").asText().equals(expected.asText()))
             && check.path("conclusion").asText().equals("success")) found = true;
       if (!found)
         throw new IllegalArgumentException("Required CI not successful: " + expected.asText());

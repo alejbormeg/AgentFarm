@@ -43,7 +43,8 @@ public final class Cli {
         result =
             obj(
                 "removed",
-                new TwoFactor(store, Clock.systemUTC()).reset(required(options, "user"), "host-operator"));
+                new TwoFactor(store, Clock.systemUTC())
+                    .reset(required(options, "user"), "host-operator"));
       } else if (mode.equals("github-check")) {
         var credentials =
             new GitHubCredentials(
@@ -53,9 +54,11 @@ public final class Cli {
                 env("AGENTFARM_GITHUB_INSTALLATION_ID"),
                 env("AGENTFARM_DB"));
         if (!credentials.configured())
-          throw new IllegalArgumentException("El panel no tiene credencial de GitHub: ./agentfarm github-token");
+          throw new IllegalArgumentException(
+              "El panel no tiene credencial de GitHub: ./agentfarm github-token");
         var check =
-            GitHubAccess.check(credentials.kind(), required(options, "repo"), new GitHubReader(credentials)::get);
+            GitHubAccess.check(
+                credentials.kind(), required(options, "repo"), new GitHubReader(credentials)::get);
         result = check;
         if (check.get("state").equals("failed")) {
           System.out.println(encode(result));

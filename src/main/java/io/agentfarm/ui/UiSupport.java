@@ -24,14 +24,18 @@ public final class UiSupport {
   }
 
   static Component heading(String icon, String text) {
-    Element title = new Element("h2", Map.of("style", "margin:0;font-size:var(--lumo-font-size-l)"), text);
+    Element title =
+        new Element("h2", Map.of("style", "margin:0;font-size:var(--lumo-font-size-l)"), text);
     if (icon == null)
       return new Element(
-          "h2", Map.of("style", "margin:var(--lumo-space-m) 0 0;font-size:var(--lumo-font-size-l)"), text);
+          "h2",
+          Map.of("style", "margin:var(--lumo-space-m) 0 0;font-size:var(--lumo-font-size-l)"),
+          text);
     return HorizontalLayout.builder()
         .content(
             List.of(
-                new Element("img", Map.of("src", icon, "alt", "", "width", "32", "height", "32"), ""),
+                new Element(
+                    "img", Map.of("src", icon, "alt", "", "width", "32", "height", "32"), ""),
                 title))
         .verticalAlignment(VerticalAlignment.CENTER)
         .style("gap:var(--lumo-space-s);margin-top:var(--lumo-space-m)")
@@ -68,9 +72,11 @@ public final class UiSupport {
   }
 
   public static int weeklyPercent(String account) {
-    return budgets().accounts().stream().filter(a->account.equals(a.get("account")))
-      .findFirst().map(a->(int)(Json.parse(a.get("shares").toString()).path("weekly").asLong(5000)/100))
-      .orElse(50);
+    return budgets().accounts().stream()
+        .filter(a -> account.equals(a.get("account")))
+        .findFirst()
+        .map(a -> (int) (Json.parse(a.get("shares").toString()).path("weekly").asLong(5000) / 100))
+        .orElse(50);
   }
 
   public static String actor() {
@@ -90,7 +96,8 @@ public final class UiSupport {
           case "human_pause" -> "Pausa del operador";
           default -> parts[0];
         };
-    return label + (parts.length == 2 ? " (" + period(parts[1]).toLowerCase(Locale.ROOT) + ")" : "");
+    return label
+        + (parts.length == 2 ? " (" + period(parts[1]).toLowerCase(Locale.ROOT) + ")" : "");
   }
 
   private static Object display(String key, Object value) {
@@ -98,7 +105,8 @@ public final class UiSupport {
       return key.equals("progress")
           ? "Desconocido"
           : key.equals("heartbeat") ? "Sin heartbeat" : "—";
-    if (key.equals("progress") && value instanceof Number n && n.intValue()==0) return "Sin estimación";
+    if (key.equals("progress") && value instanceof Number n && n.intValue() == 0)
+      return "Sin estimación";
     if (key.equals("enabled") || key.equals("cancel_requested"))
       return ((Number) value).intValue() == 1 ? "Sí" : "No";
     if (key.equals("at") || key.equals("heartbeat")) {
@@ -154,16 +162,17 @@ public final class UiSupport {
               .build());
     List<Map<String, Object>> displayed =
         rows.stream()
-            .map(
-                row -> {
-                  Map<String, Object> copy = new LinkedHashMap<>();
-                  row.forEach((key, value) -> copy.put(key, display(key, value)));
-                  if(row.get("spec")!=null) {
-                    try { copy.put("title",Json.parse(row.get("spec").toString()).path("title").asText()); }
-                    catch(Exception ignored) {}
-                  }
-                  return copy;
-                })
+            .map(row -> {
+              Map<String, Object> copy = new LinkedHashMap<>();
+              row.forEach((key, value) -> copy.put(key, display(key, value)));
+              if (row.get("spec") != null) {
+                try {
+                  copy.put("title", Json.parse(row.get("spec").toString()).path("title").asText());
+                } catch (Exception ignored) {
+                }
+              }
+              return copy;
+            })
             .toList();
     return Grid.builder()
         .id(id)

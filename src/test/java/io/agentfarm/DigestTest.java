@@ -31,7 +31,15 @@ class DigestTest {
     String sha = (request.charAt(request.length() - 1) + "").repeat(40);
     var create =
         new LinkedHashMap<>(
-            obj("request_id", request, "repository", "owner/repo", "title", request, "request", "Hazlo"));
+            obj(
+                "request_id",
+                request,
+                "repository",
+                "owner/repo",
+                "title",
+                request,
+                "request",
+                "Hazlo"));
     if (recipe != null) create.put("recipe", obj("id", recipe, "version", 1));
     work.create(MAPPER.valueToTree(create), "owner");
     work.report(
@@ -41,9 +49,22 @@ class DigestTest {
             "proposed",
             "proposal",
             obj(
-                "summary", "s", "acceptance", "a", "as_is", "A", "to_be", "B", "base_sha", "b".repeat(40),
-                "unit_test", "u", "integration_test", "i",
-                "criteria", List.of(obj("id", "AC-1", "description", "d", "method", "manual")))),
+                "summary",
+                "s",
+                "acceptance",
+                "a",
+                "as_is",
+                "A",
+                "to_be",
+                "B",
+                "base_sha",
+                "b".repeat(40),
+                "unit_test",
+                "u",
+                "integration_test",
+                "i",
+                "criteria",
+                List.of(obj("id", "AC-1", "description", "d", "method", "manual")))),
         "worker");
     work.action(request, "implement", n("version", 1), "owner");
     work.report(
@@ -67,7 +88,8 @@ class DigestTest {
     work = new WorkflowService(store, clock);
     evidence = new EvidenceService(store, clock);
     digest = new DigestService(store, clock, work);
-    new SchemaMigrations(store, work, new TelemetryService(store, clock), new NodeCredentials(store, clock));
+    new SchemaMigrations(
+        store, work, new TelemetryService(store, clock), new NodeCredentials(store, clock));
   }
 
   @Test
@@ -90,7 +112,8 @@ class DigestTest {
     accept("batch-low-1");
     accept("batch-bug-2");
     var results =
-        MAPPER.valueToTree(
+        MAPPER
+            .valueToTree(
                 digest.approve(
                     MAPPER.valueToTree(
                         List.of(
@@ -112,16 +135,19 @@ class DigestTest {
     candidate("batch-low-1", "test-improvement");
     accept("batch-low-1");
     var results =
-        MAPPER.valueToTree(
+        MAPPER
+            .valueToTree(
                 digest.approve(
-                    MAPPER.valueToTree(List.of(obj("id", "batch-low-1", "sha", "f".repeat(40)))), "owner"))
+                    MAPPER.valueToTree(List.of(obj("id", "batch-low-1", "sha", "f".repeat(40)))),
+                    "owner"))
             .path("results");
     assertEquals("refused", results.get(0).path("state").asText());
   }
 
   @Test
   void batchSizeIsBounded() {
-    assertThrows(IllegalArgumentException.class, () -> digest.approve(MAPPER.createArrayNode(), "owner"));
+    assertThrows(
+        IllegalArgumentException.class, () -> digest.approve(MAPPER.createArrayNode(), "owner"));
   }
 
   @Test

@@ -43,29 +43,28 @@ public class BudgetService {
   public Map<String, Object> execute(String operation, JsonNode input, String actor) {
     if (input == null || !input.isObject() || input.has("now"))
       throw new IllegalArgumentException("Object required; clock cannot be overridden");
-    return store.tx(
-        c -> {
-          String a = id(input, "account");
-          Map<String, Object> result =
-              switch (operation) {
-                case "configure" -> configure(c, a, input);
-                case "open-window" -> open(c, a, input);
-                case "rollover" -> rollover(c,a,input);
-                case "observe" -> observe(c, a, input);
-                case "reserve" -> reserve(c, a, input);
-                case "settle" -> settle(c, a, input);
-                case "settle-observed" -> settleObserved(c,a,input);
-                case "status" -> status(c, a);
-                default -> throw new IllegalArgumentException("Unknown budget operation");
-              };
-          if (!operation.equals("status"))
-            audit(
-                c,
-                actor,
-                "budget." + operation,
-                a + (input.has("run_id") ? "/" + id(input, "run_id") : ""));
-          return result;
-        });
+    return store.tx(c -> {
+      String a = id(input, "account");
+      Map<String, Object> result =
+          switch (operation) {
+            case "configure" -> configure(c, a, input);
+            case "open-window" -> open(c, a, input);
+            case "rollover" -> rollover(c, a, input);
+            case "observe" -> observe(c, a, input);
+            case "reserve" -> reserve(c, a, input);
+            case "settle" -> settle(c, a, input);
+            case "settle-observed" -> settleObserved(c, a, input);
+            case "status" -> status(c, a);
+            default -> throw new IllegalArgumentException("Unknown budget operation");
+          };
+      if (!operation.equals("status"))
+        audit(
+            c,
+            actor,
+            "budget." + operation,
+            a + (input.has("run_id") ? "/" + id(input, "run_id") : ""));
+      return result;
+    });
   }
 
   private Map<String, Object> configure(Connection c, String a, JsonNode n) throws Exception {
@@ -139,18 +138,36 @@ public class BudgetService {
     return obj("state", "window_opened");
   }
 
-  private Map<String,Object> rollover(Connection c,String a,JsonNode n)throws Exception{
-    if(!account(c,a).get("mode").equals("subscription")||!text(n,"source").equals("provider"))throw new IllegalArgumentException("Provider subscription window required");
-    long start=number(n,"start"),end=number(n,"end");
-    if(end-start!=604800||start>now()||end<=now())throw new IllegalArgumentException("Invalid weekly provider window");
-    if(one(c,"SELECT 1 FROM budget_runs WHERE account=? AND state IN ('reserved','unknown')",a)!=null)throw new IllegalArgumentException("Reconcile outstanding reservations before changing windows");
-    var overlapping=rows(c,"SELECT * FROM budget_windows WHERE account=? AND period='weekly' AND end>?",a,start);
-    for(var row:overlapping){
-      if(num(row,"start")==start&&num(row,"end")==end)return obj("state","already_open");
-      if(num(row,"start")>=start||(row.get("observed_at")!=null&&num(row,"observed_at")>=start))throw new IllegalArgumentException("Provider window conflicts with historical observations");
-      exec(c,"UPDATE budget_windows SET end=? WHERE account=? AND period='weekly' AND start=?",start,a,row.get("start"));
+  private Map<String, Object> rollover(Connection c, String a, JsonNode n) throws Exception {
+    if (!account(c, a).get("mode").equals("subscription") || !text(n, "source").equals("provider"))
+      throw new IllegalArgumentException("Provider subscription window required");
+    long start = number(n, "start"), end = number(n, "end");
+    if (end - start != 604800 || start > now() || end <= now())
+      throw new IllegalArgumentException("Invalid weekly provider window");
+    if (one(c, "SELECT 1 FROM budget_runs WHERE account=? AND state IN ('reserved','unknown')", a)
+        != null)
+      throw new IllegalArgumentException(
+          "Reconcile outstanding reservations before changing windows");
+    var overlapping =
+        rows(
+            c,
+            "SELECT * FROM budget_windows WHERE account=? AND period='weekly' AND end>?",
+            a,
+            start);
+    for (var row : overlapping) {
+      if (num(row, "start") == start && num(row, "end") == end) return obj("state", "already_open");
+      if (num(row, "start") >= start
+          || (row.get("observed_at") != null && num(row, "observed_at") >= start))
+        throw new IllegalArgumentException(
+            "Provider window conflicts with historical observations");
+      exec(
+          c,
+          "UPDATE budget_windows SET end=? WHERE account=? AND period='weekly' AND start=?",
+          start,
+          a,
+          row.get("start"));
     }
-    return open(c,a,n);
+    return open(c, a, n);
   }
 
   private Map<String, Object> observe(Connection c, String a, JsonNode n) throws Exception {
@@ -335,24 +352,52 @@ public class BudgetService {
     return obj("state", "reserved", "run_id", run, "amounts", n.get("amounts"));
   }
 
-  private Map<String,Object> settleObserved(Connection c,String a,JsonNode n)throws Exception{
-    if(!account(c,a).get("mode").equals("subscription"))throw new IllegalArgumentException("Subscription provider observation required");
-    String run=id(n,"run_id");
-    var r=one(c,"SELECT * FROM budget_runs WHERE account=? AND run_id=?",a,run);
-    if(r==null)throw new IllegalArgumentException("Unknown reservation");
-    if(r.get("state").equals("reconciled"))return obj("state","already_reconciled");
-    if(!Set.of("reserved","unknown").contains(r.get("state")))throw new IllegalArgumentException("Reservation already finalized");
-    var windows=rows(c,"SELECT w.* FROM budget_allocations a JOIN budget_windows w USING(account,period,start) WHERE a.account=? AND a.run_id=?",a,run);
-    var observations=new LinkedHashMap<String,Object>();
-    for(var w:windows){
-      if(!w.get("source").equals("provider")||w.get("observed_at")==null||w.get("observed_used")==null||now()-num(w,"observed_at")<0||now()-num(w,"observed_at")>60||now()>=num(w,"end"))throw new IllegalArgumentException("Fresh observation from the reservation window required");
-      observations.put(w.get("period").toString(),obj("cumulative_used",w.get("observed_used"),"observed_at",w.get("observed_at")));
+  private Map<String, Object> settleObserved(Connection c, String a, JsonNode n) throws Exception {
+    if (!account(c, a).get("mode").equals("subscription"))
+      throw new IllegalArgumentException("Subscription provider observation required");
+    String run = id(n, "run_id");
+    var r = one(c, "SELECT * FROM budget_runs WHERE account=? AND run_id=?", a, run);
+    if (r == null) throw new IllegalArgumentException("Unknown reservation");
+    if (r.get("state").equals("reconciled")) return obj("state", "already_reconciled");
+    if (!Set.of("reserved", "unknown").contains(r.get("state")))
+      throw new IllegalArgumentException("Reservation already finalized");
+    var windows =
+        rows(
+            c,
+            "SELECT w.* FROM budget_allocations a JOIN budget_windows w USING(account,period,start) WHERE a.account=? AND a.run_id=?",
+            a,
+            run);
+    var observations = new LinkedHashMap<String, Object>();
+    for (var w : windows) {
+      if (!w.get("source").equals("provider")
+          || w.get("observed_at") == null
+          || w.get("observed_used") == null
+          || now() - num(w, "observed_at") < 0
+          || now() - num(w, "observed_at") > 60
+          || now() >= num(w, "end"))
+        throw new IllegalArgumentException(
+            "Fresh observation from the reservation window required");
+      observations.put(
+          w.get("period").toString(),
+          obj("cumulative_used", w.get("observed_used"), "observed_at", w.get("observed_at")));
     }
     // Subscription counters already include this execution. Never add their delta a second time.
-    exec(c,"UPDATE budget_runs SET state='reconciled',actual=? WHERE account=? AND run_id=?",encode(obj("source","provider-cumulative","windows",observations)),a,run);
-    return obj("state","reconciled","usage",observations);
+    exec(
+        c,
+        "UPDATE budget_runs SET state='reconciled',actual=? WHERE account=? AND run_id=?",
+        encode(obj("source", "provider-cumulative", "windows", observations)),
+        a,
+        run);
+    return obj("state", "reconciled", "usage", observations);
   }
-  public Object reservations(String a){return store.tx(c->rows(c,"SELECT run_id,state,amounts,actual FROM budget_runs WHERE account=? ORDER BY rowid",a));}
+
+  public Object reservations(String a) {
+    return store.tx(c ->
+        rows(
+            c,
+            "SELECT run_id,state,amounts,actual FROM budget_runs WHERE account=? ORDER BY rowid",
+            a));
+  }
 
   private Map<String, Object> settle(Connection c, String a, JsonNode n) throws Exception {
     String run = id(n, "run_id");

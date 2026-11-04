@@ -62,8 +62,9 @@ public class SecurityConfig {
   }
 
   /**
-   * Optional team file: [{"username","role":"owner|reviewer|observer","password_hash":"{bcrypt}..."}].
-   * Hashes come from `agentfarm.jar user-hash`; the file never holds plain passwords.
+   * Optional team file:
+   * [{"username","role":"owner|reviewer|observer","password_hash":"{bcrypt}..."}]. Hashes come from
+   * `agentfarm.jar user-hash`; the file never holds plain passwords.
    */
   static List<UserDetails> teamUsers(String file) throws IOException {
     if (file == null || file.isBlank()) return List.of();
@@ -86,44 +87,45 @@ public class SecurityConfig {
 
   @Bean
   SecurityFilterChain security(
-      HttpSecurity http, io.agentfarm.core.NodeCredentials nodes, io.agentfarm.core.TwoFactor twoFactor)
+      HttpSecurity http,
+      io.agentfarm.core.NodeCredentials nodes,
+      io.agentfarm.core.TwoFactor twoFactor)
       throws Exception {
     String[] people = {"OWNER", "REVIEWER", "OBSERVER"};
-    http.authorizeHttpRequests(
-            a ->
-                a.requestMatchers("/login", "/error", "/api/health")
-                    .permitAll()
-                    .requestMatchers("/github-app/**")
-                    .hasRole("OWNER")
-                    // Executor (node credential) operations; NodeTokenFilter narrows them further.
-                    .requestMatchers(
-                        HttpMethod.POST,
-                        "/api/providers/admission",
-                        "/api/runtime/observations",
-                        "/api/budget/**",
-                        "/api/heartbeat/**",
-                        "/api/work/agent/**")
-                    .hasAnyRole("OWNER", "EXECUTOR")
-                    .requestMatchers(
-                        HttpMethod.GET, "/api/csrf", "/api/overview", "/api/runtime", "/api/budget/**")
-                    .hasAnyRole("OWNER", "EXECUTOR", "REVIEWER", "OBSERVER")
-                    // Reviewers file requests and decide on proposals; integration stays with owners.
-                    .requestMatchers(
-                        HttpMethod.POST,
-                        "/api/work",
-                        "/api/work/*/actions/implement",
-                        "/api/work/*/actions/correct",
-                        "/api/work/*/actions/cancel",
-                        "/api/work/*/actions/retry")
-                    .hasAnyRole("OWNER", "REVIEWER")
-                    .requestMatchers("/api/me/2fa/**")
-                    .hasAnyRole(people)
-                    .requestMatchers(HttpMethod.GET, "/api/**")
-                    .hasAnyRole(people)
-                    .requestMatchers("/api/**")
-                    .hasRole("OWNER")
-                    .anyRequest()
-                    .hasAnyRole(people))
+    http.authorizeHttpRequests(a ->
+            a.requestMatchers("/login", "/error", "/api/health")
+                .permitAll()
+                .requestMatchers("/github-app/**")
+                .hasRole("OWNER")
+                // Executor (node credential) operations; NodeTokenFilter narrows them further.
+                .requestMatchers(
+                    HttpMethod.POST,
+                    "/api/providers/admission",
+                    "/api/runtime/observations",
+                    "/api/budget/**",
+                    "/api/heartbeat/**",
+                    "/api/work/agent/**")
+                .hasAnyRole("OWNER", "EXECUTOR")
+                .requestMatchers(
+                    HttpMethod.GET, "/api/csrf", "/api/overview", "/api/runtime", "/api/budget/**")
+                .hasAnyRole("OWNER", "EXECUTOR", "REVIEWER", "OBSERVER")
+                // Reviewers file requests and decide on proposals; integration stays with owners.
+                .requestMatchers(
+                    HttpMethod.POST,
+                    "/api/work",
+                    "/api/work/*/actions/implement",
+                    "/api/work/*/actions/correct",
+                    "/api/work/*/actions/cancel",
+                    "/api/work/*/actions/retry")
+                .hasAnyRole("OWNER", "REVIEWER")
+                .requestMatchers("/api/me/2fa/**")
+                .hasAnyRole(people)
+                .requestMatchers(HttpMethod.GET, "/api/**")
+                .hasAnyRole(people)
+                .requestMatchers("/api/**")
+                .hasRole("OWNER")
+                .anyRequest()
+                .hasAnyRole(people))
         .addFilterBefore(
             new NodeTokenFilter(nodes),
             org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter

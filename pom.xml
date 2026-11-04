@@ -1,25 +1,159 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-<modelVersion>4.0.0</modelVersion>
-<parent><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-parent</artifactId><version>4.1.2</version><relativePath/></parent>
-<groupId>io.agentfarm</groupId><artifactId>agentfarm</artifactId><version>0.2.0-SNAPSHOT</version><name>AgentFarm</name>
-<licenses><license><name>Apache License, Version 2.0</name><url>https://www.apache.org/licenses/LICENSE-2.0</url><distribution>repo</distribution></license></licenses>
-<properties><java.version>21</java.version><mateu.version>3.0-beta.32</mateu.version></properties>
-<dependencies>
-<dependency><groupId>org.yaml</groupId><artifactId>snakeyaml</artifactId></dependency>
-<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webmvc</artifactId></dependency>
-<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security</artifactId></dependency>
-<dependency><groupId>io.mateu</groupId><artifactId>mateu-mvc</artifactId><version>${mateu.version}</version></dependency>
-<dependency><groupId>io.mateu</groupId><artifactId>mateu-vaadin</artifactId><version>${mateu.version}</version></dependency>
-<dependency><groupId>org.xerial</groupId><artifactId>sqlite-jdbc</artifactId><version>3.51.1.0</version></dependency>
-<dependency><groupId>com.fasterxml.jackson.core</groupId><artifactId>jackson-databind</artifactId><version>2.20.1</version></dependency>
-<dependency><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><optional>true</optional></dependency>
-<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
-<dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security-test</artifactId><scope>test</scope></dependency>
-</dependencies>
-<build><finalName>agentfarm</finalName><plugins>
-<plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId><configuration><excludes><exclude><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId></exclude></excludes></configuration></plugin>
-<plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><configuration><annotationProcessorPaths>
-<path><groupId>org.projectlombok</groupId><artifactId>lombok</artifactId><version>${lombok.version}</version></path>
-<path><groupId>io.mateu</groupId><artifactId>mateu-annotation-processor-mvc</artifactId><version>${mateu.version}</version></path>
-</annotationProcessorPaths></configuration></plugin>
-</plugins></build></project>
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>4.1.2</version>
+    <relativePath/>
+  </parent>
+
+  <groupId>io.agentfarm</groupId>
+  <artifactId>agentfarm</artifactId>
+  <version>0.2.0-SNAPSHOT</version>
+  <name>AgentFarm</name>
+
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <properties>
+    <java.version>21</java.version>
+    <mateu.version>3.0-beta.32</mateu.version>
+    <spotless.version>3.11.0</spotless.version>
+    <google-java-format.version>2.0.0</google-java-format.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.yaml</groupId>
+      <artifactId>snakeyaml</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webmvc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.mateu</groupId>
+      <artifactId>mateu-mvc</artifactId>
+      <version>${mateu.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.mateu</groupId>
+      <artifactId>mateu-vaadin</artifactId>
+      <version>${mateu.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.xerial</groupId>
+      <artifactId>sqlite-jdbc</artifactId>
+      <version>3.51.1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.20.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <optional>true</optional>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <profiles>
+    <!-- The format doesn't depend on the JDK, and the formatter reaches into javac's internals: Java 21 is enough. -->
+    <profile>
+      <id>format-only-on-21</id>
+      <activation>
+        <jdk>[22,)</jdk>
+      </activation>
+      <properties>
+        <spotless.check.skip>true</spotless.check.skip>
+      </properties>
+    </profile>
+  </profiles>
+
+  <build>
+    <finalName>agentfarm</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <excludes>
+            <exclude>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+            </exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </path>
+            <path>
+              <groupId>io.mateu</groupId>
+              <artifactId>mateu-annotation-processor-mvc</artifactId>
+              <version>${mateu.version}</version>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+      <!-- One format, so a later diff shows what changed and not how it was wrapped. -->
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>${spotless.version}</version>
+        <configuration>
+          <lineEndings>UNIX</lineEndings>
+          <java>
+            <includes>
+              <include>src/**/*.java</include>
+              <include>runtime/*.java</include>
+              <include>tests/*.java</include>
+            </includes>
+            <googleJavaFormat>
+              <version>${google-java-format.version}</version>
+            </googleJavaFormat>
+          </java>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

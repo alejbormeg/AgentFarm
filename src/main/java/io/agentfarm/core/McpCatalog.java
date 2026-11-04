@@ -42,7 +42,8 @@ public final class McpCatalog {
           throw new IllegalArgumentException("MCP env entries are variable names, not values");
         env.add(v.asText());
       }
-      out.put(name, new Server(name, n.path("command").asText(), List.copyOf(args), List.copyOf(env)));
+      out.put(
+          name, new Server(name, n.path("command").asText(), List.copyOf(args), List.copyOf(env)));
     }
     return new McpCatalog(out);
   }
@@ -53,23 +54,30 @@ public final class McpCatalog {
     for (String name : names) {
       var server = servers.get(name);
       if (server == null)
-        throw new IllegalArgumentException("MCP server '" + name + "' is not defined on this executor");
+        throw new IllegalArgumentException(
+            "MCP server '" + name + "' is not defined on this executor");
       out.add(server);
     }
     return out;
   }
 
   /** Claude Code --mcp-config document. */
-  public static Map<String, Object> claudeConfig(List<Server> servers, Map<String, String> environment) {
+  public static Map<String, Object> claudeConfig(
+      List<Server> servers, Map<String, String> environment) {
     var map = new LinkedHashMap<String, Object>();
-    for (var s : servers) map.put(s.name(), obj("command", s.command(), "args", s.args(), "env", values(s, environment)));
+    for (var s : servers)
+      map.put(
+          s.name(), obj("command", s.command(), "args", s.args(), "env", values(s, environment)));
     return obj("mcpServers", map);
   }
 
   /** Codex thread config override (mcp_servers table). */
-  public static Map<String, Object> codexConfig(List<Server> servers, Map<String, String> environment) {
+  public static Map<String, Object> codexConfig(
+      List<Server> servers, Map<String, String> environment) {
     var map = new LinkedHashMap<String, Object>();
-    for (var s : servers) map.put(s.name(), obj("command", s.command(), "args", s.args(), "env", values(s, environment)));
+    for (var s : servers)
+      map.put(
+          s.name(), obj("command", s.command(), "args", s.args(), "env", values(s, environment)));
     return map;
   }
 
@@ -77,7 +85,9 @@ public final class McpCatalog {
     var env = new LinkedHashMap<String, String>();
     for (String k : s.env()) {
       String v = environment.get(k);
-      if (v == null) throw new IllegalArgumentException("Executor environment lacks " + k + " for MCP " + s.name());
+      if (v == null)
+        throw new IllegalArgumentException(
+            "Executor environment lacks " + k + " for MCP " + s.name());
       env.put(k, v);
     }
     return env;

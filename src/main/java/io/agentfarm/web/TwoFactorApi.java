@@ -35,7 +35,8 @@ public class TwoFactorApi {
 
   @PostMapping("/api/me/2fa/disable")
   public Object disable(@RequestBody JsonNode n, Authentication auth) {
-    boolean owner = auth.getAuthorities().stream().anyMatch(g -> g.getAuthority().equals("ROLE_OWNER"));
+    boolean owner =
+        auth.getAuthorities().stream().anyMatch(g -> g.getAuthority().equals("ROLE_OWNER"));
     twoFactor.disable(auth.getName(), Json.text(n, "code"), owner);
     return twoFactor.status(auth.getName());
   }
