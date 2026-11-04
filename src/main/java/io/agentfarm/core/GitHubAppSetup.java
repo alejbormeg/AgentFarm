@@ -23,10 +23,12 @@ import org.springframework.stereotype.Component;
 public class GitHubAppSetup {
   /** What docs/TEAM.md lists: only what integration and the triggers read or write. */
   static final Map<String, String> PERMISSIONS =
+      // Issues and workflows are for the executor: it opens the issue and may add the CI template.
       Map.of(
           "contents", "write",
           "pull_requests", "write",
-          "issues", "read",
+          "issues", "write",
+          "workflows", "write",
           "actions", "read",
           "checks", "read",
           "statuses", "read",

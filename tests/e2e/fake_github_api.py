@@ -76,7 +76,10 @@ class Handler(BaseHTTPRequestHandler):
         if not self.headers.get("Authorization", "").startswith("Bearer "):
             return self.reply(401, {"message": "Bad credentials"})
         if re.fullmatch(r"/app/installations/\d+/access_tokens", self.path):
-            return self.reply(201, {"token": "ghs_e2e", "expires_at": "2099-01-01T00:00:00Z"})
+            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or "{}")
+            if body.get("repositories"):
+                return self.reply(201, {"token": "ghs_e2e_repo_" + "_".join(body["repositories"]), "expires_at": "2099-01-01T00:00:00Z", "repository_selection": "selected"})
+            return self.reply(201, {"token": "ghs_e2e", "expires_at": "2099-01-01T00:00:00Z", "repository_selection": "all"})
         self.reply(404, {"message": self.path})
 
     def do_PUT(self):

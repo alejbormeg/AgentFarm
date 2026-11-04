@@ -3,6 +3,9 @@
 import json, os, subprocess, sys
 
 STATE = os.environ["E2E_GH_STATE"]
+if os.environ.get("GH_TOKEN"):
+    with open(STATE + ".tokens", "a") as f:
+        f.write(os.environ["GH_TOKEN"] + "\n")
 REMOTE = os.environ["E2E_REMOTE"]
 
 
