@@ -74,8 +74,9 @@ AGENTFARM_CLAUDE_MODEL=                 # opcional
   implementación `Read,Glob,Grep,Edit,Write,MultiEdit` con `acceptEdits`; revisión
   `Read,Glob,Grep`. `Bash` siempre denegado: las pruebas corren en el sandbox.
 - Aislamiento: recibe como reglas `Read` y `Edit` denegadas las rutas que el perfil de Codex oculta,
-  y `--setting-sources user` ignora los ajustes del repositorio. **Sin probar con una cuenta real**, y
-  sin aislamiento del sistema: un fallo de esas reglas deja las credenciales al alcance del agente.
+  y `--setting-sources user` ignora los ajustes del repositorio. No hay aislamiento del sistema: un
+  fallo de esas reglas deja las credenciales al alcance del agente. `tests/claude_rules.sh` las prueba con
+  una cuenta real y un señuelo. Repítelo al actualizar Claude Code.
 - Credencial: `STATE/anthropic-api-key` (permiso 600), inyectada solo en el
   proceso de Claude Code; nunca en Git, en el panel ni en el sandbox de pruebas.
 - Coste: la cuota de suscripción de Claude no es observable, así que solo se

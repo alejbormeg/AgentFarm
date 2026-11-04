@@ -14,3 +14,4 @@ paths:
 - Todo job lleva `timeout-minutes`: uno colgado consume minutos y no avisa.
 - Si un fallo es de infraestructura, demuéstralo con el registro antes de relanzar. Consulta la skill `diagnosticar-ci`.
 - Sin minutos, Actions está desactivado y `validar-local.sh` hace lo que `java.yml`: mantén ambos iguales. `merge-gate.sh --local` solo fusiona el commit que ese script validó, y deja de funcionar cuando Actions vuelve a estar activo.
+- `tests/claude_rules.sh` y `tests/codex_sandbox.sh` necesitan una cuenta real, así que no van en la CI. Se repiten al actualizar esas herramientas.

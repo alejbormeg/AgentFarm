@@ -677,11 +677,11 @@ public class FarmDaemon extends CodexRunner {
             io.agentfarm.core.AgentSandbox.hostSockets(System.getenv(), hostUser().split(":")[0])));
   }
 
-  /** Rules, not a sandbox, and never exercised against a real account: the owner should know. */
+  /** Rules, not a sandbox: the owner should know. tests/claude_rules.sh checks them against a real account. */
   static final java.util.function.Supplier<String> CLAUDE_NOTICE =
       () ->
           List.of("research", "implement", "review").stream().anyMatch(r -> providerFor(r).equals("claude-code"))
-              ? "Claude Code solo tiene reglas de bloqueo, sin aislamiento del sistema, y no se han probado con una cuenta real."
+              ? "Claude Code solo tiene reglas de bloqueo, sin aislamiento del sistema."
               : "";
 
   static volatile String sandboxFailure = "";
