@@ -143,7 +143,7 @@ const checkNotices = async () => {
   check(await until(() => visible("Toca los mismos archivos que")), "a task warns about another one on the same files");
   check(await until(() => visible("AC-3 quizá no se pueda acreditar")), "a doubtful criterion is flagged before approving");
   check(
-    await js(`(()=>{const d=${all}.find(e=>e.className==='decision'),l=${all}.find(e=>e.className==='links');return !!d&&!!l&&!!(d.compareDocumentPosition(l)&Node.DOCUMENT_POSITION_FOLLOWING)&&d.textContent.includes('Implementar propuesta')})()`),
+    await js(`(()=>{const t=${all}.find(e=>e.tagName==='ARTICLE'&&e.textContent.includes('quizá no se pueda acreditar'));if(!t)return false;const d=t.querySelector(':scope > .decision'),l=t.querySelector(':scope > .links');return !!d&&!!l&&d.children.length>0&&!!(d.compareDocumentPosition(l)&Node.DOCUMENT_POSITION_FOLLOWING)})()`),
     "the decision comes before the evidence",
   );
   await go("/overview?tarea=e2e-request-adopt");
