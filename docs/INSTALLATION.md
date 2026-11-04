@@ -63,9 +63,10 @@ Ejecutar el ejecutor con un usuario propio sigue siendo más seguro: consulta el
 [modelo de amenazas](SECURITY.md).
 
 Claude Code no corre en ese sandbox. Recibe las mismas rutas como reglas de bloqueo de sus
-herramientas, ignora la configuración del repositorio y no tiene `Bash`, pero esas reglas **no se
-han probado con una cuenta real** y son más débiles que un aislamiento del sistema. El panel lo
-avisa mientras un rol lo use.
+herramientas, ignora la configuración del repositorio y no tiene `Bash`. Esas reglas siguen siendo
+más débiles que un aislamiento del sistema, y el panel lo avisa mientras un rol lo use. Se han probado
+con una cuenta real en Claude Code 2.1.318, también por enlaces simbólicos: repite
+`bash tests/claude_rules.sh` al actualizarlo, porque gasta muy poca cuota y es lo único que lo comprueba.
 
 **Usuario propio:** para que un agente no alcance tu home aunque falle el perfil, instala el ejecutor con
 un usuario dedicado, con su propia sesión de `gh` y de Codex:

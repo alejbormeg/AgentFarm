@@ -11,7 +11,7 @@ Ver [CHANGELOG](../CHANGELOG.md#sin-publicar--auditoría-fase-0).
 
 ## Fase 1 — Seguro y paralelo
 
-1.5 parcial: `TestSandbox`, `Prompts`, la puerta de CI y `ExecutorWork` ya viven en el módulo con pruebas; queda trasladar el resto de `FarmDaemon` (estado estático por tarea).
+1.5 parcial: `TestSandbox`, `Prompts`, la puerta de CI y `ExecutorWork` ya viven en el módulo con pruebas, incluidas las decisiones de investigación, implementación e integración, y el estado de cada orden está en `FarmDaemon.Task`. Queda lo que lanza procesos y llama a GitHub, que solo ejercita el e2e.
 
 | # | Entrega | Criterio de salida |
 | --- | --- | --- |

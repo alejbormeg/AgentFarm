@@ -119,4 +119,163 @@ public final class ExecutorWork {
         + diagrams(p)
         + memoryContext(p.path("project_memory"));
   }
+
+  /** What the platform adds to a proposal, so an approval binds these exact rules and this base. */
+  public static void completeProposal(
+      JsonNode proposal,
+      JsonNode prompt,
+      String provider,
+      JsonNode skills,
+      JsonNode memory,
+      ProjectProfile profile,
+      JsonNode sandbox,
+      String baseSha)
+      throws java.io.IOException {
+    if (!proposal.path("criteria").isArray() || proposal.path("criteria").isEmpty())
+      throw new java.io.IOException("Research must supply identifiable acceptance criteria");
+    var p = (ObjectNode) proposal;
+    p.set("prompt", prompt);
+    p.put("provider", provider);
+    p.set("skills", skills);
+    p.set("mcp", MAPPER.valueToTree(profile == null ? List.of() : profile.mcp()));
+    p.set("project_memory", memory);
+    if (profile != null) {
+      p.put("profile_hash", profile.hash());
+      p.put("unit_test", profile.tests().get("unit"));
+      p.put("integration_test", profile.tests().get("integration"));
+      p.put("setup", profile.setup());
+      p.set("allowed_paths", MAPPER.valueToTree(profile.allowedPaths()));
+      p.set("quality", MAPPER.valueToTree(profile.quality()));
+      p.set("named_skills", MAPPER.valueToTree(profile.skills()));
+    }
+    p.set("sandbox", sandbox);
+    p.put("base_sha", baseSha);
+  }
+
+  /** A receipt of this same version that names this commit: the agent's turn need not run again. */
+  public static boolean receiptAtHead(JsonNode receipt, JsonNode item, String head) {
+    return receipt.path("version").asInt() == item.path("version").asInt()
+        && receipt.path("sha").asText().equals(head);
+  }
+
+  /** The workflow for a repository without CI: the approved commands, in the local sandbox's image. */
+  public static Map<String, Object> verificationWorkflow(JsonNode p, String defaultImage)
+      throws java.io.IOException {
+    var jobs = new LinkedHashMap<String, Object>();
+    for (String kind : List.of("unit", "integration")) {
+      String command = p.path(kind + "_test").asText();
+      if (command.isBlank()) throw new java.io.IOException("Falta estrategia de pruebas " + kind);
+      var steps = new ArrayList<Object>();
+      steps.add(Json.obj("uses", "actions/checkout@v4", "with", Json.obj("persist-credentials", false)));
+      if (!p.path("setup").asText().isBlank())
+        steps.add(Json.obj("name", "Dependencies", "run", p.path("setup").asText()));
+      steps.add(
+          Json.obj(
+              "name", kind, "run", command.startsWith("N/A:") ? "printf '%s\\n' " + shellQuote(command) : command));
+      var job = new LinkedHashMap<String, Object>();
+      job.put("name", "AgentFarm " + kind);
+      job.put("runs-on", "ubuntu-24.04");
+      // Same image as the local sandbox: setup runs as root there, as in the container.
+      if (!p.path("sandbox").path("mode").asText("container").equals("host"))
+        job.put("container", Json.obj("image", p.path("sandbox").path("image").asText(defaultImage)));
+      job.put("timeout-minutes", 15);
+      job.put("steps", steps);
+      jobs.put(kind, job);
+    }
+    return Json.obj(
+        "name",
+        "AgentFarm verification",
+        "on",
+        List.of("pull_request", "push"),
+        "permissions",
+        Json.obj("contents", "read"),
+        "jobs",
+        jobs);
+  }
+
+  public record Verdict(boolean passed, List<String> problems) {}
+
+  /**
+   * What the platform found about a candidate. {@code workflowChanges} are edits to the project's own
+   * CI, which could weaken the gate the candidate is judged by; a repository without CI has none.
+   */
+  public record Candidate(
+      String unit,
+      String integration,
+      boolean reviewPassed,
+      boolean untested,
+      boolean hasWorkflows,
+      List<String> workflowChanges,
+      List<String> protectedFiles,
+      Map<String, Object> profileValidation,
+      Map<String, Object> quality) {
+
+    private static boolean acceptable(String status) {
+      return status.equals("passed") || status.equals("not_applicable");
+    }
+
+    /** Failed tests and a failed review are already in the evidence, so they add no problem here. */
+    public Verdict verdict() {
+      boolean pass = acceptable(unit) && acceptable(integration) && reviewPassed && hasWorkflows;
+      var problems = new ArrayList<String>();
+      if (untested) problems.add("El candidato cambia código con pruebas marcadas N/A");
+      if (!workflowChanges.isEmpty()) problems.add("El candidato modifica el CI del proyecto: " + workflowChanges);
+      if (!protectedFiles.isEmpty()) problems.add("El candidato cambia las reglas del proyecto: " + protectedFiles);
+      if (profileValidation.get("status").equals("failed"))
+        problems.add("agentfarm.yaml no es válido: " + profileValidation.get("error"));
+      else if (profileValidation.containsKey("quality") && anyFailed(quality))
+        problems.add("Las puertas del nuevo agentfarm.yaml no pasan");
+      return new Verdict(pass && problems.isEmpty(), problems);
+    }
+  }
+
+  /** Files outside the approved profile. The template workflow is the platform's own. */
+  public static List<String> outOfScope(ProjectProfile profile, List<String> changed) {
+    return changed.stream()
+        .filter(f -> !f.isBlank() && !f.equals(".github/workflows/agentfarm.yml") && !profile.permits(f))
+        .toList();
+  }
+
+  public static String pullRequestBody(
+      JsonNode item,
+      int issue,
+      JsonNode p,
+      JsonNode change,
+      String sha,
+      JsonNode unit,
+      JsonNode integration,
+      JsonNode review,
+      JsonNode memoryValidation) {
+    String body =
+        "Closes #"
+            + issue
+            + "\n\n## Qué resuelve\n"
+            + (item.path("request").asText() + recipeContext(item))
+            + "\n\n"
+            + change.path("summary").asText()
+            + diagrams(change)
+            + "\n## Evidencias\nCommit: "
+            + sha
+            + "\n\nUnitarias: "
+            + unit
+            + "\n\nIntegración: "
+            + integration
+            + "\n\nRevisión: "
+            + review
+            + "\n\nMemoria candidata (validación de esquema, no aceptación funcional): "
+            + memoryValidation
+            + memoryContext(p.path("project_memory"))
+            + "\n\n## Limitaciones\n"
+            + change.path("limitations").asText();
+    return body.length() > 60000 ? body.substring(0, 59000) + "\nSalida recortada; consultar ejecución." : body;
+  }
+
+  /** With several slots each run reserves its share, so the others can still be admitted. */
+  public static int reservationShare(JsonNode balance, int slots) throws java.io.IOException {
+    int remaining = 0;
+    for (var window : balance.path("windows"))
+      if (window.path("period").asText().equals("weekly")) remaining = window.path("remaining").asInt();
+    if (remaining < 1) throw new java.io.IOException("Clover no tiene margen disponible");
+    return Math.max(1, remaining / Math.max(1, slots));
+  }
 }
