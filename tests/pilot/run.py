@@ -76,6 +76,13 @@ def task(panel, args, measures, title, request, recipe=None):
     entry["pr"] = candidate.get("pr")
     entry["sha"] = candidate.get("sha")
     entry["seconds_to_review"] = round(time.monotonic() - started)
+    evidence = json.loads(candidate.get("evidence") or "{}")
+    entry["review_passed"] = (evidence.get("review") or {}).get("passed")
+    # A candidate that reached review blocked is a finding: the run must not look like a success.
+    if evidence.get("passed") is False:
+        reason = (evidence.get("review") or {}).get("summary") or "las evidencias no pasan"
+        measures["blocked"].append({"task": item_id, "waiting_for": "review", "error": reason})
+        raise Stop(f"{item_id} llegó a revisión sin pasar sus evidencias.")
     if args.merge:
         deadline = time.monotonic() + args.timeout
         while not panel.call(f"/evidence/{item_id}").get("ready"):
@@ -130,7 +137,11 @@ def main():
     done = [t for t in measures["tasks"] if t["integrated"]]
     measures["integrated"] = len(done)
     if measures.get("quota_start") is not None and measures["quota_end"] is not None and done:
-        measures["quota_per_integrated_task"] = round((measures["quota_end"] - measures["quota_start"]) / len(done), 2)
+        spent = measures["quota_end"] - measures["quota_start"]
+        # The provider reads in whole percents: no rise means under 1 %, not free.
+        measures["quota_per_integrated_task"] = round(spent / len(done), 2) if spent > 0 else None
+        if spent <= 0:
+            measures["quota_note"] = "La cuota no subió entre lecturas, que son en enteros: menos de 1 % en total."
     print(json.dumps(measures, ensure_ascii=False, indent=2))
     return code
 
