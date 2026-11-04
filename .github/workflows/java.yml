@@ -2,7 +2,9 @@ name: Java verification
 on:
   push:
     branches: [main]
+    paths-ignore: ['docs/**', 'site/**', '*.md']
   pull_request:
+    paths-ignore: ['docs/**', 'site/**', '*.md']
 permissions:
   contents: read
 # A newer push to a PR replaces its run: the old one could only send a stale failure.
@@ -16,7 +18,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: ['21', '25']
+        # Java 25 only after merging: each PR run costs minutes, and Java 21 is what the project compiles for.
+        java: ${{ github.event_name == 'push' && fromJSON('["21", "25"]') || fromJSON('["21"]') }}
     steps:
       - uses: actions/checkout@v4
         with:
