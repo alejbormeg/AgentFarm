@@ -1,4 +1,5 @@
-:root {
+:root, html[theme] {
+  color-scheme:light;
   --lumo-primary-color:#285BC5; --lumo-primary-text-color:#285BC5;
   --lumo-base-color:#FFFFFF; --lumo-body-text-color:#233345; --lumo-header-text-color:#142D4E;
   --lumo-secondary-text-color:#526477; --lumo-font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
