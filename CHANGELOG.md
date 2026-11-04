@@ -4,6 +4,15 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — lo que encontró el piloto
+
+- Una corrección ya no pierde los criterios aprobados: solo una persona retira uno, con motivo visible.
+- El panel deja de mostrar «Consumo 0 %» con cuota de suscripción gastada. Muestra lo que subió la cuota de la cuenta, y no estima un coste por ejecución que no puede medir.
+- El panel se lee con el sistema en modo oscuro, y la decisión de cada tarea va primero, con lo que la bloquea.
+- La web pública tiene título en dos líneas, un botón para copiar las órdenes y capturas nuevas.
+- Cada PR gasta menos minutos de Actions: Java 25 solo al fusionar, y la documentación no lanza la CI.
+- Con una GitHub App, el ejecutor usa un token de una hora limitado al repositorio. Solo se ha probado con dobles.
+
 ## Sin publicar — primer piloto integrado desde el panel con GitHub real
 
 Sobre `alejbormeg/forja`, con panel y ejecutor en `f477f2d`: [forja#10](https://github.com/alejbormeg/forja/pull/10), integrada por SHA.
