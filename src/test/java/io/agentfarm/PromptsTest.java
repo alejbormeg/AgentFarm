@@ -14,8 +14,8 @@ class PromptsTest {
         Prompts.render(
             "research",
             Map.of("repo", "o/r", "sandbox", "imagen x", "request", "Arregla {{repo}}", "feedback", ""));
-    assertEquals("research.v4", research.id());
-    assertEquals(Json.sha256(Prompts.template("research.v4")), research.hash());
+    assertEquals("research.v5", research.id());
+    assertEquals(Json.sha256(Prompts.template("research.v5")), research.hash());
     assertTrue(research.text().contains("Arregla {{repo}}"), "values are not re-expanded");
     assertFalse(research.text().contains("{{sandbox}}"));
     assertDoesNotThrow(

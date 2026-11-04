@@ -28,6 +28,8 @@ A `test` criterion is **checked** if CI passed entirely and, for each check, the
 
 It checks that the approved commands passed, not that the tests are good. Without a GitHub credential in the panel, `test` criteria stay unchecked.
 
+A correction can't lose approved criteria: they stay unchanged even if the agent reuses their id, and what it brings enters as new criteria. Only a person retires one, when asking for the correction and with a reason of at least 20 characters, which stays visible on the proposal and in the audit.
+
 A new rejection revokes an earlier acceptance of the same criterion, and the history is kept. Retrying the same request doesn't duplicate decisions. Changing the SHA, the approved version or the reviewed report invalidates decisions. The server checks coverage again when a merge is requested and before publishing the integration.
 
 When it receives a proposal, the panel warns about `test` criteria that may never be accredited: those asking for something tests rarely show, such as a binary's identity or the process user, and those closed by a command that always passes. It's a warning and doesn't block, because a phrase can be a false alarm. Decide before approving: correct the proposal, or turn it into a `manual` criterion. A `test` criterion on an `N/A:` command is rejected.
