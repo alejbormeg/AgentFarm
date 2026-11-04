@@ -286,9 +286,27 @@ adoption corrected || fail "corrected adoption candidate"
 # A task whose branch the base has moved past starts over from the base on the same PR.
 item=e2e-request-0001
 old_head=$(git -C "$work/remote.git" rev-parse "$branch")
-owner /work/e2e-request-0001/actions/correct '{"feedback":"La base ha cambiado: actualiza la propuesta."}' > /dev/null
+approved_criteria=$(python3 - "$panel" "$password" <<'PY'
+import base64, json, sys, urllib.request
+panel, password = sys.argv[1:]
+req = urllib.request.Request(panel + "/api/work", headers={"Authorization": "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()})
+item = [x for x in json.load(urllib.request.urlopen(req)) if x["id"] == "e2e-request-0001"][0]
+print(json.dumps([c["description"] for c in json.loads(item["proposal"])["criteria"]]))
+PY
+)
+owner /work/e2e-request-0001/actions/correct '{"feedback":"La base ha cambiado: actualiza la propuesta. Reformula los criterios."}' > /dev/null
 sleep 3
 wait_for proposed 60
+python3 - "$panel" "$password" "$approved_criteria" <<'PY' || fail "a correction lost the approved criteria"
+import base64, json, sys, urllib.request
+panel, password, approved = sys.argv[1:]
+req = urllib.request.Request(panel + "/api/work", headers={"Authorization": "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()})
+item = [x for x in json.load(urllib.request.urlopen(req)) if x["id"] == "e2e-request-0001"][0]
+now = [c["description"] for c in json.loads(item["proposal"])["criteria"]]
+assert now[:len(json.loads(approved))] == json.loads(approved), now
+assert "Cubre solo la última corrección" in now, now
+PY
+echo "Approved criteria survived a correction"
 owner /work/e2e-request-0001/actions/implement '{"version":2}' > /dev/null
 sleep 3
 wait_for review 150

@@ -38,6 +38,7 @@ public class InsightsService {
         c -> {
           var samples = new TreeMap<String, List<Long>>();
           var units = new HashMap<String, String>();
+          var unmeasured = new HashMap<String, Integer>();
           for (var r :
               rows(
                   c,
@@ -57,11 +58,14 @@ public class InsightsService {
                         + " work_commands w LEFT JOIN work_recipes r ON r.item=w.item WHERE w.id=?",
                     command);
             if (cmd == null) continue;
-            long value = 0;
-            for (var v : parse(r.get("actual").toString())) value = Math.max(value, v.asLong());
+            var actual = parse(r.get("actual").toString());
             String key = cmd.get("recipe") + "/" + cmd.get("kind") + "/" + r.get("mode");
-            samples.computeIfAbsent(key, k -> new ArrayList<>()).add(value);
             units.put(key, r.get("mode").equals("api") ? "usd_micros" : "basis_points");
+            if (cumulative(actual) != null) {
+              unmeasured.merge(key, 1, Integer::sum);
+              continue;
+            }
+            samples.computeIfAbsent(key, k -> new ArrayList<>()).add(measured(actual));
           }
           var out = new TreeMap<String, Object>();
           for (var e : samples.entrySet()) {
@@ -78,8 +82,46 @@ public class InsightsService {
                     "median", v.get(v.size() / 2),
                     "p90", v.get(Math.min(v.size() - 1, (int) Math.ceil(v.size() * 0.9) - 1))));
           }
+          // A subscription's quota is read for the whole account: no single run can claim a rise.
+          for (var e : unmeasured.entrySet()) {
+            if (samples.containsKey(e.getKey())) continue;
+            String[] k = e.getKey().split("/");
+            var entry = new LinkedHashMap<String, Object>();
+            entry.put("recipe", k[0]);
+            entry.put("kind", k[1]);
+            entry.put("unit", units.get(e.getKey()));
+            entry.put("runs", e.getValue());
+            entry.put("median", null);
+            entry.put("p90", null);
+            out.put(e.getKey(), entry);
+          }
           return out;
         });
+  }
+
+  /** The provider's reading {used, observed_at} when this run only recorded one, else null. */
+  private static long[] cumulative(com.fasterxml.jackson.databind.JsonNode actual) {
+    if (!actual.path("source").asText().equals("provider-cumulative")) return null;
+    var weekly = actual.path("windows").path("weekly");
+    return new long[] {weekly.path("cumulative_used").asLong(), weekly.path("observed_at").asLong()};
+  }
+
+  private static long measured(com.fasterxml.jackson.databind.JsonNode actual) {
+    long value = 0;
+    for (var v : actual) value = Math.max(value, v.asLong());
+    return value;
+  }
+
+  /** How much the account's quota rose between readings. A lower reading means the window reset. */
+  private static long observedRise(List<long[]> readings) {
+    var ordered = new ArrayList<>(readings);
+    ordered.sort(Comparator.comparingLong(r -> r[1]));
+    long rise = 0;
+    for (int i = 1; i < ordered.size(); i++) {
+      long now = ordered.get(i)[0], before = ordered.get(i - 1)[0];
+      rise += now >= before ? now - before : now;
+    }
+    return rise;
   }
 
   public Map<String, Object> metrics(int weeks) {
@@ -141,17 +183,24 @@ public class InsightsService {
             spend.add(obj("account", r.get("account"), "mode", r.get("mode"), "actual", parse(r.get("actual").toString())));
           }
           var cost = new TreeMap<String, Object>();
+          var readings = new HashMap<String, List<long[]>>();
           for (var s : spend) {
             var m = MAPPER.valueToTree(s);
-            long total = 0;
-            for (var v : m.path("actual")) total = Math.max(total, v.asLong());
             String account = m.path("account").asText();
+            var reading = cumulative(m.path("actual"));
+            long total = reading == null ? measured(m.path("actual")) : 0;
+            if (reading != null) readings.computeIfAbsent(account, k -> new ArrayList<>()).add(reading);
             var entry =
                 (Map<String, Object>)
                     cost.computeIfAbsent(
                         account, k -> new LinkedHashMap<>(obj("unit", m.path("mode").asText().equals("api") ? "usd_micros" : "basis_points", "runs", 0L, "total", 0L)));
             entry.put("runs", (Long) entry.get("runs") + 1);
             entry.put("total", (Long) entry.get("total") + total);
+          }
+          for (var e : readings.entrySet()) {
+            var entry = (Map<String, Object>) cost.get(e.getKey());
+            entry.put("observed", observedRise(e.getValue()));
+            entry.put("attribution", "account");
           }
           return obj(
               "weeks",

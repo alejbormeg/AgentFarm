@@ -94,4 +94,38 @@ class InsightsTest {
     assertThrows(IllegalArgumentException.class, () -> new NotificationService(store, "http://evil.example/x", "json", "p", (u, t, h, b) -> 200));
     assertThrows(IllegalArgumentException.class, () -> new NotificationService(store, "", "sms", "p", (u, t, h, b) -> 200));
   }
+
+  private void observed(String run, long cumulative, long at) {
+    store.tx(
+        c -> {
+          Store.exec(c, "INSERT OR IGNORE INTO budget_accounts VALUES('codex','subscription','{}')");
+          Store.exec(
+              c,
+              "INSERT INTO budget_runs VALUES('codex',?,'{}','reconciled',?)",
+              run,
+              "{\"source\":\"provider-cumulative\",\"windows\":{\"weekly\":{\"cumulative_used\":" + cumulative + ",\"observed_at\":" + at + "}}}");
+          return null;
+        });
+  }
+
+  @Test
+  void subscriptionQuotaIsTheAccountsObservedRiseNotZero() {
+    observed("work-a", 5900, 100);
+    observed("work-b", 6900, 200);
+    observed("work-c", 7000, 300);
+    var insights = new InsightsService(store, Clock.systemUTC());
+    var cost = MAPPER.valueToTree(insights.metrics(8)).path("cost").path("codex");
+    assertEquals(3, cost.path("runs").asInt());
+    assertEquals(1100, cost.path("observed").asLong(), "from the first reading to the last");
+    assertEquals("account", cost.path("attribution").asText());
+  }
+
+  @Test
+  void aWindowResetDoesNotReduceWhatWasObserved() {
+    observed("work-a", 9000, 100);
+    observed("work-b", 9500, 200);
+    observed("work-c", 300, 300);
+    var cost = MAPPER.valueToTree(new InsightsService(store, Clock.systemUTC()).metrics(8)).path("cost").path("codex");
+    assertEquals(800, cost.path("observed").asLong());
+  }
 }

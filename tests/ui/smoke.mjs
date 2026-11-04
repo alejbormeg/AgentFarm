@@ -133,6 +133,7 @@ const checkNotices = async () => {
   check(await until(() => visible("Claude Code solo tiene reglas de bloqueo.")), "the inbox warns that Claude Code has no system sandbox");
   await go("/overview?tarea=e2e-request-0001");
   check(await until(() => visible("Squealer dice · unitarias: Superadas")), "test results are in plain words");
+  check(await until(() => visible("Se conservan de la versión aprobada")), "a correction shows which approved criteria it kept");
   await js(`${all}.find(e=>e.tagName==='SUMMARY'&&e.textContent.startsWith('Squealer dice · unitarias')).click()`);
   check(await until(() => visible("Registro completo")), "the full record stays available");
   check(
