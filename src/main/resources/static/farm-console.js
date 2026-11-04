@@ -156,11 +156,14 @@ const expectedCost = (costs, w) => {
     (c) => c.recipe === recipe && c.kind === "implement",
   );
   if (!found.length) return "";
+  if (found.every((c) => c.median == null))
+    return "Sin coste por ejecución: la cuota de suscripción es de toda la cuenta y se lee en porcentajes enteros.";
   return (
     "Coste observado al implementar " +
     (recipe === "libre" ? "peticiones libres" : "la receta " + recipe) +
     ": " +
     found
+      .filter((c) => c.median != null)
       .map((c) =>
         c.unit === "usd_micros"
           ? "mediana " + (c.median / 1e6).toFixed(2) + " USD, p90 " + (c.p90 / 1e6).toFixed(2) + " USD"
@@ -1894,7 +1897,11 @@ class FarmConsole extends HTMLElement {
         E("th", "Consumo " + account),
         E(
           "td",
-          (c.unit === "usd_micros" ? (c.total / 1e6).toFixed(2) + " USD" : c.total / 100 + " %") +
+          (c.attribution === "account"
+            ? (c.observed + c.total ? "Hasta " + (c.observed + c.total) / 100 + " %" : "Menos de 1 %") + " de la cuenta"
+            : c.unit === "usd_micros"
+              ? (c.total / 1e6).toFixed(2) + " USD"
+              : c.total / 100 + " %") +
             " · " + c.runs + " ejecuciones",
         ),
       );
