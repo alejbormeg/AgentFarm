@@ -4,6 +4,10 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — el ejecutor empaquetado vuelve a procesar órdenes
+
+El jar de `f556753` no incluía `FarmDaemon$Task`: el ejecutor moría al coger su primera orden, pero seguía vivo y el panel lo daba por sano. El jar incluye ya todas sus clases, un fallo así termina el proceso para que systemd lo reinicie, y el e2e corre el paquete que se distribuye (#121).
+
 ## Sin publicar — adopción probada con un agente real
 
 Codex 0.166 real y GitHub simulado, sobre el commit de esta PR. Antes de los arreglos, las dos adopciones necesitaban una corrección; después, ninguna.

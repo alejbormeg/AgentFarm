@@ -47,7 +47,6 @@ touches 'install-dedicated-user\.sh|tests/dedicated_user\.sh' && step bash tests
 if touches '^(src/main/|runtime/|tests/e2e/|tests/ui/|pom\.xml)'; then
   [[ "$java_changed" == 1 ]] || ./mvnw -B -ntp -q -DskipTests package
   step bash runtime/verify.sh
-  step bash runtime/package.sh >/dev/null
   chrome="${E2E_CHROME:-$(command -v google-chrome || true)}"
   [[ -n "$chrome" ]] || echo "AVISO: sin Chrome, el smoke de navegador solo correrá en la CI. Consulta la skill panel-aislado."
   step env E2E_CHROME="$chrome" E2E_PORT="${E2E_PORT:-18120}" bash tests/e2e/run.sh

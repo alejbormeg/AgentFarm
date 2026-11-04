@@ -23,6 +23,12 @@ fail() {
   exit 1
 }
 
+# The executor as it ships: a class missing from the package must fail here. Before the panel starts, as this rebuilds its jar.
+bash "$root/runtime/package.sh" > "$work/package.log" 2>&1 || { cat "$work/package.log" >&2; fail "the executor does not package"; }
+tar -xzf "$root/target/agentfarm-executor-linux.tar.gz" -C "$work"
+dist="$work/agentfarm-executor"
+executor_jar="$dist/executor.jar"
+
 # Demo repository served as a local bare remote.
 git init -q -b main "$work/seed"
 git -C "$work/seed" -c user.name=e2e -c user.email=e2e@localhost commit -q --allow-empty -m init
@@ -63,9 +69,9 @@ openssl genrsa -traditional -out "$work/app.pem" 2048 2>/dev/null
 E2E_APP_PEM="$work/app.pem" python3 "$e2e/fake_github_api.py" "$api_port" "$work/gh.json" "$work/remote.git" > "$work/api.log" 2>&1 &
 pids+=($!)
 echo e2e-panel-token > "$work/github-token"
-# A known commit for the panel, as an image build gives it, so it can tell an executor is outdated.
+# The panel's commit, as an image build gives it: the packaged executor must match, and only another commit warn.
 mkdir "$work/build"
-echo e2e-panel-commit > "$work/build/build-commit.txt"
+git -C "$root" rev-parse HEAD > "$work/build/build-commit.txt"
 AGENTFARM_PASSWORD="$password" AGENTFARM_DB="$work/panel/agentfarm.db" PORT="$port" \
   AGENTFARM_USERS_FILE="$work/users.json" \
   AGENTFARM_GITHUB_TOKEN_FILE="$work/github-token" AGENTFARM_GITHUB_API="http://127.0.0.1:$api_port" \
@@ -98,14 +104,10 @@ owner /executors '{"node":"e2e-node","account":"e2e-sub"}' \
 chmod 600 "$work/state/node-token"
 owner /work '{"request_id":"e2e-request-0001","repository":"e2e/demo","title":"Añadir saludo","request":"Crea greeting.txt con un saludo."}' > /dev/null
 
-# Executor compiled from source, with the doubles.
-cp="$root/target/classes:$(find "$HOME/.m2/repository/com/fasterxml/jackson/core" "$HOME/.m2/repository/org/yaml/snakeyaml" -name '*.jar' | paste -sd:)"
-mkdir -p "$work/classes"
-javac -nowarn -cp "$cp" -d "$work/classes" "$root/runtime/CodexRunner.java" "$root/runtime/FarmDaemon.java"
 export E2E_QUOTA_RESETS=$(($(date +%s) + 3 * 86400))
 start_executor() {
   E2E_GH_STATE="$work/gh.json" E2E_REMOTE="$work/remote.git" \
-    java -cp "$work/classes:$cp" \
+    java -cp "$executor_jar:$dist/lib/*" \
     -Dagentfarm.url="$panel" -Dagentfarm.state="$work/state" \
     -Dagentfarm.node=e2e-node -Dagentfarm.account=e2e-sub \
     -Dagentfarm.codex="$e2e/fake-codex" -Dagentfarm.gh="$e2e/fake_gh.py" \
@@ -133,6 +135,23 @@ echo "Broken sandbox refused: the task stays $state_after"
 kill "$executor"
 wait "$executor" 2>/dev/null || true
 unset E2E_SANDBOX_BROKEN
+
+# A broken executor must stop, so systemd restarts it. It once stayed up and reported itself healthy with no loop taking orders.
+mkdir "$work/damaged"
+(cd "$work/damaged" && jar xf "$dist/executor.jar" && rm -f 'FarmDaemon$Task.class' && jar --create --file "$work/damaged.jar" .)
+executor_jar="$work/damaged.jar"
+start_executor
+for _ in $(seq 1 60); do
+  kill -0 "$executor" 2>/dev/null || break
+  sleep 1
+done
+kill -0 "$executor" 2>/dev/null && fail "an executor whose main loop died stays alive"
+status=0
+wait "$executor" || status=$?
+[[ "$status" != 0 ]] || fail "an executor whose main loop died exits with success"
+grep -q 'NoClassDefFoundError' "$work/executor.log" || fail "the damaged executor exited for another reason"
+echo "Damaged executor stopped with status $status; the next one receives its order again"
+executor_jar="$dist/executor.jar"
 
 start_executor
 
