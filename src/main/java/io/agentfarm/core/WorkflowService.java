@@ -289,6 +289,10 @@ public class WorkflowService {
                 if (!Set.of("proposed", "review", "blocked").contains(state))
                   throw new IllegalArgumentException("No result to correct");
                 String feedback = text(n, "feedback");
+                if (n.path("retire").isArray() && !n.path("retire").isEmpty()) {
+                  ApprovedCriteria.retire(c, w, n.path("retire"), feedback, actor, clock.instant().getEpochSecond());
+                  audit(c, actor, "work.retire-criterion", id + " " + n.path("retire"));
+                }
                 command(c, id, "research", obj("feedback", feedback));
                 exec(c, "UPDATE work_items SET state='queued',error=NULL WHERE id=?", id);
                 proposeLesson(c, w, feedback, actor);
@@ -558,6 +562,8 @@ public class WorkflowService {
               ProjectMemory.validate(
                   p.get("project_memory"),
                   one(c, "SELECT repo FROM work_items WHERE id=?", id).get("repo").toString());
+            var previous = parse(one(c, "SELECT proposal FROM work_items WHERE id=?", id).get("proposal").toString());
+            ApprovedCriteria.apply(c, id, previous, (com.fasterxml.jackson.databind.node.ObjectNode) p);
             EvidenceService.criteria(p);
             for (String key :
                 List.of("summary", "acceptance", "as_is", "to_be", "unit_test", "integration_test"))
@@ -567,9 +573,7 @@ public class WorkflowService {
             ((com.fasterxml.jackson.databind.node.ObjectNode) p)
                 .set(
                     "previous_changes",
-                    ProposalShape.changes(
-                        parse(one(c, "SELECT proposal FROM work_items WHERE id=?", id).get("proposal").toString()),
-                        p));
+                    ProposalShape.changes(previous, p));
             exec(c, "UPDATE work_items SET proposal=?,version=version+1 WHERE id=?", encode(p), id);
           }
           if (n.has("evidence"))
