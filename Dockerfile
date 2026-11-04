@@ -1,4 +1,4 @@
-FROM maven:3.9.11-eclipse-temurin-21 AS build
+FROM maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 AS build
 WORKDIR /build
 COPY pom.xml ./
 COPY src ./src
@@ -7,9 +7,9 @@ ARG AGENTFARM_COMMIT=unknown
 RUN printf %s "$AGENTFARM_COMMIT" > src/main/resources/build-commit.txt
 COPY runtime/mvn-retry.sh /usr/local/bin/mvn-retry
 RUN bash /usr/local/bin/mvn-retry -B -ntp -Dspotless.check.skip=true -Dspotbugs.skip=true -Djacoco.skip=true verify
-RUN mkdir /native && cd /native     && jar xf /root/.m2/repository/org/xerial/sqlite-jdbc/3.51.1.0/sqlite-jdbc-3.51.1.0.jar     && cp "org/sqlite/native/Linux/$(uname -m)/libsqlitejdbc.so" /native/libsqlitejdbc.so
+RUN mkdir /native && cd /native     && jar xf /root/.m2/repository/org/xerial/sqlite-jdbc/*/sqlite-jdbc-*.jar     && cp "org/sqlite/native/Linux/$(uname -m)/libsqlitejdbc.so" /native/libsqlitejdbc.so
 
-FROM eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:21-jre-jammy@sha256:1eac8b8fee11ca7d6725a48bc5d41992ed1561504ebae25490d2d062847e8269
 RUN apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 agentfarm && useradd --uid 10001 --gid agentfarm --no-create-home agentfarm \
