@@ -22,5 +22,7 @@ description: Lleva una issue de AgentFarm de principio a fin. Rama, prueba que f
    bash .claude/skills/resolver-issue/merge-gate.sh <n> "[#issue] Título (#n)"
    ```
 
+   Mientras Actions esté desactivado por falta de minutos, decisión del propietario: ejecuta `bash .claude/skills/resolver-issue/validar-local.sh <head>`, que corre en una copia limpia todo lo que haría la CI, y fusiona con `merge-gate.sh --local`. Si otra PR se fusionó entretanto, actualiza la rama y vuelve a validar.
+
    Espera a las comprobaciones, exige las obligatorias en verde sobre el head actual y fusiona por ese SHA. **Si no fusiona, investiga la causa**: nunca fuerces la fusión ni la hagas a mano.
 9. Comprueba que la issue se ha cerrado y vuelve a `main`. Si el cambio afecta al panel o al ejecutor, valora desplegar con `desplegar-local`.

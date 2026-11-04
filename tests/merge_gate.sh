@@ -27,6 +27,9 @@ case "$1 $2" in
     [[ "$3" != */files ]] || { cat "$FAKE/files"; exit 0; }
     n=$(cat "$FAKE/reads"); echo $((n + 1)) > "$FAKE/reads"
     if [[ -f "$FAKE/runs.$n" ]]; then cat "$FAKE/runs.$n"; else cat "$FAKE/runs.last"; fi ;;
+  "api repos/{owner}/{repo}/actions/permissions")
+    [[ ! -f "$FAKE/api_fails" ]] || exit 1
+    cat "$FAKE/actions" ;;
   "pr merge") echo "$*" > "$FAKE/merged" ;;
   *) echo "unexpected gh $*" >&2; exit 2 ;;
 esac
@@ -109,5 +112,51 @@ refuses "documentation with a failed check"
 scenario ""
 : > "$FAKE/files"
 refuses "a PR whose files cannot be listed"
+
+# --local: no checks exist, the local validation of this exact head stands in for them while Actions is off.
+git init -q "$work/repo"
+validated="$work/repo/.git/agentfarm-validated"
+local_gate() {
+  (cd "$work/repo" && FAKE="$FAKE" PATH="$work/bin:$PATH" MERGE_GATE_INTERVAL=0 MERGE_GATE_TIMEOUT=0 \
+    bash "$root/.claude/skills/resolver-issue/merge-gate.sh" --local 7 "[#1] Título (#7)") > "$FAKE/out" 2>&1
+}
+local_merges() {
+  local_gate || { cat "$FAKE/out" >&2; echo "FAIL: $1" >&2; exit 1; }
+  grep -q -- "--match-head-commit $sha" "$FAKE/merged" || { echo "FAIL: $1: merged without the SHA" >&2; exit 1; }
+  echo "ok   $1"
+}
+local_refuses() {
+  if local_gate || [[ -f "$FAKE/merged" ]]; then echo "FAIL: $1: it merged" >&2; exit 1; fi
+  grep -q "NO se fusiona" "$FAKE/out" || { cat "$FAKE/out" >&2; echo "FAIL: $1: no reason given" >&2; exit 1; }
+  echo "ok   $1"
+}
+
+scenario ""
+echo false > "$FAKE/actions"; echo "$sha" > "$validated"
+local_merges "--local with Actions off and this head validated"
+
+scenario ""
+echo false > "$FAKE/actions"; echo "$other" > "$validated"
+local_refuses "--local when another commit was validated"
+
+scenario ""
+echo false > "$FAKE/actions"; rm -f "$validated"
+local_refuses "--local with nothing validated"
+
+scenario ""
+echo true > "$FAKE/actions"; echo "$sha" > "$validated"
+local_refuses "--local once Actions is back on"
+
+scenario ""
+touch "$FAKE/api_fails"; echo "$sha" > "$validated"
+local_refuses "--local when the Actions state cannot be read"
+
+scenario ""
+echo false > "$FAKE/actions"; echo "$sha" > "$validated"; echo CONFLICTING > "$FAKE/mergeable"
+local_refuses "--local on a conflicting PR"
+
+scenario ""
+if gate || [[ -f "$FAKE/merged" ]]; then echo "FAIL: validation without --local must not replace the checks" >&2; exit 1; fi
+echo "ok   a validated head without --local still needs the checks"
 
 echo "Merge gate checks passed"

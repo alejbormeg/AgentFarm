@@ -7,7 +7,7 @@ repositorios y un humano decida qué se integra. Lee [PRODUCT.md](PRODUCT.md) an
 ## Reglas que no se negocian
 
 - No amplíes alcance ni cambies contratos sin aprobación.
-- Una aprobación se vincula al commit exacto. No publiques ni fusiones sin autorización explícita del propietario; aun autorizado, solo con todas las comprobaciones en verde sobre el head actual.
+- Una aprobación se vincula al commit exacto. No publiques ni fusiones sin autorización explícita del propietario; aun autorizado, solo con todas las comprobaciones en verde sobre el head actual. Mientras Actions esté desactivado por falta de minutos, el propietario ha decidido que `validar-local.sh` sobre ese mismo head las sustituye.
 - Nunca incorpores ni muestres secretos, sesiones ni logs privados. Eso incluye la salida de una orden: no imprimas tokens ni la contraseña del panel.
 - Distingue capacidad implementada, simulada y planificada. Probado con dobles no es probado en real, y hay que decirlo.
 - Una issue se cierra solo si se cumple su aceptación. Lo que no puedas acreditar se queda abierto, con un comentario de lo que falta.
