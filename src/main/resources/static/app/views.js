@@ -116,7 +116,7 @@ export const withViews = (Base) =>
         box.append(E("p", "Sin datos todavía.", "muted"));
         return box;
       }
-      box.append(this.big(String(m.totals.integrated), "PR integradas en 8 semanas"));
+      box.append(this.big(String(m.totals.integrated), (m.totals.integrated === 1 ? "PR integrada" : "PR integradas") + " en 8 semanas"));
       const weeks = Object.keys(m.weeks || {}).sort().slice(-8);
       const top = Math.max(1, ...weeks.map((k) => m.weeks[k].integrated));
       const bars = E("div", "", "bars");
