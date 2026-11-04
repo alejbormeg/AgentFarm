@@ -12,7 +12,7 @@ import java.util.regex.*;
  */
 public final class Prompts {
   public static final Map<String, String> CURRENT =
-      Map.of("research", "research.v4", "implement", "implement.v2", "review", "review.v3");
+      Map.of("research", "research.v5", "implement", "implement.v2", "review", "review.v3");
   private static final Pattern SLOT = Pattern.compile("\\{\\{([a-z_]+)\\}\\}");
 
   public record Rendered(String id, String hash, String text) {

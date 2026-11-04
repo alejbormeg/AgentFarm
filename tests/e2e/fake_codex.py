@@ -140,6 +140,9 @@ def answer(thread, prompt):
     if "otro saludo" in prompt:
         doubtful = {"id": "AC-3", "description": "El proceso corre como root", "method": "test", "checks": ["unit"]}
         return dict(PROPOSAL, criteria=PROPOSAL["criteria"] + [doubtful])
+    if "Reformula los criterios" in prompt:
+        # What a real agent did on forja: the same ids, covering only the last correction.
+        return dict(PROPOSAL, criteria=[{"id": "AC-1", "description": "Cubre solo la última corrección", "method": "test", "checks": ["unit", "integration"]}])
     return PROPOSAL
 
 

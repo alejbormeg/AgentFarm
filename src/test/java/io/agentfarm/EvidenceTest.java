@@ -74,6 +74,10 @@ class EvidenceTest {
   }
 
   com.fasterxml.jackson.databind.JsonNode decision(String kind) {
+    return decision(kind, "AC-1");
+  }
+
+  com.fasterxml.jackson.databind.JsonNode decision(String kind, String criterion) {
     var d = dossier();
     return n(
         "request_id",
@@ -85,7 +89,7 @@ class EvidenceTest {
         "basis",
         d.path("basis").asText(),
         "criterion",
-        "AC-1",
+        criterion,
         "kind",
         kind,
         "reason",
@@ -223,7 +227,7 @@ class EvidenceTest {
             List.of(
                 obj(
                     "id",
-                    "AC-1",
+                    "AC-2",
                     "description",
                     "Bug reproduced and corrected",
                     "method",
@@ -233,8 +237,9 @@ class EvidenceTest {
     revise(proposal);
     assertThrows(
         IllegalArgumentException.class,
-        () -> evidence.decide("evidence-task", decision("manual"), "owner"));
-    evidence.decide("evidence-task", decision("exception"), "owner");
+        () -> evidence.decide("evidence-task", decision("manual", "AC-2"), "owner"));
+    evidence.decide("evidence-task", decision("manual", "AC-1"), "owner");
+    evidence.decide("evidence-task", decision("exception", "AC-2"), "owner");
     assertEquals("accepted_with_exceptions", dossier().path("acceptance_state").asText());
   }
 
