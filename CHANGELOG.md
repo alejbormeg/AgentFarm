@@ -4,6 +4,19 @@ Registro de incrementos y autorizaciones del promotor. Lo que funciona hoy se
 resume en el [README](README.md); la arquitectura y los contratos, en el
 [plan técnico](docs/PLAN.md).
 
+## Sin publicar — primer piloto integrado desde el panel con GitHub real
+
+Sobre `alejbormeg/forja`, con panel y ejecutor en `f477f2d`: [forja#10](https://github.com/alejbormeg/forja/pull/10), integrada por SHA.
+
+| Medida | Resultado |
+| --- | --- |
+| Intervenciones humanas, sin contar aprobaciones | 2 correcciones, tras dos bloqueos del revisor independiente |
+| Tareas integradas sin bloquearse | 1 de 1, sin quedar en `blocked` |
+| Fallos que el e2e no detectó | 2: [#123](https://github.com/alejbormeg/AgentFarm/issues/123) y [#124](https://github.com/alejbormeg/AgentFarm/issues/124) |
+| Cuota por tarea integrada | Del 69 % al 70 %, con lectura en enteros |
+
+Las aprobaciones las hizo un script, y la CI corrió en un runner propio porque no quedaban minutos de Actions: no acredita la CI alojada de GitHub.
+
 ## Sin publicar — el ejecutor empaquetado vuelve a procesar órdenes
 
 El jar de `f556753` no incluía `FarmDaemon$Task`: el ejecutor moría al coger su primera orden, pero seguía vivo y el panel lo daba por sano. El jar incluye ya todas sus clases, un fallo así termina el proceso para que systemd lo reinicie, y el e2e corre el paquete que se distribuye (#121).
