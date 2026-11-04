@@ -1,6 +1,6 @@
 # Operación en WSL y trazabilidad GitHub
 
-El panel Mateu y el ejecutor WSL son procesos separados. El panel no monta el
+El panel y el ejecutor WSL son procesos separados. El panel no monta el
 socket Docker ni las credenciales GitHub. El ejecutor usa Codex app-server y
 GitHub CLI autenticados en la cuenta Linux.
 
@@ -92,5 +92,4 @@ disponibles como compatibilidad, separados del nuevo flujo de ejecución.
 ## Dependencias visuales
 
 Mermaid 11.12.0 se sirve localmente, con `securityLevel: strict` y licencia MIT.
-No se envían los diagramas a un servicio externo. La UI usa la shell Mateu y
-un componente web servido por Spring; no requiere compilar Node al instalar.
+No se envían los diagramas a un servicio externo. La interfaz son módulos propios servidos por el panel, sin recursos externos.

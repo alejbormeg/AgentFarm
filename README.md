@@ -24,7 +24,7 @@ Los agentes y GitHub son simulados: nada sale de tu equipo. Necesitas JDK 21, gi
 3. **Ellos trabajan.** Uno implementa, las pruebas corren en un contenedor sin credenciales y otro revisa sin poder tocar nada.
 4. **Tú decides.** Apruebas cada commit, o varios a la vez si son de bajo riesgo. Cada cambio cumple los [Siete Mandamientos](docs/COMMANDMENTS.md) o no entra.
 
-Java 21, Spring Boot 4 y Mateu. Un solo proceso, SQLite, sin Node ni servidor SQL.
+Java 21 y Spring Boot 4. Un solo proceso, SQLite, sin Node ni servidor SQL.
 
 ## Qué hace hoy
 

@@ -42,6 +42,7 @@ let nextId = 0;
 const pending = new Map();
 const exceptions = [];
 let posts = [];
+const policyBlocks = [];
 socket.onmessage = (m) => {
   const d = JSON.parse(m.data);
   if (d.id && pending.has(d.id)) {
@@ -49,6 +50,8 @@ socket.onmessage = (m) => {
     pending.delete(d.id);
   } else if (d.method === "Runtime.exceptionThrown") {
     exceptions.push(d.params.exceptionDetails.exception?.description || d.params.exceptionDetails.text);
+  } else if (d.method === "Log.entryAdded" && /Content Security Policy/.test(d.params.entry.text)) {
+    policyBlocks.push(d.params.entry.text.slice(0, 160));
   } else if (d.method === "Network.requestWillBeSent" && d.params.request.method === "POST") {
     posts.push(new URL(d.params.request.url).pathname);
   }
@@ -67,6 +70,7 @@ const js = async (expression) => {
 await send("Page.enable");
 await send("Network.enable");
 await send("Runtime.enable");
+await send("Log.enable");
 await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
 
 // Every element, across shadow roots; only what is on screen counts as text.
@@ -156,10 +160,15 @@ const checkNotices = async () => {
   await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "dark" }] });
   await go("/overview");
   await until(() => visible("Bandeja"));
-  check(
-    await js(`(()=>{const s=${all}.find(e=>e.tagName==='SELECT');const [r,g,b]=getComputedStyle(s).color.match(/\\d+/g).map(Number);return document.documentElement.getAttribute('theme')==='light'&&r+g+b<300})()`),
-    "the panel stays readable on a dark system",
-  );
+  check(await js(`document.documentElement.dataset.theme==='dark'`), "a dark system gets Atardecer");
+  const luminance = (rgb) => {
+    const [r, g, b] = rgb.match(/\d+/g).map(Number).map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const colors = await js(`(()=>{const s=document.querySelector('.head h1'),b=document.querySelector('.sheet');return [getComputedStyle(s).color,getComputedStyle(b).backgroundColor]})()`);
+  const [a, b] = colors.map(luminance).sort((x, y) => y - x);
+  check((a + 0.05) / (b + 0.05) >= 4.5, "the panel stays readable on a dark system");
+  check(await js(`[...document.querySelectorAll('.scene')].filter(e=>e.getBoundingClientRect().width>0).every(e=>e.src.includes('atardecer'))`), "the farm is at dusk in the dark theme");
   await send("Emulation.setEmulatedMedia", { features: [] });
   const errors = await shownErrors();
   check(errors.length === 0, `the notices show no error ${errors.join(" | ")}`);
@@ -203,25 +212,32 @@ try {
     // The panel reads CI every 30 seconds.
     check(await until(() => visible("La CI del commit pasó entera."), 45000), "the task reports the CI the panel read");
 
-    // Agentes re-fetches itself; each render must not add another poll.
     await go("/overview");
-    check(await until(() => visible("La cosecha de esta semana")), "the inbox shows the week");
+    check(await until(() => visible("La cosecha")), "the inbox shows the harvest");
+    check(await js(`[...document.querySelectorAll('.farm .scene')].some(e=>e.complete&&e.naturalWidth===420&&e.getBoundingClientRect().width===840)`), "the farm is drawn at a whole-pixel scale");
     check(await visible("Adoptar repositorio"), "an owner can adopt a repository");
     await go("/governance");
     check(await until(() => visible("Conectar GitHub")), "an owner can connect GitHub");
-    await go("/overview");
-    await go("/agents");
-    await until(() => visible("Nodos dirigentes"));
-    await sleep(11000);
-    posts = [];
-    await sleep(16000);
-    const polls = posts.filter((p) => p.includes("agent-status")).length;
-    check(polls >= 2 && polls <= 5, `agents polls about every 5 s (${polls} in 16 s)`);
-    await go("/tasks");
-    await sleep(1000);
-    posts = [];
-    await sleep(6000);
-    check(!posts.some((p) => p.includes("agent-status")), "polling stops after leaving agents");
+
+    // Moving between views keeps the app alive instead of reloading it.
+    await js(`window.__sameApp=true;document.querySelector('.nav a[href="/agents"]').click()`);
+    check(await until(() => visible("Nodos dirigentes")), "the navigation opens a view");
+    check(await js(`window.__sameApp===true`), "the navigation does not reload the page");
+    await js(`history.back()`);
+    check(await until(() => visible("Los Siete Mandamientos")), "the back button returns to the view");
+
+    // Every width, both themes, and the policy of what may load.
+    const noScroll = () => js(`document.documentElement.scrollWidth<=innerWidth+1`);
+    for (const [width, height] of [[1440, 900], [768, 1024], [390, 844]]) {
+      await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
+      for (const view of Object.keys(views)) {
+        await go("/" + view);
+        await until(() => visible(views[view]));
+        check(await noScroll(), `${view} has no horizontal scroll at ${width} px`);
+      }
+    }
+    await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    check(policyBlocks.length === 0, `nothing breaks the content policy ${policyBlocks.slice(0, 2).join(" | ")}`);
 
     if (observerPassword) {
       await login("oscar", observerPassword);

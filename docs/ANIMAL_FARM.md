@@ -146,7 +146,7 @@ declara avance por contar tareas generadas o líneas de código.
 ## Estado y siguiente implementación
 
 - Implementado en Java: simulador, alcance Git, presupuesto Clover y control
-  plane Mateu local con registros, heartbeat y auditoría. [Migración](MIGRATION.md).
+  plane local con registros, heartbeat y auditoría. [Migración](MIGRATION.md).
 - Definido como identidad: Boxer, Napoleon, Snowball y ambas topologías.
 - Propuesto: protocolo del consejo, supervisión completa de Clover y demás roles adicionales.
 - Pendiente: trabajadores reales, aislamiento, adaptadores y comunicación entre nodos.

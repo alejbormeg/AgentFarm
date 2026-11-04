@@ -1,10 +1,7 @@
 package io.agentfarm.web;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.*;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.*;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.SecureRandom;
@@ -19,8 +16,6 @@ import org.springframework.security.core.userdetails.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.csrf.CsrfFilter;
-import org.springframework.web.filter.OncePerRequestFilter;
 
 @Configuration
 @ConditionalOnWebApplication
@@ -108,7 +103,7 @@ public class SecurityConfig {
       throws Exception {
     String[] people = {"OWNER", "REVIEWER", "OBSERVER"};
     http.authorizeHttpRequests(a ->
-            a.requestMatchers("/login", "/error", "/api/health")
+            a.requestMatchers("/login", "/error", "/api/health", "/art/**", "/fonts/**")
                 .permitAll()
                 .requestMatchers("/github-app/**")
                 .hasRole("OWNER")
@@ -154,41 +149,15 @@ public class SecurityConfig {
             org.springframework.security.web.access.intercept.AuthorizationFilter.class)
         .formLogin(f -> f.loginPage("/login"))
         .httpBasic(Customizer.withDefaults())
-        .csrf(c -> c.ignoringRequestMatchers("/mateu/**"))
-        .addFilterBefore(new MateuOriginFilter(), CsrfFilter.class);
+        // Everything is served from here. Inline styles remain for the sign-in page and Mermaid's
+        // diagrams.
+        // GitHub receives one form: the App manifest, when an owner connects it.
+        .headers(h ->
+            h.contentSecurityPolicy(c ->
+                c.policyDirectives(
+                    "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'"
+                        + " data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; base-uri 'none';"
+                        + " frame-ancestors 'none'; form-action 'self' https://github.com")));
     return http.build();
-  }
-
-  // Mateu actions use JSON without Spring's CSRF token. Require their browser origin
-  // to exactly match the local target; other application APIs keep Spring CSRF protection.
-  static class MateuOriginFilter extends OncePerRequestFilter {
-    @Override
-    protected void doFilterInternal(
-        HttpServletRequest req, HttpServletResponse res, FilterChain chain)
-        throws ServletException, IOException {
-      if (req.getRequestURI().startsWith("/mateu/")
-          && !Set.of("GET", "HEAD", "OPTIONS").contains(req.getMethod())) {
-        String origin = req.getHeader("Origin");
-        boolean valid = false;
-        try {
-          URI uri = URI.create(origin == null ? "" : origin);
-          int port =
-              uri.getPort() == -1 ? (uri.getScheme().equals("https") ? 443 : 80) : uri.getPort();
-          valid =
-              Set.of("localhost", "127.0.0.1", "[::1]", "::1").contains(req.getServerName())
-                  && Objects.equals(uri.getScheme(), req.getScheme())
-                  && Objects.equals(uri.getHost(), req.getServerName())
-                  && port == req.getServerPort()
-                  && (req.getContentType() != null
-                      && req.getContentType().startsWith("application/json"));
-        } catch (Exception ignored) {
-        }
-        if (!valid) {
-          res.sendError(403, "Same-origin JSON request required");
-          return;
-        }
-      }
-      chain.doFilter(req, res);
-    }
   }
 }

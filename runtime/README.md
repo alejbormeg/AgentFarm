@@ -1,3 +1,4 @@
+<!-- Histórico: la interfaz ya no usa Mateu. -->
 # Ejecutor actual
 Ver [operación y trazabilidad GitHub](../docs/OPERATIONS.md).
 El servicio activo es agentfarm-executor; el observador y el piloto descritos

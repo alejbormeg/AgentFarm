@@ -45,7 +45,7 @@ class WorkflowTest {
   }
 
   String command(Map<String, Object> claim) {
-    return ((Map<String, Object>) claim.get("command")).get("id").toString();
+    return ((Map<?, ?>) claim.get("command")).get("id").toString();
   }
 
   void proposal(String command) {

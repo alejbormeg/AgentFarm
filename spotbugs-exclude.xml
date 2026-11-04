@@ -43,6 +43,4 @@
     <Bug pattern="SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING"/>
     <Class name="io.agentfarm.core.LegacyImporter"/>
   </Match>
-  <!-- Mateu's generated controllers and declarative views: this package leaves with Mateu (#89). -->
-  <Match><Package name="io.agentfarm.ui"/></Match>
 </FindBugsFilter>

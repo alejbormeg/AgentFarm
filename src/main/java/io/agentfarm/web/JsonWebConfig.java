@@ -6,7 +6,7 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-/** Mateu's wire DTOs and the migration contracts use Jackson 2. Keep one MVC codec. */
+/** The API and the migration contracts use Jackson 2. Keep one MVC codec. */
 @Configuration
 @SuppressWarnings("removal")
 public class JsonWebConfig implements WebMvcConfigurer {

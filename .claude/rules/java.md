@@ -8,7 +8,7 @@ paths:
 
 - El proyecto compila para **Java 21** (`java.version` en `pom.xml`, `--release 21` en `runtime/`) y la CI lo ejecuta también con **25**. Escribe Java 21: nada de lo que llegó después, como las variables `_`, `Stream.gather`, `ScopedValue`, los constructores flexibles o los archivos compactos. Sin `--enable-preview`.
 - En 21 puedes usar records, `switch` con patrones, bloques de texto, `List.getLast()` y hilos virtuales. Sigue el estilo del archivo que tocas: `core` ya usa records y `Map.of`.
-- Desde Java 23, `javac` solo procesa anotaciones si se configura de forma explícita. `pom.xml` declara Lombok y Mateu en `annotationProcessorPaths`: un procesador nuevo debe ir allí.
+- Desde Java 23, `javac` solo procesa anotaciones si se configura de forma explícita. Hoy no usamos ninguno: uno nuevo debe declararse en `annotationProcessorPaths`.
 - Java 24 y 25 endurecen el uso de `sun.misc.Unsafe` y de JNI con avisos en el arranque, y eliminan el Security Manager. No los uses tú, y mira esos avisos al actualizar una dependencia nativa, como `sqlite-jdbc`.
 - Este equipo solo tiene JDK 21. Para Java 25 sin Actions: `validar-local.sh --java25`, que lo corre en un contenedor.
 

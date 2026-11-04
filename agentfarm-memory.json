@@ -5,7 +5,7 @@
     {
       "id": "ADR-001",
       "kind": "decision",
-      "summary": "Conservar Java, Spring Boot y Mateu; Docker Compose principal y JAR alternativo.",
+      "summary": "Conservar Java y Spring Boot; Docker Compose principal y JAR alternativo. Mateu se sustituyó en noviembre de 2026.",
       "rationale": "La instalación y la operación deben ser reproducibles para usuarios externos, manteniendo el motor independiente del panel.",
       "references": [
         "https://github.com/alejbormeg/AgentFarm/issues/7"
