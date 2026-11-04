@@ -12,6 +12,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 - La web pública tiene título en dos líneas, un botón para copiar las órdenes y capturas nuevas.
 - Cada PR gasta menos minutos de Actions: Java 25 solo al fusionar, y la documentación no lanza la CI.
 - Con una GitHub App, el ejecutor usa un token de una hora limitado al repositorio. Solo se ha probado con dobles.
+- Las reglas de bloqueo de Claude Code se han probado con una cuenta real y un señuelo, también por enlaces simbólicos. Siguen sin ser un aislamiento del sistema, y el panel lo sigue avisando.
 
 ## Sin publicar — primer piloto integrado desde el panel con GitHub real
 
