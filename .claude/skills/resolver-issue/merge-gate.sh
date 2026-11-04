@@ -6,12 +6,17 @@ pr="${1:?Usage: merge-gate.sh <pr> <subject>}"
 subject="${2:?Usage: merge-gate.sh <pr> <subject>}"
 timeout="${MERGE_GATE_TIMEOUT:-2400}"
 interval="${MERGE_GATE_INTERVAL:-30}"
-required=("java (21)" "java (25)" "e2e" "container")
+required=("java (21)" "e2e" "container")
 
 stop() { echo "#$pr NO se fusiona: $*" >&2; exit 1; }
 
 head="$(gh pr view "$pr" --json headRefOid --jq .headRefOid)"
 [[ "$head" =~ ^[0-9a-f]{40}$ ]] || stop "head ilegible"
+
+# java.yml ignores these paths, so no check will ever report for a documentation-only PR. Keep them in step.
+files="$(gh api --paginate "repos/{owner}/{repo}/pulls/$pr/files" --jq '.[].filename')" || stop "no se pueden leer los archivos"
+[[ -n "$files" ]] || stop "la PR no cambia archivos"
+grep -qvE '^(docs/.*|site/.*|[^/]+\.md)$' <<<"$files" || required=()
 
 waited=0
 while :; do

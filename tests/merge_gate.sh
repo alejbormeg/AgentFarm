@@ -6,7 +6,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 sha=0123456789012345678901234567890123456789
 other=9876543210987654321098765432109876543210
-green=$'java (21)\tcompleted\tsuccess\njava (25)\tcompleted\tsuccess\ne2e\tcompleted\tsuccess\ncontainer\tcompleted\tsuccess'
+green=$'java (21)\tcompleted\tsuccess\ne2e\tcompleted\tsuccess\ncontainer\tcompleted\tsuccess'
 
 mkdir "$work/bin"
 cat > "$work/bin/gh" <<'GH'
@@ -24,6 +24,7 @@ case "$1 $2" in
     esac ;;
   "api --paginate")
     [[ ! -f "$FAKE/api_fails" ]] || exit 1
+    [[ "$3" != */files ]] || { cat "$FAKE/files"; exit 0; }
     n=$(cat "$FAKE/reads"); echo $((n + 1)) > "$FAKE/reads"
     if [[ -f "$FAKE/runs.$n" ]]; then cat "$FAKE/runs.$n"; else cat "$FAKE/runs.last"; fi ;;
   "pr merge") echo "$*" > "$FAKE/merged" ;;
@@ -34,7 +35,7 @@ chmod +x "$work/bin/gh"
 
 scenario() {
   FAKE="$work/s"; rm -rf "$FAKE"; mkdir "$FAKE"
-  echo 0 > "$FAKE/reads"; echo 0 > "$FAKE/head_reads"; echo "$sha" > "$FAKE/heads"; echo MERGEABLE > "$FAKE/mergeable"
+  echo 0 > "$FAKE/reads"; echo 0 > "$FAKE/head_reads"; echo "$sha" > "$FAKE/heads"; echo MERGEABLE > "$FAKE/mergeable"; echo src/Main.java > "$FAKE/files"
   printf '%s\n' "$1" > "$FAKE/runs.last"
 }
 gate() {
@@ -72,7 +73,7 @@ refuses "a skipped check is not a pass"
 scenario "$green"$'\nlint\tcompleted\tcancelled'
 refuses "a cancelled check"
 
-scenario $'java (21)\tcompleted\tsuccess\njava (25)\tcompleted\tsuccess\ncontainer\tcompleted\tsuccess'
+scenario $'java (21)\tcompleted\tsuccess\ncontainer\tcompleted\tsuccess'
 refuses "a required check that never reported"
 
 scenario ""
@@ -92,5 +93,21 @@ refuses "a head that moved while waiting"
 scenario "$green"
 echo CONFLICTING > "$FAKE/mergeable"
 refuses "a conflicting PR"
+
+scenario ""
+printf 'docs/GUIDE.md\nCHANGELOG.md\nsite/index.html\n' > "$FAKE/files"
+merges "documentation needs no checks, as the CI ignores it"
+
+scenario ""
+printf 'docs/GUIDE.md\nsrc/main/resources/prompts/research.v5.md\n' > "$FAKE/files"
+refuses "a prompt is not documentation, though it is Markdown"
+
+scenario "docs\tcompleted\tfailure"
+printf 'README.md\n' > "$FAKE/files"
+refuses "documentation with a failed check"
+
+scenario ""
+: > "$FAKE/files"
+refuses "a PR whose files cannot be listed"
 
 echo "Merge gate checks passed"

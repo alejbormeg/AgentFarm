@@ -22,5 +22,5 @@ description: Lleva una issue de AgentFarm de principio a fin. Rama, prueba que f
    bash .claude/skills/resolver-issue/merge-gate.sh <n> "[#issue] Título (#n)"
    ```
 
-   Espera a las comprobaciones, exige las cuatro obligatorias en verde sobre el head actual y fusiona por ese SHA. **Si no fusiona, investiga la causa**: nunca fuerces la fusión ni la hagas a mano.
+   Espera a las comprobaciones, exige las obligatorias en verde sobre el head actual y fusiona por ese SHA. **Si no fusiona, investiga la causa**: nunca fuerces la fusión ni la hagas a mano.
 9. Comprueba que la issue se ha cerrado y vuelve a `main`. Si el cambio afecta al panel o al ejecutor, valora desplegar con `desplegar-local`.
