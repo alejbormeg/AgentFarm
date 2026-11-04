@@ -1,8 +1,9 @@
 """Read-only HTTP burst for the Compose container's native-thread budget."""
 import concurrent.futures
+import os
 import urllib.request
 
-URL = "http://localhost:8080/login"
+URL = os.environ.get("PANEL_URL", "http://localhost:8080/login")
 
 def check(_):
     with urllib.request.urlopen(URL, timeout=20) as response:
