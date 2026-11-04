@@ -2127,6 +2127,14 @@ class FarmConsole extends HTMLElement {
       ev = json(w.evidence);
     for (const doubt of p.doubtful_criteria || [])
       task.append(E("p", doubt.id + " quizá no se pueda acreditar. " + doubt.reason, "warning"));
+    if (p.kept_criteria?.length)
+      task.append(
+        E("p", "Se conservan de la versión aprobada: " + p.kept_criteria.join(", ") + ". Un agente no puede quitarlos.", "muted"),
+      );
+    for (const gone of p.retired_criteria || [])
+      task.append(
+        E("p", gone.id + " retirado por " + gone.actor + ": «" + gone.description + "». Motivo: " + gone.reason, "warning"),
+      );
     if (p.previous_changes?.length) {
       const changes = E("details");
       changes.dataset.key = "changes-" + w.id;
@@ -2400,13 +2408,32 @@ class FarmConsole extends HTMLElement {
       correct.append(E("summary", "Pedir correcciones"));
       const feedback = E("textarea");
       feedback.placeholder = "Qué debe corregirse";
+      feedback.setAttribute("aria-label", "Qué debe corregirse");
+      // Once a version was approved its criteria stay unless a person retires them, with the reason above.
+      const approved = w.state === "proposed" ? (p.criteria || []).filter((c) => p.kept_criteria?.includes(c.id)) : p.criteria || [];
+      const retire = [];
+      const retirable = E("details");
+      retirable.dataset.key = "retire-" + w.id;
+      retirable.append(E("summary", "Retirar un criterio aprobado"), E("p", "El motivo es el texto de la corrección, con al menos 20 caracteres, y queda visible.", "muted"));
+      for (const c of approved) {
+        const box = E("input");
+        box.type = "checkbox";
+        box.dataset.key = "retire-" + w.id + "-" + c.id;
+        retire.push([c.id, box]);
+        const label = E("label");
+        label.append(box, " " + c.id + " · " + c.description);
+        retirable.append(label);
+      }
       correct.append(
         feedback,
-        button("Investigar correcciones", () =>
-          this.action("/work/" + w.id + "/actions/correct", {
+        ...(approved.length && w.state !== "blocked" ? [retirable] : []),
+        button("Investigar correcciones", () => {
+          const ids = retire.filter(([, box]) => box.checked).map(([id]) => id);
+          return this.action("/work/" + w.id + "/actions/correct", {
             feedback: feedback.value,
-          }),
-        ),
+            ...(ids.length ? { retire: ids } : {}),
+          });
+        }),
       );
       actions.append(correct);
     }
