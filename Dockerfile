@@ -10,7 +10,9 @@ RUN bash /usr/local/bin/mvn-retry -B -ntp -Dspotless.check.skip=true -Dspotbugs.
 RUN mkdir /native && cd /native     && jar xf /root/.m2/repository/org/xerial/sqlite-jdbc/*/sqlite-jdbc-*.jar     && cp "org/sqlite/native/Linux/$(uname -m)/libsqlitejdbc.so" /native/libsqlitejdbc.so
 
 FROM eclipse-temurin:21-jre-jammy@sha256:1eac8b8fee11ca7d6725a48bc5d41992ed1561504ebae25490d2d062847e8269
-RUN apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates \
+# The base image is pinned; its packages get the fixes published since, or the image scan fails.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends git curl ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 agentfarm && useradd --uid 10001 --gid agentfarm --no-create-home agentfarm \
     && install -d -m 700 -o 10001 -g 10001 /data

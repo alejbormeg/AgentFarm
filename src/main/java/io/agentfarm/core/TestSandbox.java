@@ -282,7 +282,12 @@ public final class TestSandbox {
     var out =
         runner.run(
             List.of(
-                docker, "image", "inspect", "--format", "{{join .RepoDigests \",\"}}|{{.Id}}", image),
+                docker,
+                "image",
+                "inspect",
+                "--format",
+                "{{join .RepoDigests \",\"}}|{{.Id}}",
+                image),
             Duration.ofSeconds(30));
     if (out.exit() != 0) return "unknown";
     String[] parts = out.text().trim().split("\\|", 2);
