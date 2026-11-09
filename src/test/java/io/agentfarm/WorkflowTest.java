@@ -364,6 +364,58 @@ class WorkflowTest {
     assertEquals("integrated", service.get("request-123").get("state"));
   }
 
+  /** Up to a PR waiting for integration: the state where cancel and merge race. */
+  String inReview() {
+    create();
+    proposal(command(claim()));
+    service.action("request-123", "implement", n("version", 1), "owner");
+    String c = command(claim()), sha = "a".repeat(40);
+    service.report(c, n("state", "review", "pr", 12, "sha", sha), "agent");
+    EvidenceFixtures.accept(store, Clock.systemUTC(), "request-123");
+    return sha;
+  }
+
+  String cancelRefusal() {
+    return assertThrows(
+            IllegalArgumentException.class,
+            () -> service.action("request-123", "cancel", n(), "owner"))
+        .getMessage();
+  }
+
+  @Test
+  void anIntegratedTaskCannotBeCancelled() {
+    String sha = inReview();
+    service.action("request-123", "merge", n("sha", sha), "owner");
+    String m = command(claim());
+    assertTrue(cancelRefusal().contains("espera a su resultado"), "integration in flight");
+    service.report(m, n("state", "integrated", "merged", true), "agent");
+    assertTrue(cancelRefusal().contains("pide una tarea nueva que lo revierta"));
+    assertEquals("integrated", service.get("request-123").get("state"), "history stays true");
+  }
+
+  @Test
+  void cancelFirstThenMergeIsRefusedConsistently() {
+    String sha = inReview();
+    service.action("request-123", "cancel", n(), "owner");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> service.action("request-123", "merge", n("sha", sha), "owner"));
+    assertEquals("cancelled", service.get("request-123").get("state"));
+    assertTrue(cancelRefusal().contains("ya está cancelada"));
+  }
+
+  @Test
+  void cancelChecksTheVersionTheReviewerSaw() {
+    create();
+    proposal(command(claim()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> service.action("request-123", "cancel", n("version", 7), "owner"));
+    assertEquals("proposed", service.get("request-123").get("state"));
+    service.action("request-123", "cancel", n("version", 1), "owner");
+    assertEquals("cancelled", service.get("request-123").get("state"));
+  }
+
   @Test
   void executorCannotClaimIntegration() {
     create();

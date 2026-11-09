@@ -658,7 +658,7 @@ export const withTask = (Base) =>
       if (canAct && ["queued", "approved"].includes(w.state))
         actions.append(
           button("Cancelar", () =>
-            this.action("/work/" + w.id + "/actions/cancel", {}),
+            this.action("/work/" + w.id + "/actions/cancel", { version: w.version }),
           ),
         );
       return actions;
