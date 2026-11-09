@@ -99,6 +99,45 @@ public class ScopeService {
             .bytes());
   }
 
+  /** The most diff a secret scan reads; past it the scan is incomplete, never clean. */
+  static final long SCAN_LIMIT = 50_000_000;
+
+  /**
+   * Scans everything a candidate adds, binary files read as text, before anything is pushed. A diff
+   * Git cannot produce in time or that is too large is reported as incomplete.
+   */
+  public static SecretScan.Coverage secretScan(Path repo, String base, String candidate) {
+    for (String ref : List.of(base, candidate))
+      if (ref == null || !ref.matches("[0-9a-fA-F]{40}|[0-9a-fA-F]{64}"))
+        throw new IllegalArgumentException("Full immutable commit SHA required");
+    byte[] diff;
+    try {
+      diff =
+          git(
+                  repo,
+                  Set.of(0),
+                  "-c",
+                  "core.quotePath=false",
+                  "diff",
+                  "--text",
+                  "--no-color",
+                  "--no-ext-diff",
+                  "--no-textconv",
+                  "--unified=0",
+                  base,
+                  candidate,
+                  "--")
+              .bytes();
+    } catch (IllegalArgumentException e) {
+      return SecretScan.Coverage.of(List.of(), List.of("Git no pudo dar el diff entero"));
+    }
+    try {
+      return SecretScan.scan(new java.io.ByteArrayInputStream(diff), SCAN_LIMIT);
+    } catch (java.io.IOException e) {
+      return SecretScan.Coverage.of(List.of(), List.of("no se pudo leer el diff"));
+    }
+  }
+
   /** Every path in a commit, to find names that collide when case is ignored. */
   public static List<String> tree(Path repo, String commit) {
     if (commit == null || !commit.matches("[0-9a-fA-F]{40}|[0-9a-fA-F]{64}"))

@@ -195,6 +195,7 @@ public class EvidenceVerifier {
     var named = new ArrayList<ChangePolicy.GitHubFile>();
     var added = new ArrayList<String>();
     var secrets = new ArrayList<String>();
+    var unscanned = new ArrayList<String>();
     compare
         .path("files")
         .forEach(f -> {
@@ -202,7 +203,11 @@ public class EvidenceVerifier {
           named.add(
               new ChangePolicy.GitHubFile(name, status, f.path("previous_filename").asText()));
           if (status.equals("added")) added.add(name);
-          secrets.addAll(SecretScan.findings(name, f.path("patch").asText()));
+          String patch = f.path("patch").asText();
+          // GitHub leaves out the patch of a binary or very large file: unread is not clean.
+          if (patch.isEmpty() && f.path("changes").asInt() > 0 && !status.equals("removed"))
+            unscanned.add(name);
+          secrets.addAll(SecretScan.findings(name, patch));
         });
     var files = new ArrayList<>(ChangePolicy.paths(ChangePolicy.fromGitHub(named)));
     var runs = new ArrayList<Map<String, Object>>();
@@ -221,7 +226,7 @@ public class EvidenceVerifier {
     var required = evidence.path("ci_checks");
     if (!required.isArray() || required.isEmpty())
       return new Assessment("failed", "El informe no vincula ninguna comprobación de CI.", detail);
-    if (checks.path("total_count").asInt() > 100 || named.size() >= 300)
+    if (runs.size() >= 100 || named.size() >= 300)
       return new Assessment("failed", "Demasiados resultados para comprobarlos enteros.", detail);
     if (runs.isEmpty()) return new Assessment("pending", "La CI aún no ha empezado.", detail);
     for (var run : runs)
@@ -261,6 +266,13 @@ public class EvidenceVerifier {
           "El candidato cambia la propia CI: " + String.join(", ", workflows) + ".",
           detail);
     if (!secrets.isEmpty()) return new Assessment("failed", "Posible secreto en el diff.", detail);
+    if (!unscanned.isEmpty())
+      return new Assessment(
+          "failed",
+          "GitHub no muestra el diff de "
+              + String.join(", ", unscanned)
+              + ": no se puede acreditar que no añada secretos.",
+          detail);
     if (TestPolicy.untestedCode(
         files,
         evidence.path("unit").path("status").asText(),

@@ -394,6 +394,22 @@ class EvidenceVerifierTest {
   }
 
   @Test
+  void aChangeGitHubDoesNotShowIsNotCalledClean() {
+    var compare =
+        n(
+            "files",
+            List.of(
+                obj("filename", "big.sql", "status", "added", "changes", 90000),
+                obj("filename", "empty.py", "status", "added", "changes", 0),
+                obj("filename", "gone.txt", "status", "removed", "changes", 12)));
+    var result = EvidenceVerifier.assess(reportWith("passed"), runs(), github("/status"), compare);
+    assertEquals("failed", result.state());
+    assertTrue(result.reason().contains("big.sql"), result.reason());
+    assertFalse(result.reason().contains("empty.py"), "an empty file has nothing to hide");
+    assertFalse(result.reason().contains("gone.txt"), "a deletion adds nothing");
+  }
+
+  @Test
   void aRenameReportsTheFileItTakesAway() {
     var compare =
         n(

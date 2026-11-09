@@ -1228,11 +1228,11 @@ public class FarmDaemon extends CodexRunner {
             "Out of approved profile scope: "
                 + io.agentfarm.core.ChangePolicy.describe(violations));
     }
-    // Once pushed a secret is exposed for good, so this check comes before the panel's own.
-    var secrets =
-        io.agentfarm.core.SecretScan.findings("", gitAt("diff", p.path("base_sha").asText(), sha));
-    if (!secrets.isEmpty())
-      throw new IOException("Posible secreto en el candidato: " + String.join(", ", secrets));
+    // Once pushed a secret is exposed for good, so this check comes before the panel's own. It
+    // reads the whole diff: process() keeps only the tail of what a command prints.
+    var scan =
+        io.agentfarm.core.ScopeService.secretScan(task.checkout, p.path("base_sha").asText(), sha);
+    if (!scan.clean()) throw new IOException(scan.refusal());
     String branch = gitAt("branch", "--show-current");
     guard();
     // A corrected candidate may restart from the base, so its branch is replaced, never merged
