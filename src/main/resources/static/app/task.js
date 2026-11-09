@@ -1,4 +1,4 @@
-import { E, activity, api, button, expectedCost, json, link, names, pill, rawRecord, running, testEvidence, testStatus, whyYou, wall, journey } from "./lib.js";
+import { E, activity, api, button, confirmButton, expectedCost, json, link, names, pill, rawRecord, running, testEvidence, testStatus, whyYou, wall, journey } from "./lib.js";
 
 export const withTask = (Base) =>
   class extends Base {
@@ -657,8 +657,13 @@ export const withTask = (Base) =>
         );
       if (canAct && ["queued", "approved"].includes(w.state))
         actions.append(
-          button("Cancelar", () =>
-            this.action("/work/" + w.id + "/actions/cancel", { version: w.version }),
+          confirmButton(
+            "Cancelar",
+            w.state === "queued"
+              ? "Sale de la cola antes de que nadie trabaje en ella. No se ha publicado nada. Para retomarla tendrás que pedirla de nuevo."
+              : "El agente la deja al terminar su paso actual. Lo que ya esté publicado (una rama o una PR en GitHub) sigue allí: ciérralo tú si no lo quieres. No se puede deshacer; para retomarla tendrás que pedirla de nuevo.",
+            "Sí, cancelar la tarea",
+            () => this.action("/work/" + w.id + "/actions/cancel", { version: w.version }, "Tarea cancelada."),
           ),
         );
       return actions;
