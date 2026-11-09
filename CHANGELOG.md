@@ -10,6 +10,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 - Tras 5 contraseñas fallidas seguidas, el panel hace esperar de 1 a 15 minutos, por cuenta y dirección. Con una dirección https, la cookie de sesión lleva `Secure`.
 - `jackson-databind` y `sqlite-jdbc` actualizados: la versión anterior de Jackson tenía 5 vulnerabilidades altas conocidas. Cada validación busca ahora vulnerabilidades y secretos.
 - La CI ya no guarda artefactos que nadie usa: 294 ocupaban 13,8 GB del espacio de Actions.
+- El límite de contraseñas no se puede saltar llenando su memoria con nombres inventados: al llenarse, las claves nuevas comparten un límite común. También limita cuántos nombres prueba una misma dirección, y quien ya entró desde una dirección no queda bloqueado por un ataque desde otra.
 - El servidor ya no deja cancelar una tarea integrada, ya cancelada o a mitad de integración, y rechaza la cancelación si la tarea cambió desde que se abrió. Cada cancelación queda en la auditoría con su estado previo.
 - Un candidato ya no saca archivos del alcance aprobado renombrándolos: el ejecutor, el panel y `scope` aplican una misma política sobre ambos lados de cada cambio, y rechazan también symlinks, submódulos, rutas protegidas, nombres no portables y colisiones de mayúsculas.
 - El escáner de secretos lee el diff entero antes del push, binarios incluidos. Antes solo veía los últimos 150.000 caracteres, y un token al principio de un diff grande pasaba. Lo que no se puede leer bloquea, nunca cuenta como limpio.
