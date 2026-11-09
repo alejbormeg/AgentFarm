@@ -13,7 +13,7 @@ public final class Backups {
     destination = destination.toAbsolutePath().normalize();
     if (!Files.isRegularFile(source) || Files.exists(destination) || source.equals(destination))
       throw new IllegalArgumentException("Existing source and a new destination required");
-    Files.createDirectories(destination.getParent());
+    if (!Files.exists(destination.getParent())) StatePermissions.directory(destination.getParent());
     try {
       Files.createFile(
           destination,
@@ -43,8 +43,14 @@ public final class Backups {
       throw new IllegalArgumentException(
           "Restore requires a new destination; stop the panel before switching databases");
     integrity(snapshot);
-    Files.createDirectories(destination.getParent());
-    Files.copy(snapshot, destination);
+    StatePermissions.directory(destination.getParent());
+    StatePermissions.file(destination);
+    // Into the file already created private: a plain copy would create it with the umask first.
+    try (var out =
+        Files.newOutputStream(
+            destination, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+      Files.copy(snapshot, out);
+    }
     permissions(destination);
     integrity(destination);
     return obj("state", "restored", "path", destination.toString());

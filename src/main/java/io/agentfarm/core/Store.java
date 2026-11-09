@@ -16,7 +16,11 @@ public class Store {
   public Store(@Value("${agentfarm.db}") String path) {
     try {
       Path file = Path.of(path).toAbsolutePath().normalize();
-      Files.createDirectories(file.getParent());
+      // Private from the start: SQLite creates its WAL and SHM with the database file's mode.
+      StatePermissions.directory(file.getParent());
+      StatePermissions.file(file);
+      for (String suffix : List.of("-wal", "-shm", "-journal"))
+        StatePermissions.ifPresent(Path.of(file + suffix));
       url = "jdbc:sqlite:" + file;
       gate = GATES.computeIfAbsent(url, ignored -> new Object());
       synchronized (gate) {

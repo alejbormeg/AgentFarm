@@ -49,6 +49,20 @@ importante es que un fallo no dé más privilegios que ese usuario, y un proxy p
 código nuestro. **Aún no está implementado ni probado**: `TestSandbox` cambia el dueño de los archivos con el
 UID del equipo, y sin root ese UID es otro dentro del contenedor.
 
+## Estado del panel en disco
+
+La base de datos (con los secretos TOTP), su WAL y SHM, la contraseña inicial, la clave de la
+GitHub App y las copias de seguridad solo los puede leer la cuenta que ejecuta el panel. Al
+arrancar, el panel deja el directorio de la base en `700` y los archivos en `600` aunque el
+umask sea `022`, y se niega a arrancar si no puede hacerlo (por ejemplo, si otra cuenta es su
+propietaria) o si la base es un enlace simbólico. Si la base está directamente en tu directorio
+personal o en el de trabajo, ese directorio no se toca: solo se protegen los archivos.
+
+En sistemas de archivos sin permisos POSIX (una carpeta de Windows montada en WSL, por ejemplo) el
+panel no puede aplicarlos. Guarda allí el estado solo si las ACL de la carpeta dejan leerla
+únicamente a tu cuenta, o, mejor, usa el volumen de Docker o una ruta del sistema de archivos de
+Linux.
+
 ## Si crees que algo se ha comprometido
 
 1. Pausa los agentes en **Gobierno**.
