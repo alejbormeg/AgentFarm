@@ -150,7 +150,8 @@ public class SecurityConfig {
         // The panel's own calls get JSON they can act on, never the sign-in page: an expired
         // session (401), a missing permission or form token (403).
         .exceptionHandling(e ->
-            e.defaultAuthenticationEntryPointFor(SecurityConfig::sessionExpired, SecurityConfig::api)
+            e.defaultAuthenticationEntryPointFor(
+                    SecurityConfig::sessionExpired, SecurityConfig::api)
                 .defaultAccessDeniedHandlerFor(SecurityConfig::denied, SecurityConfig::api))
         .formLogin(f -> f.loginPage("/login"))
         .httpBasic(Customizer.withDefaults())
@@ -170,13 +171,16 @@ public class SecurityConfig {
     return request.getRequestURI().startsWith("/api/");
   }
 
-  static void json(jakarta.servlet.http.HttpServletResponse response, int status, String reason, String error)
+  static void json(
+      jakarta.servlet.http.HttpServletResponse response, int status, String reason, String error)
       throws java.io.IOException {
     response.setStatus(status);
     response.setContentType("application/json;charset=UTF-8");
     response
         .getWriter()
-        .write(io.agentfarm.core.Json.encode(io.agentfarm.core.Json.obj("error", error, "reason", reason)));
+        .write(
+            io.agentfarm.core.Json.encode(
+                io.agentfarm.core.Json.obj("error", error, "reason", reason)));
   }
 
   static void sessionExpired(

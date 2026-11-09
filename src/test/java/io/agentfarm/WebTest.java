@@ -125,10 +125,12 @@ class WebTest {
                     "Authorization",
                     "Basic "
                         + Base64.getEncoder()
-                            .encodeToString("oscar:not-the-password".getBytes(StandardCharsets.UTF_8)))
+                            .encodeToString(
+                                "oscar:not-the-password".getBytes(StandardCharsets.UTF_8)))
                 .build(),
             HttpResponse.BodyHandlers.ofString());
-    assertEquals(401, wrongPassword.statusCode(), "a script with a wrong password is still told so");
+    assertEquals(
+        401, wrongPassword.statusCode(), "a script with a wrong password is still told so");
   }
 
   @Test
