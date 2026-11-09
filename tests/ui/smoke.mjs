@@ -216,9 +216,9 @@ try {
     // The panel reads CI every 30 seconds.
     check(await until(() => visible("La CI del commit pasó entera."), 45000), "the task reports the CI the panel read");
     // Back closes the task, forward reopens it, and the active section follows the address.
-    // All in one document: the deep link above loaded a new one.
-    await js(`document.querySelector('dialog[open] .drawer-head button')?.click()`);
-    await until(() => js(`!${all}.some(e=>e.tagName==='DIALOG'&&e.open)`));
+    // From a fresh page, so the history this run built so far doesn't count.
+    await go("/overview");
+    await until(() => visible("Bandeja"));
     await js(`(()=>{const c=${all}.find(e=>e.tagName==='A'&&e.dataset.task&&e.getAttribute('href').includes('tarea='));c.click();return true})()`);
     check(await until(() => js(`${all}.some(e=>e.tagName==='DIALOG'&&e.open)`)), "a card opens its task again");
     await js(`history.back()`);
