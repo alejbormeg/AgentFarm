@@ -26,6 +26,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 - Las acciones del panel no se envían dos veces: mientras una está en marcha su botón queda ocupado, y al acabar el panel anuncia el resultado o el error. Cancelar una tarea pide confirmación y explica qué se detiene y qué queda publicado en GitHub.
 - Si la sesión caduca, el panel lo dice, deja de consultar y ofrece entrar de nuevo, y recupera lo que estabas escribiendo (solo texto, nunca contraseñas ni códigos, durante una hora). La API responde en JSON con el motivo (sesión caducada, sin permiso o formulario caducado), y el panel distingue esos casos de una caída de red. Hay un botón «Salir».
 - Las tareas se abren desde enlaces de verdad, que se pueden abrir en otra pestaña o compartir con quien tenga acceso. El filtro de repositorio viaja en la dirección (`?repositorio=`), y atrás y adelante restauran la sección activa, el filtro y la tarea abierta.
+- Revertir algo ya integrado es una operación propia: «Pedir reversión» crea una tarea nueva, enlazada en los dos sentidos y auditada, que pasa por investigación, aprobación, pruebas e integración como cualquier otra. Todas las acciones sobre una tarea se comprueban contra una sola tabla de estados (`WorkStates`).
 - Si la CI de un repositorio no arranca o se queda en cola, el panel lo dice a los 10 minutos, con la causa probable y dónde mirar. Sigue sin integrarse nada sin ella.
 
 ## Sin publicar — lo que encontró el piloto
