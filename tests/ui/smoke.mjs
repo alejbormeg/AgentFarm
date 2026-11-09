@@ -213,6 +213,8 @@ try {
     await go(link);
     check(await until(() => js(`${all}.some(e=>e.tagName==='DIALOG'&&e.open)`)), "the deep link reopens the task");
     check(await until(() => visible("Mandamientos")), "the task shows its commandments");
+    // The panel reads CI every 30 seconds.
+    check(await until(() => visible("La CI del commit pasó entera."), 45000), "the task reports the CI the panel read");
     // Back closes the task, forward reopens it, and the active section follows the address.
     await js(`history.back()`);
     check(await until(() => js(`!${all}.some(e=>e.tagName==='DIALOG'&&e.open)&&!location.search.includes('tarea=')`)), "back closes the task");
@@ -235,8 +237,6 @@ try {
       check(await js(`document.querySelector('select[aria-label="Filtrar repositorio"]').value===${JSON.stringify(repoOption)}`), "back keeps the filter");
       await js(`(()=>{const s=document.querySelector('select[aria-label="Filtrar repositorio"]');s.value='';s.dispatchEvent(new Event('change'));return true})()`);
     } else check(false, "the e2e has a repository to filter by");
-    // The panel reads CI every 30 seconds.
-    check(await until(() => visible("La CI del commit pasó entera."), 45000), "the task reports the CI the panel read");
 
     await go("/overview");
     check(await until(() => visible("La cosecha")), "the inbox shows the harvest");
