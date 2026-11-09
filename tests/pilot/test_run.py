@@ -35,10 +35,10 @@ class Fake:
                 elif path == "/runtime":
                     used = fake.quota.pop(0) if len(fake.quota) > 1 else fake.quota[0]
                     self.send({"quota_fresh": fake.fresh, "snapshot": {"quota": {"weekly_used_percent": used}}})
-                elif path == "/work":
+                elif path == "/work/" + str(fake.item):
                     state = fake.states.pop(0) if len(fake.states) > 1 else fake.states[0]
-                    self.send([{"id": fake.item, "state": state, "version": 1, "pr": 7, "sha": "a" * 40, "error": "motivo",
-                                "evidence": json.dumps(fake.evidence) if fake.evidence else None}])
+                    self.send({"id": fake.item, "state": state, "version": 1, "pr": 7, "sha": "a" * 40, "error": "motivo",
+                               "evidence": json.dumps(fake.evidence) if fake.evidence else None})
                 elif path.startswith("/evidence/"):
                     self.send({"ready": fake.ready, "blockers": ["falta CI"]})
                 else:

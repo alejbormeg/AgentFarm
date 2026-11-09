@@ -151,7 +151,8 @@ public final class McpServer {
       }
       case "agentfarm_work_item" -> {
         String id = text(args, "id");
-        for (var w : panel.get("/work"))
+        if (!id.matches("[a-zA-Z0-9-]{1,80}")) throw new IllegalArgumentException("Invalid id");
+        for (var w : List.of(panel.get("/work/" + id)))
           if (w.path("id").asText().equals(id)) {
             var p = parse(w.path("proposal").asText("{}"));
             var e = parse(w.path("evidence").asText("{}"));

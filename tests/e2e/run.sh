@@ -184,7 +184,7 @@ python3 - "$panel" "$password" "$work/gh.json" <<'PY'
 import base64, json, sys, urllib.request
 panel, password, gh = sys.argv[1:]
 req = urllib.request.Request(panel + "/api/work", headers={"Authorization": "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()})
-item = [x for x in json.load(urllib.request.urlopen(req)) if x["id"] == "e2e-request-0001"][0]
+item = json.load(urllib.request.urlopen(urllib.request.Request(panel + "/api/work/e2e-request-0001", headers=req.headers)))
 evidence = json.loads(item["evidence"])
 assert item["pr"] == 1, item
 assert len(item["sha"]) == 40 and item["branch"].startswith("agentfarm/"), item
@@ -222,8 +222,10 @@ python3 - "$panel" "$password" "$sandbox" <<'PY'
 import base64, json, sys, urllib.request
 panel, password, sandbox = sys.argv[1:]
 req = urllib.request.Request(panel + "/api/work", headers={"Authorization": "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()})
-work = {x["id"]: x for x in json.load(urllib.request.urlopen(req))}
-first, fix = (json.loads(work["e2e-request-000%d" % i]["evidence"]) for i in (1, 2))
+summaries = json.load(urllib.request.urlopen(req))
+assert all("evidence" not in x and "proposal" not in x for x in summaries), "the list carries summaries only"
+detail = lambda i: json.load(urllib.request.urlopen(urllib.request.Request(panel + "/api/work/" + i, headers=req.headers)))
+first, fix = (json.loads(detail("e2e-request-000%d" % i)["evidence"]) for i in (1, 2))
 assert first["regression"]["status"] == "not_required", first
 assert first["untested_code"] is False, first
 assert fix["quality"]["checks"][0]["status"] == "passed", fix["quality"]
@@ -282,7 +284,7 @@ adoption() {
 import base64, json, sys, urllib.request
 panel, password, gh, step, main = sys.argv[1:]
 req = urllib.request.Request(panel + "/api/work", headers={"Authorization": "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()})
-item = [x for x in json.load(urllib.request.urlopen(req)) if x["id"] == "e2e-request-adopt"][0]
+item = json.load(urllib.request.urlopen(urllib.request.Request(panel + "/api/work/e2e-request-adopt", headers=req.headers)))
 evidence = json.loads(item["evidence"])
 pull = json.load(open(gh))["pulls"][str(item["pr"])]
 assert evidence["base_sha"] == main, evidence["base_sha"]
@@ -313,7 +315,7 @@ approved_criteria=$(python3 - "$panel" "$password" <<'PY'
 import base64, json, sys, urllib.request
 panel, password = sys.argv[1:]
 req = urllib.request.Request(panel + "/api/work", headers={"Authorization": "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()})
-item = [x for x in json.load(urllib.request.urlopen(req)) if x["id"] == "e2e-request-0001"][0]
+item = json.load(urllib.request.urlopen(urllib.request.Request(panel + "/api/work/e2e-request-0001", headers=req.headers)))
 print(json.dumps([c["description"] for c in json.loads(item["proposal"])["criteria"]]))
 PY
 )
@@ -324,7 +326,7 @@ python3 - "$panel" "$password" "$approved_criteria" <<'PY' || fail "a correction
 import base64, json, sys, urllib.request
 panel, password, approved = sys.argv[1:]
 req = urllib.request.Request(panel + "/api/work", headers={"Authorization": "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()})
-item = [x for x in json.load(urllib.request.urlopen(req)) if x["id"] == "e2e-request-0001"][0]
+item = json.load(urllib.request.urlopen(urllib.request.Request(panel + "/api/work/e2e-request-0001", headers=req.headers)))
 now = [c["description"] for c in json.loads(item["proposal"])["criteria"]]
 assert now[:len(json.loads(approved))] == json.loads(approved), now
 assert "Cubre solo la última corrección" in now, now
@@ -337,7 +339,7 @@ python3 - "$panel" "$password" "$adopt_main" <<'PY' || fail "stale branch was no
 import base64, json, sys, urllib.request
 panel, password, main = sys.argv[1:]
 req = urllib.request.Request(panel + "/api/work", headers={"Authorization": "Basic " + base64.b64encode(f"admin:{password}".encode()).decode()})
-item = [x for x in json.load(urllib.request.urlopen(req)) if x["id"] == "e2e-request-0001"][0]
+item = json.load(urllib.request.urlopen(urllib.request.Request(panel + "/api/work/e2e-request-0001", headers=req.headers)))
 evidence = json.loads(item["evidence"])
 assert evidence["base_sha"] == main, evidence["base_sha"]
 assert evidence["passed"] is True and item["pr"] == 1, item

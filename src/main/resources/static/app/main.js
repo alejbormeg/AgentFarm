@@ -34,6 +34,9 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
     });
     this.poll();
     this.timer = setInterval(() => this.poll(), 2000);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) this.poll();
+    });
   }
   route() {
     return location.pathname.split("/").filter(Boolean).at(-1) || "overview";
@@ -241,7 +244,9 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
       this.pushedTask = id;
     }
     this.signature = "";
+    // Draw what the list knows now; the poll brings the full record a moment later.
     this.render();
+    this.poll();
     if (!this.taskDrawer.open) this.taskDrawer.showModal();
   }
   // Every action reports how it ended: what was done, or why not. The button stays busy until then.
@@ -262,9 +267,16 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
   }
   async poll() {
     if (this.loading || !this.isConnected) return;
+    // A hidden tab asks every 30 s instead of every 2; it catches up as soon as it is shown again.
+    if (document.hidden && Date.now() - (this.lastPoll || 0) < 30000) return;
+    this.lastPoll = Date.now();
     this.loading = true;
     try {
-      const [runtime, overview, work] = await Promise.all([api("/runtime"), api("/overview"), api("/work")]);
+      const [runtime, overview, summaries] = await Promise.all([api("/runtime"), api("/overview"), api("/work")]);
+      // The list is summaries; the open task brings its full record (proposal, evidence, request).
+      const focus = this.openTask || this.pendingTask;
+      const full = focus && summaries.some((w) => w.id === focus) ? await api("/work/" + encodeURIComponent(focus)).catch(() => null) : null;
+      const work = full ? summaries.map((w) => (w.id === full.id ? full : w)) : summaries;
       const route = this.route();
       this.view = route;
       this.me ||= await api("/me").catch(() => ({ role: "observer" }));

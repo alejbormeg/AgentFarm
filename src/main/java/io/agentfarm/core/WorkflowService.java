@@ -93,6 +93,39 @@ public class WorkflowService {
     });
   }
 
+  /** Heavy columns kept out of listings: the full text is one task away, at {@link #get}. */
+  static final Set<String> DETAIL_ONLY = Set.of("proposal", "evidence", "request");
+
+  /**
+   * The task list as summaries, newest first: what a board, an inbox or a search needs, without the
+   * proposal, the evidence or the request text. {@code limit} 0 means all.
+   */
+  public List<Map<String, Object>> summaries(int limit, int offset) {
+    if (limit < 0 || offset < 0 || limit > 1000)
+      throw new IllegalArgumentException("limit must be 0-1000 and offset nonnegative");
+    return db.tx(c -> {
+      var columns = new ArrayList<String>();
+      for (var col : rows(c, "PRAGMA table_info(work_items)"))
+        if (!DETAIL_ONLY.contains(col.get("name").toString()))
+          columns.add(col.get("name").toString());
+      var items =
+          rows(
+              c,
+              "SELECT "
+                  + String.join(",", columns)
+                  + " FROM work_items ORDER BY created DESC,id LIMIT ? OFFSET ?",
+              limit == 0 ? -1 : limit,
+              offset);
+      for (var item : items) withRecipe(c, redactedError(item));
+      return items;
+    });
+  }
+
+  private static Map<String, Object> redactedError(Map<String, Object> item) {
+    if (item.get("error") instanceof String text) item.put("error", TelemetryService.clean(text));
+    return item;
+  }
+
   public Map<String, Object> get(String id) {
     return db.tx(c -> {
       var w = one(c, "SELECT * FROM work_items WHERE id=?", id);

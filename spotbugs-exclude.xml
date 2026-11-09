@@ -43,4 +43,10 @@
     <Bug pattern="SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING"/>
     <Class name="io.agentfarm.core.LegacyImporter"/>
   </Match>
+  <!-- The task list's columns come from this database's own PRAGMA, minus a fixed list; nothing from a request. -->
+  <Match>
+    <Bug pattern="SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING"/>
+    <Class name="io.agentfarm.core.WorkflowService"/>
+    <Method name="~lambda\$summaries\$.*"/>
+  </Match>
 </FindBugsFilter>

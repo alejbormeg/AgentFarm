@@ -4,7 +4,7 @@
 It only presses what a person would press, and never edits a criterion: a task that blocks is a finding
 and is reported, not worked around. Merging is opt-in, because it writes to the repository's main branch.
 """
-import argparse, base64, json, sys, time, urllib.error, urllib.request, uuid
+import argparse, base64, json, sys, time, urllib.error, urllib.parse, urllib.request, uuid
 from http.cookiejar import CookieJar
 
 
@@ -28,7 +28,8 @@ class Panel:
             return json.load(response)
 
     def item(self, item_id):
-        return next(w for w in self.call("/work") if w["id"] == item_id)
+        # The list carries summaries; the evidence is in the task's own record.
+        return self.call("/work/" + urllib.parse.quote(item_id, safe=""))
 
 
 class Stop(Exception):

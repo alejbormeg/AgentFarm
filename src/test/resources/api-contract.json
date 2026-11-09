@@ -625,11 +625,9 @@
       "branch" : "null|string",
       "created" : "number",
       "error" : "null|string",
-      "evidence" : "string",
       "id" : "string",
       "issue" : "null",
       "pr" : "null|number",
-      "proposal" : "string",
       "recipe" : {
         "hash" : "string",
         "id" : "string",
@@ -641,7 +639,6 @@
         "version" : "number"
       },
       "repo" : "string",
-      "request" : "string",
       "reverted_by" : "null",
       "reverts" : "null",
       "sha" : "null|string",
