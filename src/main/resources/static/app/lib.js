@@ -302,22 +302,56 @@ export const wall = (dossier) => {
   return e;
 };
 // Where a task is, from what is on record: a stage is done only when its evidence says so.
-export const journey = (w, d, ev) => {
-  const after = (...states) => states.includes(w.state);
-  const test = [ev.unit?.status, ev.integration?.status];
+export const STAGE_TEXT = {
+  done: "hecha",
+  now: "en curso",
+  you: "te toca",
+  bad: "fallida",
+  blocked: "bloqueada",
+  na: "no aplica",
+  cancelled: "cancelada",
+  pending: "pendiente",
+};
+const testsStage = (ev) => {
+  const statuses = [ev.unit?.status, ev.integration?.status];
+  if (statuses.includes("failed")) return "bad";
+  if (statuses.every((s) => s === "not_applicable")) return "na";
+  // Done only when every required suite passed (or does not apply); one missing is not "all passed".
+  if (statuses.every((s) => s === "passed" || s === "not_applicable")) return "done";
+  return statuses.some(Boolean) ? "now" : "pending";
+};
+// Pure, so it can be tested without a browser: [{name, state, text}] for each stage.
+export const journeySteps = (w, d, ev = {}) => {
+  const state = w.state;
+  const proposed = Number(w.version) > 0 || !!json(w.proposal).summary;
+  const built = !!(w.sha || w.pr);
   const ci = d?.verification?.state;
   const steps = [
-    ["Propuesta", after("queued") ? "now" : after("proposed") ? "you" : "done"],
-    ["Implementación", after("approved") ? "now" : after("queued", "proposed") ? "" : "done"],
-    ["Pruebas", test.includes("failed") ? "bad" : test.some(Boolean) ? "done" : ""],
-    ["Revisión", ev.review ? (ev.review.passed ? "done" : "bad") : ""],
-    ["CI", ci === "success" ? "done" : ci === "failed" ? "bad" : ci === "pending" ? "now" : ""],
-    ["Integración", after("integrated") ? "done" : after("integrating") ? "now" : after("review") && d?.ready ? "you" : ""],
+    ["Propuesta", proposed ? (state === "proposed" ? "you" : "done") : state === "queued" ? "now" : "pending"],
+    ["Implementación", built ? "done" : state === "approved" ? "now" : "pending"],
+    ["Pruebas", built ? testsStage(ev) : "pending"],
+    ["Revisión", ev.review ? (ev.review.passed ? "done" : "bad") : "pending"],
+    ["CI", ci === "success" ? "done" : ci === "failed" ? "bad" : ci === "pending" ? "now" : "pending"],
+    [
+      "Integración",
+      state === "integrated" ? "done" : state === "integrating" ? "now" : state === "review" && d?.ready ? "you" : "pending",
+    ],
   ];
-  if (w.state === "blocked") steps[0][1] = steps[0][1] === "you" ? "done" : steps[0][1];
+  // A blocked task is stuck at its first unfinished stage; a cancelled one stops there for good.
+  if (state === "blocked" || state === "cancelled") {
+    const open = steps.filter(([, s]) => !["done", "na"].includes(s));
+    open.forEach((step, i) => (step[1] = state === "cancelled" ? "cancelled" : i === 0 ? "blocked" : step[1] === "now" ? "pending" : step[1]));
+  }
+  return steps.map(([name, s]) => ({ name, state: s, text: STAGE_TEXT[s] }));
+};
+export const journey = (w, d, ev) => {
   const list = E("ol", "", "journey");
   list.setAttribute("aria-label", "Recorrido de la tarea");
-  for (const [name, state] of steps) list.append(E("li", name, state));
+  for (const step of journeySteps(w, d, ev)) {
+    const item = E("li", step.name, step.state === "pending" ? "" : step.state);
+    item.append(E("small", step.text));
+    list.append(item);
+  }
   return list;
 };
 const ago = (seconds) => {

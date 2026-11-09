@@ -22,6 +22,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 - Un GitHub lento o un webhook colgado ya no frenan la integración: cada tarea programada tiene su propio hilo, la verificación y las notificaciones tienen un tiempo máximo por pasada, y `/api/health` (como propietario) muestra el retraso, la duración y los fallos de cada una.
 - Cuando el panel se redibuja por un cambio del servidor, los formularios conservan lo escrito, las casillas marcadas, la opción elegida, el foco y el cursor. Cada campo se reconoce por su nombre, no por su posición, y el cursor solo se restaura en campos de texto: en uno numérico el navegador lanzaba un error.
 - Adoptar un repositorio ya no crea tareas duplicadas si falla el segundo paso: el reintento reutiliza la misma petición y el panel dice qué paso terminó y cuál falta. La vigilancia empieza al integrarse la adopción, como dice el texto, y no antes.
+- El recorrido de una tarea solo da una fase por hecha si su evidencia lo dice: una tarea cancelada antes de investigar ya no muestra la propuesta ni la implementación como hechas, y las pruebas solo aparecen superadas cuando lo están todas. Cada fase dice su estado con palabras (pendiente, en curso, te toca, hecha, fallida, bloqueada, no aplica, cancelada), no solo con color.
 - Si la CI de un repositorio no arranca o se queda en cola, el panel lo dice a los 10 minutos, con la causa probable y dónde mirar. Sigue sin integrarse nada sin ella.
 
 ## Sin publicar — lo que encontró el piloto
