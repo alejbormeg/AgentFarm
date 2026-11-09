@@ -23,6 +23,12 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
     addEventListener("popstate", () => {
       this.fromUrl();
       this.markNav();
+      // A task already in the list opens now, without waiting for a poll that may be in flight.
+      const id = this.pendingTask;
+      if (id && this.data?.work?.some((w) => w.id === id)) {
+        this.pendingTask = null;
+        this.showTask(id);
+      }
       this.signature = "";
       this.poll();
     });
