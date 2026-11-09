@@ -12,6 +12,7 @@ services:
     environment:
       AGENTFARM_BIND: 0.0.0.0
       AGENTFARM_DB: /data/agentfarm.db
+      AGENTFARM_PANEL_URL: ${AGENTFARM_PANEL_URL:-http://localhost:8080}
       AGENTFARM_GITHUB_TOKEN_FILE: /data/github-token
       AGENTFARM_GITHUB_APP_ID: ${AGENTFARM_GITHUB_APP_ID:-}
       AGENTFARM_GITHUB_APP_KEY_FILE: ${AGENTFARM_GITHUB_APP_KEY_FILE:-}

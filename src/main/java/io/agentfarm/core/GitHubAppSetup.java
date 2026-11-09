@@ -2,6 +2,7 @@ package io.agentfarm.core;
 
 import static io.agentfarm.core.Json.*;
 
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.http.*;
 import java.nio.file.*;
@@ -91,30 +92,92 @@ public class GitHubAppSetup {
     return configured == null || configured.isBlank() ? "https://github.com" : configured;
   }
 
-  /** What the browser posts to GitHub. The name must be unique across GitHub, hence the suffix. */
+  /**
+   * The configured panel address, if GitHub can reach it: https, no credentials or path, and a host
+   * that is neither loopback, private, link-local nor a local-only name. GitHub validates a hook
+   * URL even when the hook is inactive, so only such an address may go into the manifest.
+   */
+  public static Optional<String> publicUrl(String configured) {
+    if (configured == null || configured.isBlank()) return Optional.empty();
+    URI uri;
+    try {
+      uri = new URI(configured.trim());
+    } catch (Exception e) {
+      return Optional.empty();
+    }
+    String host = uri.getHost();
+    if (!"https".equalsIgnoreCase(uri.getScheme())
+        || host == null
+        || uri.getRawUserInfo() != null
+        || uri.getRawQuery() != null
+        || uri.getRawFragment() != null
+        || !(uri.getRawPath() == null
+            || uri.getRawPath().isEmpty()
+            || uri.getRawPath().equals("/"))) return Optional.empty();
+    host = host.toLowerCase(Locale.ROOT);
+    String bare = host.startsWith("[") ? host.substring(1, host.length() - 1) : host;
+    boolean literal = bare.contains(":") || bare.matches("[0-9.]+");
+    if (literal) {
+      try {
+        InetAddress address = InetAddress.getByName(bare);
+        byte[] b = address.getAddress();
+        boolean uniqueLocal = b.length == 16 && (b[0] & 0xfe) == 0xfc;
+        if (address.isLoopbackAddress()
+            || address.isSiteLocalAddress()
+            || address.isLinkLocalAddress()
+            || address.isAnyLocalAddress()
+            || uniqueLocal) return Optional.empty();
+      } catch (Exception e) {
+        return Optional.empty();
+      }
+    } else if (!host.contains(".")
+        || host.equals("localhost")
+        || host.matches(".*\\.(localhost|local|lan|internal|home\\.arpa)")) {
+      return Optional.empty();
+    }
+    return Optional.of("https://" + host + (uri.getPort() == -1 ? "" : ":" + uri.getPort()));
+  }
+
+  /**
+   * What the browser posts to GitHub. The name must be unique across GitHub, hence the suffix. The
+   * panel needs no webhook; one, inactive, is only declared when the panel has a public address, so
+   * a deployed panel can turn it on later and a local one is not refused.
+   */
   public Map<String, Object> start(String panel) {
+    return start(panel, Optional.empty());
+  }
+
+  /** `publicUrl` is the panel's own address when GitHub can reach it: see {@link #publicUrl}. */
+  public Map<String, Object> start(String panel, Optional<String> publicUrl) {
     String suffix = newState().substring(0, 6).replaceAll("[^A-Za-z0-9]", "x");
     states.keySet().removeIf(s -> states.get(s).isBefore(clock.instant()));
     String state = newState();
-    var manifest =
-        obj(
-            "name",
-            "AgentFarm " + suffix,
-            "url",
-            panel,
-            "redirect_url",
-            panel + "/github-app/created",
-            "setup_url",
-            panel + "/github-app/installed",
-            "public",
-            false,
-            "default_permissions",
-            PERMISSIONS,
-            "default_events",
-            List.of(),
-            "hook_attributes",
-            obj("url", panel + "/github-app/unused", "active", false));
-    return obj("action", web() + "/settings/apps/new?state=" + state, "manifest", encode(manifest));
+    Map<String, Object> manifest =
+        new LinkedHashMap<>(
+            obj(
+                "name",
+                "AgentFarm " + suffix,
+                "url",
+                panel,
+                "redirect_url",
+                panel + "/github-app/created",
+                "setup_url",
+                panel + "/github-app/installed",
+                "public",
+                false,
+                "default_permissions",
+                PERMISSIONS,
+                "default_events",
+                List.of()));
+    publicUrl.ifPresent(url ->
+        manifest.put("hook_attributes", obj("url", url + "/github-app/unused", "active", false)));
+    return obj(
+        "action",
+        web() + "/settings/apps/new?state=" + state,
+        "manifest",
+        encode(manifest),
+        "webhook",
+        publicUrl.isPresent());
   }
 
   /**
