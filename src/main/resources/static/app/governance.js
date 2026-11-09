@@ -183,7 +183,7 @@ export const withGovernance = (Base) =>
             "p",
             t.repo +
               " · " +
-              (t.enabled ? t.kinds.map((k) => kinds[k] || k).join(", ") : "desactivado") +
+              (!t.enabled ? "desactivado" : t.waiting_for ? "empezará al integrar su adopción" : t.kinds.map((k) => kinds[k] || k).join(", ")) +
               " · máx. " +
               t.max_new +
               " por pasada" +

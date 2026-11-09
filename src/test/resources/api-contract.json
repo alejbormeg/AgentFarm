@@ -25,7 +25,8 @@
         "last_run" : "null",
         "max_new" : "number",
         "options" : { },
-        "repo" : "string"
+        "repo" : "string",
+        "waiting_for" : "null"
       } ]
     },
     "status" : 200
@@ -747,7 +748,8 @@
       "enabled" : "boolean",
       "kinds" : [ "string" ],
       "max_new" : "number",
-      "repository" : "string"
+      "repository" : "string",
+      "waiting_for" : "string"
     },
     "status" : 200
   },

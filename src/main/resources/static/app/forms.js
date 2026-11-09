@@ -86,46 +86,63 @@ export const withForms = (Base) =>
       repo.placeholder = "owner/repositorio";
       const label = E("label", "Repositorio");
       label.append(repo);
+      // One adoption per repository while it is unfinished: a retry reuses its request id, so the
+      // server answers with the same task instead of creating another.
+      this.pendingAdoptions ||= new Map();
+      const analyze = button(
+        "Analizar repositorio",
+        async () => {
+          const repository = repo.value.trim();
+          if (!/^[\w.-]+\/[\w.-]+$/.test(repository)) {
+            problem.textContent = "Indica el repositorio como owner/repositorio.";
+            return;
+          }
+          const requestId = this.pendingAdoptions.get(repository) || crypto.randomUUID();
+          this.pendingAdoptions.set(repository, requestId);
+          analyze.disabled = true;
+          analyze.textContent = "Creando la adopción…";
+          problem.textContent = "";
+          let task;
+          try {
+            task = await api("/work", {
+              request_id: requestId,
+              repository,
+              title: "Adoptar " + repository,
+              request: "Adopta este repositorio para que los agentes lo mantengan.",
+              recipe: { id: "adopt-repo", version: 2 },
+            });
+            analyze.textContent = "Preparando la vigilancia…";
+            await api("/automation/triggers", {
+              repository,
+              kinds: ["labeled_issue", "failing_ci", "dependabot", "weekly", "pr_feedback"],
+              max_new: 2,
+              enabled: true,
+              after: task.id,
+            });
+            this.pendingAdoptions.delete(repository);
+            repo.value = "";
+            this.adoptDrawer.close();
+            this.signature = "";
+            await this.poll();
+          } catch (e) {
+            problem.textContent = task
+              ? "La tarea de adopción ya está creada, pero falta preparar la vigilancia: " + e.message + " Pulsa otra vez para terminar; no se creará otra tarea."
+              : "No se pudo crear la adopción: " + e.message + " Puedes reintentarlo sin duplicarla.";
+          } finally {
+            analyze.disabled = false;
+            analyze.textContent = "Analizar repositorio";
+          }
+        },
+        true,
+      );
       section.append(
         E(
           "p",
-          "Napoleon analizará el repositorio y te propondrá sus comandos de prueba, sus reglas de calidad y hasta tres mejoras. Desde entonces, AgentFarm vigilará su CI, sus alertas de Dependabot, los comentarios de sus PR y hará una revisión semanal: todo llega como propuesta para que decidas.",
+          "Napoleon analizará el repositorio y te propondrá sus comandos de prueba, sus reglas de calidad y hasta tres mejoras. Cuando apruebes e integres esa propuesta, AgentFarm empezará a vigilar su CI, sus alertas de Dependabot, los comentarios de sus PR y hará una revisión semanal: todo llega como propuesta para que decidas.",
         ),
         problem,
         label,
-        button(
-          "Analizar repositorio",
-          async () => {
-            const repository = repo.value.trim();
-            if (!/^[\w.-]+\/[\w.-]+$/.test(repository)) {
-              problem.textContent = "Indica el repositorio como owner/repositorio.";
-              return;
-            }
-            try {
-              await api("/work", {
-                request_id: crypto.randomUUID(),
-                repository,
-                title: "Adoptar " + repository,
-                request: "Adopta este repositorio para que los agentes lo mantengan.",
-                recipe: { id: "adopt-repo", version: 2 },
-              });
-              await api("/automation/triggers", {
-                repository,
-                kinds: ["labeled_issue", "failing_ci", "dependabot", "weekly", "pr_feedback"],
-                max_new: 2,
-                enabled: true,
-              });
-              problem.textContent = "";
-              repo.value = "";
-              this.adoptDrawer.close();
-              this.signature = "";
-              await this.poll();
-            } catch (e) {
-              problem.textContent = e.message;
-            }
-          },
-          true,
-        ),
+        analyze,
       );
       return section;
     }

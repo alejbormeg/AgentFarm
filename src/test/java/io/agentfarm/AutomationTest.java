@@ -77,6 +77,51 @@ class AutomationTest {
         () -> triggers.configure(n("repository", "o/r", "kinds", List.of("deploy")), "owner"));
   }
 
+  /**
+   * The adoption form: a retry keeps one task, and watching starts once the adoption integrates.
+   */
+  @Test
+  void anAdoptionIsCreatedOnceAndItsTriggersWaitUntilItIsIntegrated() {
+    var request =
+        n(
+            "request_id",
+            "adopt-o-r-1",
+            "repository",
+            "o/r",
+            "title",
+            "Adoptar o/r",
+            "request",
+            "Adopta este repositorio",
+            "recipe",
+            obj("id", "adopt-repo", "version", 2));
+    String id = MAPPER.valueToTree(work.create(request, "owner")).path("id").asText();
+    // The trigger call failed, the owner clicks again: same request id, same task.
+    assertEquals(id, MAPPER.valueToTree(work.create(request, "owner")).path("id").asText());
+    assertEquals(1, work.items().size());
+
+    var configured =
+        triggers.configure(
+            n("repository", "o/r", "kinds", List.of("labeled_issue"), "enabled", true, "after", id),
+            "owner");
+    assertEquals(id, configured.get("waiting_for"));
+    github.put(
+        "/issues?labels=agentfarm&state=open&per_page=20",
+        "[{\"number\":7,\"title\":\"Login lento\",\"body\":\"\",\"html_url\":\"u\"}]");
+    assertTrue(triggers.tick(this::gh).isEmpty(), "nothing is watched before the adoption lands");
+    assertEquals(id, triggers.policies().get(0).get("waiting_for"));
+
+    store.tx(c -> Store.exec(c, "UPDATE work_items SET state='integrated' WHERE id=?", id));
+    assertNull(triggers.policies().get(0).get("waiting_for"));
+    assertEquals(1, triggers.tick(this::gh).size(), "integrated: the watch starts");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            triggers.configure(
+                n("repository", "o/other", "kinds", List.of("weekly"), "after", id), "owner"),
+        "an adoption of another repository can't gate this one");
+  }
+
   @Test
   void newSentryErrorsBecomeBugfixProposalsOnce() {
     assertThrows(
