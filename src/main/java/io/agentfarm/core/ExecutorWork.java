@@ -12,10 +12,9 @@ public final class ExecutorWork {
 
   private ExecutorWork() {}
 
+  /** The shared {@link Redaction} policy; a missing message gets a placeholder. */
   public static String clean(String s) {
-    return Objects.toString(s, "Sin detalle del proveedor")
-        .replaceAll("(?i)Bearer\\s+[^\\s]+", "Bearer [oculto]")
-        .replaceAll("(gh[pousr]_[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]{12,})", "[secreto oculto]");
+    return Redaction.text(Objects.toString(s, "Sin detalle del proveedor"));
   }
 
   /** An agent may wrap its JSON in prose; anything else is not a result. */

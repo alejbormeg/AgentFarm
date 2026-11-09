@@ -30,16 +30,9 @@ public class TelemetryService {
     });
   }
 
+  /** The shared {@link Redaction} policy, so telemetry and the executor hide the same things. */
   public static String clean(String value) {
-    return value
-        .replaceAll("\\x1B\\[[0-9;]*[A-Za-z]", "")
-        .replaceAll("[\\p{Cntrl}&&[^\\n\\t]]", "")
-        .replaceAll("(?i)Bearer\\s+[A-Za-z0-9._~+/-]+=*", "Bearer [oculto]")
-        .replaceAll("(?:gh[pousr]_[A-Za-z0-9_]{12,}|afn_[A-Za-z0-9_-]{40,})", "[credencial oculta]")
-        .replaceAll("sk-[A-Za-z0-9_-]{12,}", "[clave oculta]")
-        .replaceAll(
-            "(?i)([\\\"']?(?:access_token|refresh_token|id_token|password|api_key|authorization)[\\\"']?\\s*[:=]\\s*[\\\"']?)[^\\s\\\"',}]+",
-            "$1[oculto]");
+    return Redaction.text(value);
   }
 
   private static String field(JsonNode n, String key, int max) {
