@@ -83,4 +83,47 @@ class LoginThrottleTest {
     fail("ana|1", 5);
     assertEquals(60, throttle.waitSeconds("ana|1"), "expired keys made room again");
   }
+
+  @Test
+  void manyNamesFromOneAddressAreSlowedDown() {
+    for (int i = 0; i < LoginThrottle.ADDRESS_FREE_FAILURES; i++) throttle.failed("n" + i + "|1");
+    assertEquals(60, throttle.waitSeconds("otra|1"), "a new name from the same address waits");
+    assertEquals(0, throttle.waitSeconds("otra|2"), "another address does not");
+  }
+
+  @Test
+  void aFullMemoryStillLimitsANewCombination() {
+    // 10,000 recent keys from as many addresses: nothing has expired to make room.
+    for (int i = 0; i < 10_000; i++) throttle.failed("n" + i + "|10." + i);
+    assertTrue(throttle.waitSeconds("nueva|9.9.9.9") > 0, "no free attempts by cardinality");
+    now.addAndGet(LoginThrottle.LONGEST_WAIT_SECONDS + 1);
+    assertEquals(0, throttle.waitSeconds("nueva|9.9.9.9"), "the shared wait ends too");
+  }
+
+  @Test
+  void theOwnerIsNotLockedOutByAnAttackFromElsewhere() {
+    throttle.succeeded("admin|1.1.1.1");
+    for (int i = 0; i < 10_000; i++) throttle.failed("n" + i + "|10." + i);
+    assertEquals(0, throttle.waitSeconds("admin|1.1.1.1"));
+    fail("admin|1.1.1.1", 5);
+    assertEquals(60, throttle.waitSeconds("admin|1.1.1.1"), "but its own mistakes still count");
+  }
+
+  @Test
+  void concurrentFailuresAllCount() throws Exception {
+    var pool = java.util.concurrent.Executors.newFixedThreadPool(8);
+    var done = new java.util.concurrent.CountDownLatch(8);
+    for (int t = 0; t < 8; t++) {
+      int thread = t;
+      pool.execute(() -> {
+        for (int i = 0; i < 2_000; i++) throttle.failed("n" + thread + "-" + i + "|10." + i);
+        for (int i = 0; i < 10; i++) throttle.failed("ana|1");
+        done.countDown();
+      });
+    }
+    assertTrue(done.await(30, java.util.concurrent.TimeUnit.SECONDS));
+    pool.shutdown();
+    assertEquals(900, throttle.waitSeconds("ana|1"), "80 failures, none lost");
+    assertTrue(throttle.waitSeconds("nueva|9.9.9.9") > 0);
+  }
 }
