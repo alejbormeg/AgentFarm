@@ -21,6 +21,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 - Claude Code recibe un tope en USD por debajo de lo reservado (`--max-budget-usd`, 80 % de la reserva), y un turno fallido o cortado por ese tope se liquida con el coste que informó en vez de quedar como desconocido.
 - Un GitHub lento o un webhook colgado ya no frenan la integración: cada tarea programada tiene su propio hilo, la verificación y las notificaciones tienen un tiempo máximo por pasada, y `/api/health` (como propietario) muestra el retraso, la duración y los fallos de cada una.
 - Cuando el panel se redibuja por un cambio del servidor, los formularios conservan lo escrito, las casillas marcadas, la opción elegida, el foco y el cursor. Cada campo se reconoce por su nombre, no por su posición, y el cursor solo se restaura en campos de texto: en uno numérico el navegador lanzaba un error.
+- Adoptar un repositorio ya no crea tareas duplicadas si falla el segundo paso: el reintento reutiliza la misma petición y el panel dice qué paso terminó y cuál falta. La vigilancia empieza al integrarse la adopción, como dice el texto, y no antes.
 - Si la CI de un repositorio no arranca o se queda en cola, el panel lo dice a los 10 minutos, con la causa probable y dónde mirar. Sigue sin integrarse nada sin ella.
 
 ## Sin publicar — lo que encontró el piloto

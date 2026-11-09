@@ -49,14 +49,22 @@ public class TriggerService {
           "CREATE TABLE IF NOT EXISTS trigger_events(key TEXT PRIMARY KEY,repo TEXT NOT"
               + " NULL,kind TEXT NOT NULL,item TEXT NOT NULL,at INTEGER NOT NULL)");
       Store.ensureColumn(c, "trigger_policies", "options", "TEXT");
+      // A policy created with an adoption sleeps until that adoption is integrated.
+      Store.ensureColumn(c, "trigger_policies", "after_item", "TEXT");
       return null;
     });
   }
 
   public List<Map<String, Object>> policies() {
     return db.tx(c -> {
-      var rows = rows(c, "SELECT * FROM trigger_policies ORDER BY repo");
+      var rows =
+          rows(
+              c,
+              "SELECT p.*,CASE WHEN w.state IS NULL OR w.state='integrated' THEN NULL ELSE"
+                  + " p.after_item END waiting_for FROM trigger_policies p LEFT JOIN work_items w"
+                  + " ON w.id=p.after_item ORDER BY p.repo");
       for (var r : rows) {
+        r.remove("after_item");
         r.put("kinds", parse(r.get("kinds").toString()));
         r.put("options", parse(r.get("options") == null ? "{}" : r.get("options").toString()));
       }
@@ -76,6 +84,13 @@ public class TriggerService {
     long max = n.path("max_new").asLong(2);
     if (max < 1 || max > 10) throw new IllegalArgumentException("max_new must be 1-10");
     boolean enabled = n.path("enabled").asBoolean(true);
+    String after;
+    try {
+      after = text(n, "after");
+    } catch (IllegalArgumentException absent) {
+      after = null;
+    }
+    String waitFor = after;
     var options = new LinkedHashMap<String, Object>();
     if (kinds.contains("sentry")) {
       String org = n.path("sentry").path("organization").asText(),
@@ -85,18 +100,41 @@ public class TriggerService {
       options.put("sentry", obj("organization", org, "project", project));
     }
     return db.tx(c -> {
+      if (waitFor != null
+          && one(c, "SELECT 1 FROM work_items WHERE id=? AND repo=?", waitFor, repo) == null)
+        throw new IllegalArgumentException("The adoption to wait for is not a task of " + repo);
       exec(
           c,
-          "INSERT INTO trigger_policies(repo,kinds,max_new,enabled,options) VALUES(?,?,?,?,?)"
-              + " ON CONFLICT(repo) DO UPDATE SET kinds=excluded.kinds,max_new=excluded.max_new,"
-              + "enabled=excluded.enabled,options=excluded.options",
+          "INSERT INTO trigger_policies(repo,kinds,max_new,enabled,options,after_item)"
+              + " VALUES(?,?,?,?,?,?) ON CONFLICT(repo) DO UPDATE SET kinds=excluded.kinds,"
+              + "max_new=excluded.max_new,enabled=excluded.enabled,options=excluded.options,"
+              + "after_item=excluded.after_item",
           repo,
           encode(kinds),
           max,
           enabled ? 1 : 0,
-          encode(options));
-      audit(c, actor, "trigger.configure", repo + " " + kinds + (enabled ? "" : " disabled"));
-      return obj("repository", repo, "kinds", kinds, "max_new", max, "enabled", enabled);
+          encode(options),
+          waitFor);
+      audit(
+          c,
+          actor,
+          "trigger.configure",
+          repo
+              + " "
+              + kinds
+              + (enabled ? "" : " disabled")
+              + (waitFor == null ? "" : " after " + waitFor));
+      return obj(
+          "repository",
+          repo,
+          "kinds",
+          kinds,
+          "max_new",
+          max,
+          "enabled",
+          enabled,
+          "waiting_for",
+          waitFor == null ? "" : waitFor);
     });
   }
 
@@ -119,7 +157,7 @@ public class TriggerService {
     if (db.tx(c -> num(one(c, "SELECT paused FROM governance WHERE id=1"), "paused") == 1))
       return touched;
     for (var policy : policies()) {
-      if (num(policy, "enabled") != 1) continue;
+      if (num(policy, "enabled") != 1 || policy.get("waiting_for") != null) continue;
       String repo = policy.get("repo").toString();
       String error = null;
       try {
