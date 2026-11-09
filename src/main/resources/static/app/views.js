@@ -582,8 +582,12 @@ export const withViews = (Base) =>
       if (live) text.append(E("p", live.task_title, "note-line"));
       const side = E("div", "", "agent-side");
       side.append(pill(state, state === "Disponible" ? "ok" : state === "Trabajando" ? "info" : state === "Sin señal" ? "warn" : ""));
-      if (this.data.me?.role === "owner")
-        side.append(button(enabled ? "Deshabilitar" : "Habilitar", () => this.action("/entities/" + kind + "/" + encodeURIComponent(a.id) + "/enabled/" + !enabled, {})));
+      if (this.data.me?.role === "owner") {
+        const toggle = button(enabled ? "Deshabilitar" : "Habilitar", () => this.action("/entities/" + kind + "/" + encodeURIComponent(a.id) + "/enabled/" + !enabled, {}));
+        if (kind === "node")
+          toggle.title = "Deshabilitado, el nodo no recibe órdenes, tokens de GitHub ni presupuesto nuevos, pero puede cerrar lo que ya tiene. Para cortarle todo el acceso, revoca su token.";
+        side.append(toggle);
+      }
       card.append(face, text, side);
       return card;
     }

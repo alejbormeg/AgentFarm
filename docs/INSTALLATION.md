@@ -44,6 +44,16 @@ el servicio de usuario no configura arranque de Windows ni linger.
 
 El ejecutor usa un token revocable de nodo y conserva CSRF. Su API no permite
 aprobar, crear credenciales, cambiar políticas ni reclamar órdenes de integración.
+
+Tres formas de parar un nodo, de menos a más:
+
+- **Pausar agentes** (Gobierno): la cola deja de repartir órdenes a todos los nodos.
+- **Deshabilitar** el nodo (Agentes): el panel le niega órdenes nuevas, tokens de GitHub,
+  admisión de proveedores y reservas de presupuesto aunque su token siga siendo válido. Puede
+  seguir enviando su señal, informar de la orden que ya tenía y liquidar sus reservas.
+- **Revocar** su token: el panel rechaza cualquier petición del nodo.
+
+Ninguna de las tres anula un token de GitHub ya emitido: caduca solo, en una hora como máximo.
 Configura la credencial en **Gobierno → Conectar GitHub**, o con `./agentfarm github-token` o `github-app` ([qué credencial usar](TEAM.md)).
 GitHub solo admite el webhook de una App en una dirección pública. Con el panel en localhost o en
 una red privada, **Conectar GitHub** crea la App sin webhook, y el panel no lo necesita. Si lo

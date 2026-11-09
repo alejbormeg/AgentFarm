@@ -76,13 +76,35 @@ public class NodeCredentials {
     });
   }
 
+  /**
+   * The live credential, with {@code enabled} from its node: revoked or unknown tokens give null.
+   */
   public Map<String, Object> authenticate(String token) {
     return db.tx(c ->
         one(
             c,
-            "SELECT id,node,account,COALESCE(api_account,'') api_account FROM node_credentials"
-                + " WHERE hash=? AND revoked=0",
+            "SELECT k.id,k.node,k.account,COALESCE(k.api_account,'') api_account,"
+                + "COALESCE(n.enabled,0) enabled FROM node_credentials k LEFT JOIN farm_nodes n"
+                + " ON n.id=k.node WHERE k.hash=? AND k.revoked=0",
             sha256(token)));
+  }
+
+  /**
+   * What a disabled node may still do with a valid token: read, report its signal and close what it
+   * already holds (reports on a held order, settling reservations). It can't take new work, new
+   * GitHub tokens, provider admission or new budget. Revoking the token cuts everything.
+   */
+  public static boolean allowedWhileDisabled(String method, String path) {
+    if (method.equals("GET")) return true;
+    if (!method.equals("POST")) return false;
+    if (path.startsWith("/api/work/agent/commands/")) return !path.endsWith("/github-token");
+    return path.startsWith("/api/heartbeat/")
+        || Set.of(
+                "/api/runtime/observations",
+                "/api/budget/observe",
+                "/api/budget/settle-observed",
+                "/api/budget/settle")
+            .contains(path);
   }
 
   public Object list() {
