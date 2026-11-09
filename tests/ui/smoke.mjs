@@ -225,7 +225,11 @@ try {
     check(await until(() => js(`!${all}.some(e=>e.tagName==='DIALOG'&&e.open)&&!location.search.includes('tarea=')`)), "back closes the task");
     await js(`history.forward()`);
     const reopened = await until(() => js(`${all}.some(e=>e.tagName==='DIALOG'&&e.open)`));
-    check(reopened, "forward reopens the task" + (reopened ? "" : " " + (await js(`JSON.stringify({url:location.pathname+location.search,state:history.state})`))));
+    check(
+      reopened,
+      "forward reopens the task" +
+        (reopened ? "" : " " + (await js(`JSON.stringify({url:location.pathname+location.search,state:history.state})`)) + " " + exceptions.slice(-2).join(" | ")),
+    );
     await js(`document.querySelector('dialog[open] .drawer-head button').click()`);
     await go("/overview");
     await until(() => visible("Bandeja"));
