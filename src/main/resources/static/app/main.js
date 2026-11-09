@@ -26,8 +26,13 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
       // A task already in the list opens now, without waiting for a poll that may be in flight.
       const id = this.pendingTask;
       if (id && this.data?.work?.some((w) => w.id === id)) {
-        this.pendingTask = null;
-        this.showTask(id);
+        try {
+          this.showTask(id);
+          this.pendingTask = null;
+        } catch (e) {
+          // The poll below tries again with the full record.
+          console.warn("No se pudo abrir la tarea: " + e.message);
+        }
       }
       this.signature = "";
       this.poll();
@@ -244,10 +249,14 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
       this.pushedTask = id;
     }
     this.signature = "";
-    // Draw what the list knows now; the poll brings the full record a moment later.
-    this.render();
-    this.poll();
+    // Open first: a view that fails to draw must not leave the task closed. The poll brings the
+    // full record a moment later and draws it again.
     if (!this.taskDrawer.open) this.taskDrawer.showModal();
+    try {
+      this.render();
+    } finally {
+      this.poll();
+    }
   }
   // Every action reports how it ended: what was done, or why not. The button stays busy until then.
   async action(path, body, doneText = "Hecho.") {
