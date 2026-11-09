@@ -307,6 +307,36 @@ class ProviderTest {
   }
 
   @Test
+  void claudeCodeGetsACapBelowItsReservationAndFailedTurnsStillReportTheirCost() {
+    assertEquals("2.40", ClaudeCodeAdapter.budgetCap(3_000_000));
+    assertEquals("0.07", ClaudeCodeAdapter.budgetCap(99_999));
+    assertThrows(IllegalArgumentException.class, () -> ClaudeCodeAdapter.budgetCap(10_000));
+    var argv =
+        ClaudeCodeAdapter.command("claude", "implement", "", List.of(), null, List.of(), 3_000_000);
+    assertEquals("2.40", argv.get(argv.indexOf("--max-budget-usd") + 1));
+    assertFalse(ClaudeCodeAdapter.command("claude", "review", "").contains("--max-budget-usd"));
+
+    // Stopped by its cap after going past it by one request: the overrun is what gets settled.
+    var capped =
+        assertThrows(
+            ClaudeCodeAdapter.Failed.class,
+            () ->
+                ClaudeCodeAdapter.parse(
+                    "{\"type\":\"result\",\"subtype\":\"error_max_budget_usd\",\"is_error\":true,"
+                        + "\"total_cost_usd\":3.2}"));
+    assertEquals(3_200_000L, capped.costMicros);
+    assertTrue(capped.getMessage().contains("error_max_budget_usd"));
+    // No cost at all leaves the run unknown, which blocks more work until reconciled.
+    assertNull(
+        assertThrows(
+                ClaudeCodeAdapter.Failed.class,
+                () ->
+                    ClaudeCodeAdapter.parse(
+                        "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false}"))
+            .costMicros);
+  }
+
+  @Test
   void staleUnknownAndMismatchedReadingsBlockAdmission() {
     var stale = runtime();
     ((com.fasterxml.jackson.databind.node.ObjectNode) stale.path("snapshot").path("quota"))

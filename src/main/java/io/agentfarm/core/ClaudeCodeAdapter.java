@@ -99,7 +99,6 @@ public final class ClaudeCodeAdapter implements AgentAdapter {
     return command(binary, role, model, mcp, mcpConfig, List.of());
   }
 
-  /** With MCP servers (research and review only): their tools are allowed by server prefix. */
   public static List<String> command(
       String binary,
       String role,
@@ -107,6 +106,37 @@ public final class ClaudeCodeAdapter implements AgentAdapter {
       List<String> mcp,
       String mcpConfig,
       List<String> hidden) {
+    return command(binary, role, model, mcp, mcpConfig, hidden, 0);
+  }
+
+  /**
+   * Share of the reservation given to Claude Code as its cap: its own check runs between requests.
+   */
+  public static final double CAP_SHARE = 0.8;
+
+  /**
+   * The USD cap for a turn, below its reservation. Claude Code checks it between requests, so one
+   * request can go past it: the margin is for that, and an overrun still settles as such.
+   */
+  public static String budgetCap(long reservedMicros) {
+    if (reservedMicros < 20_000)
+      throw new IllegalArgumentException("Claude Code reservation too small for a budget cap");
+    long cents = (long) Math.floor(reservedMicros * CAP_SHARE / 10_000);
+    return String.format(java.util.Locale.ROOT, "%d.%02d", cents / 100, cents % 100);
+  }
+
+  /**
+   * With MCP servers (research and review only): their tools are allowed by server prefix. A
+   * positive {@code reservedMicros} adds {@code --max-budget-usd} from {@link #budgetCap}.
+   */
+  public static List<String> command(
+      String binary,
+      String role,
+      String model,
+      List<String> mcp,
+      String mcpConfig,
+      List<String> hidden,
+      long reservedMicros) {
     String tools = TOOLS.get(role);
     if (tools == null) throw new IllegalArgumentException("Unknown Claude Code role");
     if (!mcp.isEmpty()) {
@@ -135,12 +165,26 @@ public final class ClaudeCodeAdapter implements AgentAdapter {
                 denyRules(hidden),
                 "--max-turns",
                 "80"));
+    if (reservedMicros > 0) argv.addAll(List.of("--max-budget-usd", budgetCap(reservedMicros)));
     if (!mcp.isEmpty()) argv.addAll(List.of("--mcp-config", mcpConfig, "--strict-mcp-config"));
     if (model != null && !model.isBlank()) {
       if (!model.matches("[a-z0-9.-]{1,64}")) throw new IllegalArgumentException("Invalid model");
       argv.addAll(List.of("--model", model));
     }
     return argv;
+  }
+
+  /**
+   * A turn that did not succeed. {@code costMicros} is what Claude Code still reported spending (a
+   * turn stopped by its cap, an error after some requests), or null when it reported nothing.
+   */
+  public static final class Failed extends IllegalArgumentException {
+    public final Long costMicros;
+
+    public Failed(String message, Long costMicros) {
+      super(message);
+      this.costMicros = costMicros;
+    }
   }
 
   /** Parses the final JSON object; an error result or a missing cost is never accepted. */
@@ -151,20 +195,19 @@ public final class ClaudeCodeAdapter implements AgentAdapter {
     } catch (Exception e) {
       throw new IllegalArgumentException("Claude Code returned no JSON result");
     }
+    var reported = n.path("total_cost_usd");
+    Long cost =
+        reported.isNumber() && reported.asDouble() >= 0
+            ? (long) Math.ceil(reported.asDouble() * 1_000_000)
+            : null;
     if (!n.path("type").asText().equals("result")
         || n.path("is_error").asBoolean(true)
         || !n.path("subtype").asText().equals("success"))
-      throw new IllegalArgumentException(
-          "Claude Code turn failed: " + n.path("subtype").asText("unknown"));
-    if (!n.path("total_cost_usd").isNumber() || n.path("total_cost_usd").asDouble() < 0)
-      throw new IllegalArgumentException("Claude Code did not report the turn cost");
+      throw new Failed("Claude Code turn failed: " + n.path("subtype").asText("unknown"), cost);
+    if (cost == null) throw new Failed("Claude Code did not report the turn cost", null);
     String model = "";
     var usage = n.path("modelUsage");
     if (usage.isObject() && usage.size() > 0) model = usage.fieldNames().next();
-    return new Result(
-        n.path("result").asText(),
-        n.path("session_id").asText(),
-        (long) Math.ceil(n.path("total_cost_usd").asDouble() * 1_000_000),
-        model);
+    return new Result(n.path("result").asText(), n.path("session_id").asText(), cost, model);
   }
 }

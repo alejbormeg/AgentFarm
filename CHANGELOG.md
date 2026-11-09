@@ -18,6 +18,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 - **Conectar GitHub** funciona con el panel en localhost: GitHub rechazaba la App porque el manifiesto declaraba un webhook en una dirección que no puede alcanzar. Ahora solo lo declara si `AGENTFARM_PANEL_URL` es una dirección https pública, que Compose pasa por fin al contenedor.
 - Deshabilitar un nodo lo para también en el servidor: aunque su token siga valiendo, no recibe órdenes, tokens de GitHub, admisión ni reservas. Puede seguir enviando su señal y cerrar lo que ya tenía. Revocar el token sigue cortándolo todo.
 - El estado del panel es privado aunque el umask sea 022: el directorio de la base queda en 700 y la base, su WAL y SHM y las copias en 600, también en instalaciones existentes. Antes la base, con los secretos TOTP, quedaba legible por otras cuentas del equipo.
+- Claude Code recibe un tope en USD por debajo de lo reservado (`--max-budget-usd`, 80 % de la reserva), y un turno fallido o cortado por ese tope se liquida con el coste que informó en vez de quedar como desconocido.
 - Si la CI de un repositorio no arranca o se queda en cola, el panel lo dice a los 10 minutos, con la causa probable y dónde mirar. Sigue sin integrarse nada sin ella.
 
 ## Sin publicar — lo que encontró el piloto

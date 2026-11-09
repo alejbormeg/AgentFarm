@@ -82,9 +82,15 @@ AGENTFARM_CLAUDE_MODEL=                 # opcional
 - Coste: la cuota de suscripción de Claude no es observable, así que solo se
   admite una cuenta Clover `api`. Antes de cada turno se reserva
   `agentfarm.claude-turn-micros` (3 USD por defecto) en cada periodo; al terminar se
-  liquida con el `total_cost_usd` que informa Claude Code. Si el turno falla sin
-  coste conocido, la reserva queda `unknown` y Clover bloquea más trabajo hasta
-  que el propietario concilie.
+  liquida con el `total_cost_usd` que informa Claude Code. Claude Code recibe
+  `--max-budget-usd` con el 80 % de la reserva (2,40 USD por defecto). Ese tope es una
+  estimación que Claude Code comprueba entre peticiones, así que una sola petición puede
+  rebasarlo: el margen del 20 % es para eso, no una garantía contable. Si aun así el
+  coste supera la reserva, se liquida como `overrun` y Clover bloquea más trabajo hasta
+  que el propietario concilie. Un turno que falla (también el que corta el tope) se
+  liquida con el coste que informó. Si falla sin coste conocido (interrupción, cuelgue,
+  salida sin coste), la reserva queda `unknown`, con el mismo bloqueo. Cada turno reserva
+  y liquida su propio `run_id`, también con varios turnos a la vez.
 - La credencial del nodo se emite con `api_account` opcional
   (`POST /api/executors {"node","account","api_account"}`); con ella el nodo solo
   puede leer, reservar y liquidar esa cuenta, nunca configurarla.

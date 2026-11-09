@@ -361,7 +361,15 @@ public class FarmDaemon extends CodexRunner {
         post("/budget/reserve", obj("account", CLAUDE_ACCOUNT, "run_id", run, "amounts", amounts));
     if (!reserved.path("state").asText().equals("reserved"))
       throw new IOException("Clover rechazó la reserva Claude Code: " + reserved.path("reasons"));
-    event("lifecycle", "Claude Code · " + role + " · reserva " + CLAUDE_TURN_MICROS / 1e6 + " USD");
+    event(
+        "lifecycle",
+        "Claude Code · "
+            + role
+            + " · reserva "
+            + CLAUDE_TURN_MICROS / 1e6
+            + " USD, tope "
+            + io.agentfarm.core.ClaudeCodeAdapter.budgetCap(CLAUDE_TURN_MICROS)
+            + " USD");
     Object actual = null;
     try {
       Path mcpConfig = null;
@@ -383,7 +391,8 @@ public class FarmDaemon extends CodexRunner {
                       names,
                       mcpConfig == null ? null : mcpConfig.toString(),
                       io.agentfarm.core.AgentSandbox.hiddenPaths(
-                          agentProfile(task.checkout, role.equals("implement")))))
+                          agentProfile(task.checkout, role.equals("implement"))),
+                      CLAUDE_TURN_MICROS))
               .directory(task.checkout.toFile())
               .redirectErrorStream(false);
       for (String k : List.of("OPENAI_API_KEY", "CODEX_API_KEY", "GH_TOKEN", "GITHUB_TOKEN"))
@@ -405,7 +414,21 @@ public class FarmDaemon extends CodexRunner {
             throw new IOException(cancelled() ? "Operación cancelada" : "Turno supera 45 minutos");
           }
         }
-        var result = io.agentfarm.core.ClaudeCodeAdapter.parse(Files.readString(out));
+        io.agentfarm.core.ClaudeCodeAdapter.Result result;
+        try {
+          result = io.agentfarm.core.ClaudeCodeAdapter.parse(Files.readString(out));
+        } catch (io.agentfarm.core.ClaudeCodeAdapter.Failed e) {
+          // What a failed turn spent is still settled: an overrun shows up as one, never as
+          // unknown.
+          if (e.costMicros != null) {
+            var cost = new LinkedHashMap<String, Object>();
+            for (var period : amounts.keySet()) cost.put(period, e.costMicros);
+            actual = cost;
+            event(
+                "lifecycle", "Claude Code · coste " + e.costMicros / 1e6 + " USD (turno fallido)");
+          }
+          throw new IOException(e.getMessage());
+        }
         session = result.session();
         model = result.model();
         var cost = new LinkedHashMap<String, Object>();

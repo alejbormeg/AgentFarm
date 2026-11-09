@@ -159,8 +159,6 @@ Method <io.agentfarm.core.ClaudeCodeAdapter.parse(java.lang.String)> calls metho
 Method <io.agentfarm.core.ClaudeCodeAdapter.parse(java.lang.String)> calls method <com.fasterxml.jackson.databind.JsonNode.path(java.lang.String)> in (ClaudeCodeAdapter.java:159)
 Method <io.agentfarm.core.ClaudeCodeAdapter.parse(java.lang.String)> calls method <com.fasterxml.jackson.databind.JsonNode.path(java.lang.String)> in (ClaudeCodeAdapter.java:162)
 Method <io.agentfarm.core.ClaudeCodeAdapter.parse(java.lang.String)> calls method <com.fasterxml.jackson.databind.JsonNode.path(java.lang.String)> in (ClaudeCodeAdapter.java:165)
-Method <io.agentfarm.core.ClaudeCodeAdapter.parse(java.lang.String)> calls method <com.fasterxml.jackson.databind.JsonNode.path(java.lang.String)> in (ClaudeCodeAdapter.java:166)
-Method <io.agentfarm.core.ClaudeCodeAdapter.parse(java.lang.String)> calls method <com.fasterxml.jackson.databind.JsonNode.path(java.lang.String)> in (ClaudeCodeAdapter.java:167)
 Method <io.agentfarm.core.ClaudeCodeAdapter.parse(java.lang.String)> calls method <com.fasterxml.jackson.databind.JsonNode.size()> in (ClaudeCodeAdapter.java:163)
 Method <io.agentfarm.core.ClaudeCodeAdapter.validateAuthentication(com.fasterxml.jackson.databind.JsonNode)> calls method <com.fasterxml.jackson.databind.JsonNode.asBoolean()> in (ClaudeCodeAdapter.java:58)
 Method <io.agentfarm.core.ClaudeCodeAdapter.validateAuthentication(com.fasterxml.jackson.databind.JsonNode)> calls method <com.fasterxml.jackson.databind.JsonNode.asText()> in (ClaudeCodeAdapter.java:56)
