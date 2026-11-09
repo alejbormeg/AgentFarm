@@ -1272,10 +1272,22 @@ dialog.drawer::backdrop {
   color: var(--barn-text);
   font-weight: 500;
 }
-.journey li.bad {
+.journey li.bad,
+.journey li.blocked {
   background: var(--bad-bg);
   color: var(--bad);
   font-weight: 500;
+}
+.journey li.na {
+  font-style: italic;
+}
+.journey li.cancelled {
+  text-decoration: line-through;
+}
+.journey li small {
+  display: block;
+  font-size: 11px;
+  opacity: 0.85;
 }
 .links {
   display: flex;

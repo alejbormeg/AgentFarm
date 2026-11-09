@@ -23,6 +23,9 @@ fail() {
   exit 1
 }
 
+# The panel's pure view logic, without a browser.
+node --test "$root"/tests/ui/*.test.mjs > "$work/ui-unit.log" 2>&1 || { cat "$work/ui-unit.log" >&2; fail "the panel's view logic"; }
+
 # The executor as it ships: a class missing from the package must fail here. Before the panel starts, as this rebuilds its jar.
 bash "$root/runtime/package.sh" > "$work/package.log" 2>&1 || { cat "$work/package.log" >&2; fail "the executor does not package"; }
 tar -xzf "$root/target/agentfarm-executor-linux.tar.gz" -C "$work"
