@@ -394,6 +394,42 @@ class EvidenceVerifierTest {
   }
 
   @Test
+  void aChangeGitHubDoesNotShowIsNotCalledClean() {
+    var compare =
+        n(
+            "files",
+            List.of(
+                obj("filename", "big.sql", "status", "added", "changes", 90000),
+                obj("filename", "empty.py", "status", "added", "changes", 0),
+                obj("filename", "gone.txt", "status", "removed", "changes", 12)));
+    var result = EvidenceVerifier.assess(reportWith("passed"), runs(), github("/status"), compare);
+    assertEquals("failed", result.state());
+    assertTrue(result.reason().contains("big.sql"), result.reason());
+    assertFalse(result.reason().contains("empty.py"), "an empty file has nothing to hide");
+    assertFalse(result.reason().contains("gone.txt"), "a deletion adds nothing");
+  }
+
+  @Test
+  void aRenameReportsTheFileItTakesAway() {
+    var compare =
+        n(
+            "files",
+            List.of(
+                obj(
+                    "filename",
+                    "docs/guard.txt",
+                    "status",
+                    "renamed",
+                    "previous_filename",
+                    "private/guard.txt")));
+    var result = EvidenceVerifier.assess(reportWith("passed"), runs(), github("/status"), compare);
+    assertEquals(
+        List.of("private/guard.txt", "docs/guard.txt"),
+        result.detail().get("files"),
+        "the scope verdict sees the deletion outside docs/");
+  }
+
+  @Test
   void assessRejectsChangesToTheProjectsOwnCi() {
     var result =
         EvidenceVerifier.assess(
@@ -403,14 +439,31 @@ class EvidenceVerifierTest {
             compared(".github/workflows/ci.yml", "src/App.java"));
     assertEquals("failed", result.state());
     assertTrue(result.reason().contains("ci.yml"));
+    var templateOnly =
+        n(
+            "ci_checks",
+            List.of("AgentFarm unit"),
+            "unit",
+            obj("status", "passed"),
+            "integration",
+            obj("status", "passed"));
     assertEquals(
         "success",
         EvidenceVerifier.assess(
-                reportWith("passed"),
+                templateOnly,
                 runs(),
                 github("/status"),
                 compared(".github/workflows/agentfarm.yml", "src/App.java"))
-            .state());
+            .state(),
+        "without CI of its own, the platform writes its template");
+    var ownCi =
+        EvidenceVerifier.assess(
+            reportWith("passed"),
+            runs(),
+            github("/status"),
+            compared(".github/workflows/agentfarm.yml", "src/App.java"));
+    assertEquals("failed", ownCi.state(), "with CI of its own, the template is not the platform's");
+    assertTrue(ownCi.reason().contains("agentfarm.yml"), ownCi.reason());
   }
 
   @Test

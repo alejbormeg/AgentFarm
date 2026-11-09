@@ -243,6 +243,26 @@ else
   echo "Browser smoke test skipped: set E2E_CHROME to a Chrome binary"
 fi
 
+# A credential at the start of a large diff stops the task before anything is pushed: the
+# runtime keeps only the tail of a command's output, so the scan must read Git directly.
+item=e2e-request-leak
+branches_before=$(git -C "$work/remote.git" for-each-ref --format='%(refname)' refs/heads | sort)
+owner /work '{"request_id":"e2e-request-leak","repository":"e2e/demo","title":"Fixture","request":"Añade un fixture con la credencial filtrada en tests/."}' > /dev/null
+wait_for proposed 60
+owner /work/e2e-request-leak/actions/implement '{"version":1}' > /dev/null
+leak=""
+for _ in $(seq 1 150); do
+  leak=$(state)
+  [[ "$leak" == blocked* ]] && break
+  sleep 2
+done
+[[ "$leak" == blocked*"Posible secreto"*"tests/fixture.txt"* ]] || fail "a leaked credential was not stopped before the push: $leak"
+[[ "$leak" != *ghp_* ]] || fail "the error shows the credential"
+[[ "$(git -C "$work/remote.git" for-each-ref --format='%(refname)' refs/heads | sort)" == "$branches_before" ]] \
+  || fail "a candidate with a credential reached the remote"
+owner /work/e2e-request-leak/actions/cancel '{}' > /dev/null || true
+echo "Credential at the start of a large diff stopped before the push"
+
 # Adoption in a repository without a profile: an invalid candidate stays a draft and can be corrected.
 git -C "$work/seed" pull -q --ff-only "$work/remote.git" main 2>/dev/null || true
 git -C "$work/seed" rm -q agentfarm.yaml

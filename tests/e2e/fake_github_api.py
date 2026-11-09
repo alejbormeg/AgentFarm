@@ -65,8 +65,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, {"total_count": 0, "state": "pending"})
         if m := re.fullmatch(r"/repos/e2e/demo/compare/(\w+)\.\.\.(\w+)", path):
             names = {"A": "added", "M": "modified", "D": "removed"}
-            lines = git("diff", "--name-status", m[1], m[2]).stdout.splitlines()
-            files = [{"filename": l.split("\t")[1], "status": names.get(l[0], "modified"), "patch": ""} for l in lines]
+            lines = git("diff", "--no-renames", "--name-status", m[1], m[2]).stdout.splitlines()
+            files = []
+            for l in lines:
+                name = l.split("\t")[1]
+                # Like GitHub: the hunks without the file headers, and how many lines changed.
+                patch = git("diff", "--no-renames", m[1], m[2], "--", name).stdout
+                patch = patch[patch.find("@@"):] if "@@" in patch else ""
+                changes = sum(1 for x in patch.splitlines() if x[:1] in "+-")
+                files.append({"filename": name, "status": names.get(l[0], "modified"), "patch": patch, "changes": changes})
             return self.reply(200, {"files": files})
         self.reply(404, {"message": path})
 

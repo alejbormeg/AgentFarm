@@ -122,6 +122,12 @@ def answer(thread, prompt):
             risks="Ninguno relevante",
             criteria=[{"id": "AC-1", "description": criterion, "method": "test", "checks": ["unit", "integration"]}],
         )
+    if "credencial filtrada" in prompt and thread["sandbox"] == "workspace-write":
+        # A synthetic token at the very start of a diff longer than the tail the runtime keeps.
+        os.makedirs(os.path.join(thread["cwd"], "tests"), exist_ok=True)
+        with open(os.path.join(thread["cwd"], "tests", "fixture.txt"), "w") as f:
+            f.write("token=ghp_" + "E2E" * 12 + "\n" + "inofensivo\n" * 40000)
+        return {"summary": "Añadido un fixture", "as_is": PROPOSAL["as_is"], "to_be": PROPOSAL["to_be"], "limitations": "Ninguna"}
     if "Corrige el saludo" in prompt and thread["sandbox"] == "workspace-write":
         os.makedirs(os.path.join(thread["cwd"], "tests"), exist_ok=True)
         with open(os.path.join(thread["cwd"], "fixed.txt"), "w") as f:

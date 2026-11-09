@@ -500,4 +500,20 @@ class ExecutorWorkTest {
         java.io.IOException.class,
         () -> ExecutorWork.reservationShare(Json.parse("{\"windows\":[]}"), 1));
   }
+
+  @Test
+  void thePlatformWorkflowIsTrustedByItsContentNotItsName() {
+    String template = "{\n  \"name\" : \"AgentFarm\"\n}";
+    assertTrue(ExecutorWork.platformWorkflowTrusted(true, false, template, template), "untouched");
+    assertTrue(
+        ExecutorWork.platformWorkflowTrusted(false, true, template + "\n", template),
+        "the template the platform wrote");
+    assertFalse(
+        ExecutorWork.platformWorkflowTrusted(false, true, template + " ", "{}"),
+        "anything else under that name");
+    assertFalse(
+        ExecutorWork.platformWorkflowTrusted(true, true, template, template),
+        "with CI of its own the platform never writes it, so a change is the candidate's");
+    assertFalse(ExecutorWork.platformWorkflowTrusted(false, true, null, template), "a deletion");
+  }
 }

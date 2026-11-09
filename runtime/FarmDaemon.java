@@ -766,6 +766,34 @@ public class FarmDaemon extends CodexRunner {
         .anyMatch(f -> !f.isBlank() && !f.equals(".github/workflows/agentfarm.yml"));
   }
 
+  /**
+   * True when the candidate's platform workflow is the template this run writes, or untouched. A
+   * candidate in a repository with CI of its own never gets to change it.
+   */
+  static boolean platformWorkflowTrusted(JsonNode p, String baseSha, String sha) throws Exception {
+    String path = io.agentfarm.core.Commandments.PLATFORM_WORKFLOW;
+    boolean changed = !gitAt("diff", "--name-only", baseSha, sha, "--", path).isBlank();
+    String content;
+    try {
+      content = gitAt("show", sha + ":" + path);
+    } catch (IOException e) {
+      content = null;
+    }
+    return io.agentfarm.core.ExecutorWork.platformWorkflowTrusted(
+        ownWorkflows(baseSha),
+        changed,
+        content,
+        JSON.writerWithDefaultPrettyPrinter()
+            .writeValueAsString(
+                io.agentfarm.core.ExecutorWork.verificationWorkflow(p, SANDBOX_IMAGE)));
+  }
+
+  static List<String> ciChanges(List<String> changes, boolean templateTrusted) {
+    var all = new ArrayList<>(changes);
+    if (!templateTrusted) all.add(io.agentfarm.core.Commandments.PLATFORM_WORKFLOW);
+    return all;
+  }
+
   /** Checks bound to the evidence: the project's own CI ("*") or the AgentFarm template jobs. */
   static List<String> ciChecks(String sha) throws Exception {
     return io.agentfarm.core.ExecutorWork.ciChecks(ownWorkflows(sha));
@@ -1112,16 +1140,21 @@ public class FarmDaemon extends CodexRunner {
                                     unit + " " + integration)))
                         .text()
                     + reviewSkills.text()));
+    // Both sides of a rename: moving a file out of a directory is a change there too.
     var changed =
-        gitAt("diff", "--name-only", baseSha, sha).lines().filter(f -> !f.isBlank()).toList();
+        io.agentfarm.core.ChangePolicy.paths(
+            io.agentfarm.adapters.GitChanges.changes(task.checkout, baseSha, sha));
     boolean untested =
         io.agentfarm.core.TestPolicy.untestedCode(
             changed, String.valueOf(unit.get("status")), String.valueOf(integration.get("status")));
     var workflowChanges =
-        gitAt("diff", "--name-only", baseSha, sha, "--", ".github/workflows/")
-            .lines()
-            .filter(f -> !f.isBlank() && !f.equals(".github/workflows/agentfarm.yml"))
-            .toList();
+        new ArrayList<>(
+            gitAt("diff", "--name-only", baseSha, sha, "--", ".github/workflows/")
+                .lines()
+                .filter(f -> !f.isBlank() && !f.equals(".github/workflows/agentfarm.yml"))
+                .toList());
+    // The platform's workflow is exempt by its content, never by its name alone.
+    boolean templateTrusted = platformWorkflowTrusted(p, baseSha, sha);
     var protectedFiles =
         io.agentfarm.core.Commandments.protectedChanges(
             changed.stream().filter(f -> f.equals("agentfarm.yaml")).toList(),
@@ -1134,7 +1167,7 @@ public class FarmDaemon extends CodexRunner {
                 review.path("passed").asBoolean(false),
                 untested,
                 Files.isDirectory(task.checkout.resolve(".github/workflows")),
-                ownWorkflows(baseSha) ? workflowChanges : List.of(),
+                ciChanges(ownWorkflows(baseSha) ? workflowChanges : List.of(), templateTrusted),
                 protectedFiles,
                 profileValidation,
                 quality)
@@ -1168,7 +1201,9 @@ public class FarmDaemon extends CodexRunner {
             "review",
             review,
             "workflow_changes",
-            workflowChanges,
+            ciChanges(workflowChanges, templateTrusted),
+            "platform_workflow",
+            templateTrusted ? "platform" : "candidate",
             "profile_validation",
             profileValidation,
             "untested_code",
@@ -1215,18 +1250,26 @@ public class FarmDaemon extends CodexRunner {
       var profile = io.agentfarm.core.ProjectProfile.load(task.checkout.resolve("agentfarm.yaml"));
       if (!profile.hash().equals(p.path("profile_hash").asText()))
         throw new IOException("Project profile changed during execution");
-      var outside =
-          io.agentfarm.core.ExecutorWork.outOfScope(
+      var violations =
+          io.agentfarm.core.ExecutorWork.scopeViolations(
               profile,
-              gitAt("diff", "--name-only", p.path("base_sha").asText(), sha).lines().toList());
-      if (!outside.isEmpty())
-        throw new IOException("Out of approved profile scope: " + outside.getFirst());
+              io.agentfarm.adapters.GitChanges.changes(
+                  task.checkout, p.path("base_sha").asText(), sha),
+              io.agentfarm.adapters.GitChanges.tree(task.checkout, sha));
+      if (!violations.isEmpty())
+        throw new IOException(
+            "Out of approved profile scope: "
+                + io.agentfarm.core.ChangePolicy.describe(violations));
     }
-    // Once pushed a secret is exposed for good, so this check comes before the panel's own.
-    var secrets =
-        io.agentfarm.core.SecretScan.findings("", gitAt("diff", p.path("base_sha").asText(), sha));
-    if (!secrets.isEmpty())
-      throw new IOException("Posible secreto en el candidato: " + String.join(", ", secrets));
+    // Once pushed a secret is exposed for good, so this check comes before the panel's own. It
+    // reads the whole diff: process() keeps only the tail of what a command prints.
+    if (!platformWorkflowTrusted(p, p.path("base_sha").asText(), sha))
+      throw new IOException(
+          "El candidato cambia " + io.agentfarm.core.Commandments.PLATFORM_WORKFLOW);
+    var scan =
+        io.agentfarm.adapters.GitChanges.secretScan(
+            task.checkout, p.path("base_sha").asText(), sha);
+    if (!scan.clean()) throw new IOException(scan.refusal());
     String branch = gitAt("branch", "--show-current");
     guard();
     // A corrected candidate may restart from the base, so its branch is replaced, never merged

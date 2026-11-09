@@ -191,8 +191,25 @@ public class EvidenceVerifier {
   /** Pure decision over GitHub's answers: pending until CI ends, then success or failed. */
   public static Assessment assess(
       JsonNode evidence, JsonNode checks, JsonNode statuses, JsonNode compare) {
-    var files = new ArrayList<String>();
-    compare.path("files").forEach(f -> files.add(f.path("filename").asText()));
+    // A rename names its origin too: moving a file out of scope deletes it there.
+    var named = new ArrayList<ChangePolicy.GitHubFile>();
+    var added = new ArrayList<String>();
+    var secrets = new ArrayList<String>();
+    var unscanned = new ArrayList<String>();
+    compare
+        .path("files")
+        .forEach(f -> {
+          String name = f.path("filename").asText(), status = f.path("status").asText();
+          named.add(
+              new ChangePolicy.GitHubFile(name, status, f.path("previous_filename").asText()));
+          if (status.equals("added")) added.add(name);
+          String patch = f.path("patch").asText();
+          // GitHub leaves out the patch of a binary or very large file: unread is not clean.
+          if (patch.isEmpty() && f.path("changes").asInt() > 0 && !status.equals("removed"))
+            unscanned.add(name);
+          secrets.addAll(SecretScan.findings(name, patch));
+        });
+    var files = new ArrayList<>(ChangePolicy.paths(ChangePolicy.fromGitHub(named)));
     var runs = new ArrayList<Map<String, Object>>();
     checks
         .path("check_runs")
@@ -205,20 +222,11 @@ public class EvidenceVerifier {
                     r.path("status").asText(),
                     "conclusion",
                     r.path("conclusion").asText())));
-    var added = new ArrayList<String>();
-    var secrets = new ArrayList<String>();
-    compare
-        .path("files")
-        .forEach(f -> {
-          if (f.path("status").asText().equals("added")) added.add(f.path("filename").asText());
-          secrets.addAll(
-              SecretScan.findings(f.path("filename").asText(), f.path("patch").asText()));
-        });
     var detail = obj("checks", runs, "files", files, "added", added, "secrets", secrets);
     var required = evidence.path("ci_checks");
     if (!required.isArray() || required.isEmpty())
       return new Assessment("failed", "El informe no vincula ninguna comprobación de CI.", detail);
-    if (checks.path("total_count").asInt() > 100 || files.size() >= 300)
+    if (runs.size() >= 100 || named.size() >= 300)
       return new Assessment("failed", "Demasiados resultados para comprobarlos enteros.", detail);
     if (runs.isEmpty()) return new Assessment("pending", "La CI aún no ha empezado.", detail);
     for (var run : runs)
@@ -237,20 +245,23 @@ public class EvidenceVerifier {
     if (statuses.path("total_count").asInt() > 0
         && !statuses.path("state").asText().equals("success"))
       return new Assessment("failed", "Un estado de commit no es correcto.", detail);
+    // "*" binds the project's own CI: then the platform never writes its template.
+    boolean ownCi = false;
     for (var expected : required) {
+      String name = expected.asText();
+      ownCi |= name.equals("*");
       boolean found =
           runs.stream()
               .anyMatch(r ->
                   "success".equals(r.get("conclusion"))
-                      && (expected.asText().equals("*")
-                          || expected.asText().equals(r.get("name"))));
-      if (!found)
-        return new Assessment("failed", "Falta en CI: " + expected.asText() + ".", detail);
+                      && (name.equals("*") || name.equals(r.get("name"))));
+      if (!found) return new Assessment("failed", "Falta en CI: " + name + ".", detail);
     }
+    boolean templateAllowed = !ownCi;
     var workflows =
         files.stream()
             .filter(f -> f.startsWith(".github/workflows/"))
-            .filter(f -> !f.equals(".github/workflows/agentfarm.yml"))
+            .filter(f -> !(templateAllowed && f.equals(Commandments.PLATFORM_WORKFLOW)))
             .toList();
     if (!workflows.isEmpty())
       return new Assessment(
@@ -258,6 +269,13 @@ public class EvidenceVerifier {
           "El candidato cambia la propia CI: " + String.join(", ", workflows) + ".",
           detail);
     if (!secrets.isEmpty()) return new Assessment("failed", "Posible secreto en el diff.", detail);
+    if (!unscanned.isEmpty())
+      return new Assessment(
+          "failed",
+          "GitHub no muestra el diff de "
+              + String.join(", ", unscanned)
+              + ": no se puede acreditar que no añada secretos.",
+          detail);
     if (TestPolicy.untestedCode(
         files,
         evidence.path("unit").path("status").asText(),

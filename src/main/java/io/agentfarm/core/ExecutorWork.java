@@ -245,6 +245,32 @@ public final class ExecutorWork {
     }
   }
 
+  /**
+   * Everything that breaks the approved profile, from both sides of every change: what moves out of
+   * scope or into it, symlinks and submodules, protected paths, non-portable names and names that
+   * collide when case is ignored. The template workflow is the platform's own.
+   */
+  public static List<Map<String, Object>> scopeViolations(
+      ProjectProfile profile, List<ChangePolicy.Change> changes, Collection<String> tree) {
+    return ChangePolicy.violations(
+        profile.allowedPaths(),
+        changes,
+        tree,
+        ChangePolicy.PROFILE_PROTECTED,
+        Set.of(Commandments.PLATFORM_WORKFLOW));
+  }
+
+  /**
+   * Whether a candidate's {@link Commandments#PLATFORM_WORKFLOW} is the platform's, by content and
+   * not by name: unchanged, or exactly the template the platform writes in a repository without CI
+   * of its own. Anything else, a deletion included, is a change to the project's CI.
+   */
+  public static boolean platformWorkflowTrusted(
+      boolean ownCi, boolean changed, String candidate, String template) {
+    if (!changed) return true;
+    return !ownCi && candidate != null && candidate.strip().equals(template.strip());
+  }
+
   /** Files outside the approved profile. The template workflow is the platform's own. */
   public static List<String> outOfScope(ProjectProfile profile, List<String> changed) {
     return changed.stream()
