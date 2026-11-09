@@ -274,6 +274,29 @@ try {
     await clickButton("Reanudar cola");
     await until(() => visible("Pausar agentes"));
 
+    // The session ends while the owner types: the panel says so, keeps the draft and restores it after signing in.
+    await go("/overview");
+    await until(() => visible("Bandeja"));
+    await js(`(()=>{const f=document.querySelector('[data-key="new-task"]');f.querySelector('input:not([type])')?.value;
+      const [repo,title]=f.querySelectorAll('input');title.value='Borrador que no se pierde';f.querySelector('textarea').value='Texto escrito antes de caducar';return true})()`);
+    await send("Network.clearBrowserCookies");
+    check(await until(() => visible("Tu sesión ha caducado")), "an expired session is said in words");
+    check(await js(`!!document.querySelector('.session a[href="/login"]')`), "an expired session offers to sign in again");
+    check(exceptions.length === 0, `an expired session throws nothing ${exceptions.slice(0, 2).join(" | ")}`);
+    // Signing in again lands on the panel, which restores the draft on its first view.
+    await login("admin", password);
+    check(await until(() => visible("Hemos recuperado lo que estabas escribiendo")), "the draft is recovered after signing in");
+    check(
+      await js(`document.querySelector('[data-key="new-task"] textarea').value==='Texto escrito antes de caducar'`),
+      "the recovered draft is the text that was typed",
+    );
+    check(await js(`sessionStorage.getItem('agentfarm.drafts')===null`), "a recovered draft is not kept twice");
+    check(await clickButton("Salir"), "the owner can sign out from the panel");
+    check(await until(() => js(`location.pathname==='/login'`)), "signing out returns to the sign-in page");
+    await login("admin", password);
+    await go("/governance");
+    await until(() => visible("Conectar GitHub"));
+
     // Moving between views keeps the app alive instead of reloading it.
     await js(`window.__sameApp=true;document.querySelector('.nav a[href="/agents"]').click()`);
     check(await until(() => visible("Nodos dirigentes")), "the navigation opens a view");

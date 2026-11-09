@@ -1,4 +1,4 @@
-import { E, api, button, fieldKeys, liveSnapshots, restoreFields, saveFields, stageAge, signalAge, textual, waiting, when } from "./lib.js";
+import { DRAFTS_KEY, E, api, button, fieldKeys, keepDrafts, takeDrafts, liveSnapshots, restoreFields, saveFields, stageAge, signalAge, textual, waiting, when } from "./lib.js";
 import { FarmMap } from "./map.js";
 import { withForms } from "./forms.js";
 import { withGovernance } from "./governance.js";
@@ -103,7 +103,8 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
     this.demoChip.hidden = true;
     this.adopt = button("Adoptar repositorio", () => this.adoptDrawer.showModal());
     this.newTask = button("Nueva tarea", () => this.newDrawer.showModal(), true);
-    top.append(this.search, this.demoChip, E("span", "", "spacer"), this.adopt, this.newTask);
+    this.signOut = button("Salir", () => this.logout(), "quiet");
+    top.append(this.search, this.demoChip, E("span", "", "spacer"), this.adopt, this.newTask, this.signOut);
 
     const sheet = E("main", "", "sheet");
     const problem = E("p", "", "error"),
@@ -200,7 +201,8 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
       await this.poll();
       return true;
     } catch (e) {
-      this.error.textContent = e.message;
+      if (e.kind === "session") this.sessionEnded(e.message);
+      else this.error.textContent = e.message;
       return false;
     }
   }
@@ -252,12 +254,42 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
       }
       if (this.pollFailed) this.error.textContent = "";
       this.pollFailed = false;
+      if (!this.draftsChecked) {
+        this.draftsChecked = true;
+        if (takeDrafts([document])) this.error.textContent = "Hemos recuperado lo que estabas escribiendo antes de que caducara la sesión.";
+      }
     } catch (e) {
       this.pollFailed = true;
-      this.error.textContent = e.message + " Los datos visibles pueden estar desactualizados.";
+      if (e.kind === "session") this.sessionEnded(e.message);
+      else
+        this.error.textContent =
+          e.message + (e.kind === "network" || e.kind === "server" ? " Los datos visibles pueden estar desactualizados." : "");
     } finally {
       this.loading = false;
     }
+  }
+  // The session is gone: stop asking, keep what was being typed, and offer to sign in again.
+  // Nothing that changes state is retried after signing in; the owner decides again.
+  sessionEnded(message) {
+    clearInterval(this.timer);
+    keepDrafts([document]);
+    if (this.sessionNotice?.isConnected) return;
+    const back = E("a", "Entrar de nuevo");
+    back.href = "/login";
+    this.sessionNotice = E("p", message + " Lo que estabas escribiendo se guarda en este navegador durante una hora. ", "error session");
+    this.sessionNotice.setAttribute("role", "alert");
+    this.sessionNotice.append(back);
+    this.content.prepend(this.sessionNotice);
+  }
+  async logout() {
+    try {
+      sessionStorage.removeItem(DRAFTS_KEY);
+    } catch {}
+    try {
+      const token = await api("/csrf");
+      await fetch("/logout", { method: "POST", credentials: "same-origin", headers: { [token.header]: token.token } });
+    } catch {}
+    location.href = "/login?logout";
   }
   chrome(allWork, o) {
     const me = this.data.me;

@@ -161,6 +161,15 @@ export const rememberRepo = (value) => {
     localStorage.setItem(lastRepoKey, value);
   } catch {}
 };
+// An error from the panel's API, with what kind it is so the view can say the right thing:
+// "session" (sign in again), "forbidden", "network", or "invalid" (the server said why).
+export class ApiError extends Error {
+  constructor(message, kind, status) {
+    super(message);
+    this.kind = kind;
+    this.status = status;
+  }
+}
 export async function api(path, body) {
   const options = {
     credentials: "same-origin",
@@ -176,18 +185,82 @@ export async function api(path, body) {
     };
     options.body = JSON.stringify(body);
   }
-  const r = await fetch("/api" + path, options);
-  if (!r.ok) {
-    let error;
-    try {
-      error = (await r.json()).error;
-    } catch {}
-    throw Error(
-      error || "No se pudo completar la operación (HTTP " + r.status + ").",
+  let r;
+  try {
+    r = await fetch("/api" + path, options);
+  } catch (e) {
+    throw new ApiError(
+      e?.name === "TimeoutError" ? "El panel no responde. Comprueba que sigue en marcha y vuelve a intentarlo." : "No hay conexión con el panel. Comprueba la red y vuelve a intentarlo.",
+      "network",
+      0,
     );
   }
-  return r.json();
+  // A sign-in page instead of data means the session ended, whatever the status says.
+  if (r.redirected && new URL(r.url).pathname.startsWith("/login"))
+    throw new ApiError("Tu sesión ha caducado. Entra de nuevo para seguir.", "session", 401);
+  let data;
+  try {
+    data = await r.json();
+  } catch {
+    data = undefined;
+  }
+  if (r.status === 401) throw new ApiError(data?.error || "Tu sesión ha caducado. Entra de nuevo para seguir.", "session", 401);
+  if (r.status === 403) throw new ApiError(data?.error || "Tu cuenta no tiene permiso para esta acción.", data?.reason === "csrf" ? "invalid" : "forbidden", 403);
+  if (!r.ok) throw new ApiError(data?.error || "No se pudo completar la operación (HTTP " + r.status + ").", r.status >= 500 ? "server" : "invalid", r.status);
+  if (data === undefined) throw new ApiError("El panel respondió algo que no es un dato. Recarga la página.", "server", r.status);
+  return data;
 }
+// Drafts kept across signing in again: text the owner typed, never passwords or codes, for one hour.
+export const DRAFTS_KEY = "agentfarm.drafts";
+export const DRAFT_HOURS = 1;
+const draftable = (input) =>
+  (input.tagName === "TEXTAREA" || (input.tagName === "INPUT" && textual(input))) &&
+  input.type !== "password" &&
+  input.autocomplete !== "one-time-code" &&
+  input.value.trim();
+export const keepDrafts = (roots) => {
+  const forms = {};
+  for (const root of roots)
+    for (const d of root.querySelectorAll("[data-key]")) {
+      const fields = {};
+      for (const [input, key] of fieldKeys(d)) if (draftable(input)) fields[key] = input.value;
+      if (Object.keys(fields).length) forms[d.dataset.key] = fields;
+    }
+  try {
+    if (Object.keys(forms).length) sessionStorage.setItem(DRAFTS_KEY, JSON.stringify({ at: Date.now(), forms }));
+  } catch {}
+};
+// Fills the forms the drafts belong to, once; older than DRAFT_HOURS they are dropped.
+export const takeDrafts = (roots) => {
+  let saved;
+  try {
+    saved = JSON.parse(sessionStorage.getItem(DRAFTS_KEY) || "null");
+  } catch {}
+  if (!saved || Date.now() - saved.at > DRAFT_HOURS * 3600000) {
+    try {
+      sessionStorage.removeItem(DRAFTS_KEY);
+    } catch {}
+    return false;
+  }
+  let restored = false;
+  for (const root of roots)
+    for (const d of root.querySelectorAll("[data-key]")) {
+      const fields = saved.forms[d.dataset.key];
+      if (!fields) continue;
+      for (const [input, key] of fieldKeys(d))
+        if (key in fields && !input.value) {
+          input.value = fields[key];
+          restored = true;
+        }
+      if (d.tagName === "DETAILS") d.open = true;
+      delete saved.forms[d.dataset.key];
+    }
+  try {
+    if (Object.keys(saved.forms).length) sessionStorage.setItem(DRAFTS_KEY, JSON.stringify(saved));
+    else sessionStorage.removeItem(DRAFTS_KEY);
+  } catch {}
+  return restored;
+};
 export function link(label, url) {
   const e = E("a", label);
   e.href = url;
