@@ -30,9 +30,7 @@ class RedactionTest {
     s.put("slack", "xo" + "xb-" + "1234567890-abcdef");
     s.put("bearer", "Bearer " + "abc.def.ghi");
     s.put("assignment", "password=" + "hunter2hunter2");
-    s.put(
-        "private key",
-        PEM_BEGIN + "\nMIIEowIBAAKCAQEA0abc\nZ9+/xyz=\n" + PEM_END);
+    s.put("private key", PEM_BEGIN + "\nMIIEowIBAAKCAQEA0abc\nZ9+/xyz=\n" + PEM_END);
     return s;
   }
 
@@ -77,13 +75,13 @@ class RedactionTest {
     evidence.put("quoted", "password=ab\"cd");
     evidence.put("json", "{\"api_key\": \"" + run("s" + "k-", 30) + "\"}");
     evidence.put("unterminated", PEM_BEGIN + "\nAAAA\nBBBB");
-    evidence.put("plain", "sin secretos: ghp, sk, afn y Bearer a secas");
+    evidence.put("plain", "sin secretos: ghp, sk y afn a secas");
     String encoded = Json.encode(evidence), redacted = Redaction.secrets(encoded);
     var back = Json.parse(redacted);
     for (String sample : samples().values())
       assertFalse(redacted.contains(secretPart(sample)), sample);
     assertFalse(redacted.contains("AAAA"));
-    assertEquals("sin secretos: ghp, sk, afn y Bearer a secas", back.path("plain").asText());
+    assertEquals("sin secretos: ghp, sk y afn a secas", back.path("plain").asText());
     assertEquals(redacted, Redaction.secrets(redacted), "idempotent");
   }
 

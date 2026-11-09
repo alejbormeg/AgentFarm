@@ -49,6 +49,21 @@ importante es que un fallo no dé más privilegios que ese usuario, y un proxy p
 código nuestro. **Aún no está implementado ni probado**: `TestSandbox` cambia el dueño de los archivos con el
 UID del equipo, y sin root ese UID es otro dentro del contenedor.
 
+## Secretos en lo que mandan agentes y ejecutores
+
+`core/Redaction` es la única política de redacción. La usan el ejecutor (errores, salidas de
+pruebas, logs), la telemetría y el panel. Oculta tokens de GitHub (`ghp_`, `gho_`, `ghu_`, `ghs_`,
+`ghr_`, `github_pat_`), credenciales de nodo (`afn_`), claves de OpenAI y Anthropic (`sk-`,
+`sk-proj-`, `sk-ant-`), AWS, Google, Slack, cabeceras `Bearer`, claves privadas PEM de varias
+líneas y asignaciones de campos secretos (`password=`, `api_key:`…).
+
+El panel la aplica **al guardar** la propuesta, la evidencia y el error que informa un agente, y
+otra vez **al devolverlos**, para cubrir filas anteriores. El listado de tareas solo lleva
+resúmenes; la propuesta y la evidencia completas se piden tarea a tarea (`GET /api/work/{id}`), y
+las ven todas las personas con cuenta en el panel, ya redactadas. Los nodos no las leen. La
+redacción reconoce formatos conocidos: un secreto sin formato reconocible puede pasar, así que no
+sustituye al escaneo del diff antes del push.
+
 ## Estado del panel en disco
 
 La base de datos (con los secretos TOTP), su WAL y SHM, la contraseña inicial, la clave de la

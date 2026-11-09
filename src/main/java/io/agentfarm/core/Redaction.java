@@ -20,7 +20,7 @@ public final class Redaction {
               Pattern.compile(
                   "-----BEGIN[A-Z ]*PRIVATE KEY-----(?:"
                       + SEP
-                      + "[A-Za-z0-9+/=:,-]+)*(?:"
+                      + "(?!-----)[A-Za-z0-9+/=:,.-]+)*(?:"
                       + SEP
                       + "-----END[A-Z ]*PRIVATE KEY-----)?"),
               "[clave privada oculta]"),
