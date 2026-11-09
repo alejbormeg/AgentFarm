@@ -201,8 +201,11 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
       this.openTask = null;
       this.taskBody.replaceChildren();
       // Opening pushed an entry: closing goes back to it, so Back never reopens a closed task.
+      // Only an entry this page pushed: a reload keeps history.state, but not this page's pushes.
+      const pushed = this.pushedTask === id;
+      this.pushedTask = null;
       if (this.closingFromHistory) this.closingFromHistory = false;
-      else if (history.state?.task === id) history.back();
+      else if (pushed && history.state?.task === id) history.back();
       else {
         const url = new URL(location);
         url.searchParams.delete("tarea");
@@ -233,7 +236,10 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
   }
   showTask(id) {
     this.openTask = id;
-    if (new URLSearchParams(location.search).get("tarea") !== id) history.pushState({ task: id }, "", this.taskUrl(id));
+    if (new URLSearchParams(location.search).get("tarea") !== id) {
+      history.pushState({ task: id }, "", this.taskUrl(id));
+      this.pushedTask = id;
+    }
     this.signature = "";
     this.render();
     if (!this.taskDrawer.open) this.taskDrawer.showModal();
