@@ -398,7 +398,12 @@ echo "Integrated from the panel by SHA: $sha"
 # Connecting GitHub from the panel: the manifest flow, then a real credential check with what it stored.
 location() { curl -s -o /dev/null -w '%{redirect_url}' -u "admin:$password" "$1"; }
 state_of() { python3 -c 'import json,sys;print(json.loads(sys.stdin.read())["action"].split("state=")[1])'; }
-first=$(owner /github-app/start '{}' | state_of)
+started=$(owner /github-app/start '{}')
+python3 -c 'import json,sys;r=json.loads(sys.argv[1]);m=json.loads(r["manifest"]);assert "hook_attributes" not in m and r["webhook"] is False,m' "$started" \
+  || fail "a local panel declared a webhook GitHub cannot reach"
+curl -fs -u "admin:$password" "$panel/api/github-app" | python3 -c 'import json,sys;assert json.load(sys.stdin)["webhook"] is False' \
+  || fail "Gobierno does not know the App will have no webhook"
+first=$(state_of <<<"$started")
 # 403, or 401 if the browser checks gave this account a second factor.
 [[ "$(curl -s -o /dev/null -w '%{http_code}' -u "oscar:$observer_password" "$panel/github-app/created?code=abc&state=$first")" == 40[13] ]] \
   || fail "an observer reached the GitHub App flow"

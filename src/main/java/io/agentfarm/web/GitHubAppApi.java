@@ -4,6 +4,9 @@ import io.agentfarm.core.GitHubAppSetup;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.security.Principal;
+import java.util.LinkedHashMap;
+import java.util.Optional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,19 +20,25 @@ import org.springframework.web.util.HtmlUtils;
 public class GitHubAppApi {
   private final GitHubAppSetup setup;
 
-  public GitHubAppApi(GitHubAppSetup setup) {
+  /** The configured panel address, only if GitHub can reach it: the App's webhook goes there. */
+  private final Optional<String> publicUrl;
+
+  public GitHubAppApi(GitHubAppSetup setup, @Value("${agentfarm.panel-url:}") String panelUrl) {
     this.setup = setup;
+    this.publicUrl = GitHubAppSetup.publicUrl(panelUrl);
   }
 
   @GetMapping("/api/github-app")
   public Object status() throws Exception {
-    return setup.status();
+    var status = new LinkedHashMap<>(setup.status());
+    status.put("webhook", publicUrl.isPresent());
+    return status;
   }
 
   @PostMapping("/api/github-app/start")
   public Object start(HttpServletRequest request) {
     String url = request.getRequestURL().toString();
-    return setup.start(url.substring(0, url.indexOf(request.getRequestURI())));
+    return setup.start(url.substring(0, url.indexOf(request.getRequestURI())), publicUrl);
   }
 
   @GetMapping("/github-app/created")

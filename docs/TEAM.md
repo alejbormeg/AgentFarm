@@ -72,6 +72,9 @@ hora limitado a ese repositorio. Solo se ha probado con dobles.
 
 Pasos:
 
+Lo más sencillo es **Gobierno → Conectar GitHub**, que crea e instala la App sin copiar la clave. Funciona
+también con el panel en localhost: entonces la App se crea sin webhook. A mano:
+
 1. En [GitHub Apps](https://github.com/settings/apps/new) crea la App, desactiva **Webhook → Active** y marca los permisos anteriores.
 2. Apunta el **App ID** y pulsa **Generate a private key**.
 3. Con **Install App**, instálala solo en los repositorios que quieras. El número final de esa URL es el **installation ID**.

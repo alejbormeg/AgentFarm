@@ -65,7 +65,7 @@ export const withGovernance = (Base) =>
           this.connection(
             "GitHub",
             configured,
-            github?.mode === "app" ? "GitHub App" + (github.slug ? " · " + github.slug : "") : configured ? "Con un token personal." : "Sin él no se verifica ni se integra.",
+            github?.mode === "app" ? "GitHub App" + (github.slug ? " · " + github.slug : "") : (configured ? "Con un token personal." : "Sin él no se verifica ni se integra.") + (github && !github.webhook ? " La App se creará sin webhook: el panel no tiene dirección pública. Si lo despliegas, configura AGENTFARM_PANEL_URL con https." : ""),
             button("Conectar GitHub", () => this.startGitHubApp()),
           ),
         );

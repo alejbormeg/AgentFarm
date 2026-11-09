@@ -316,7 +316,8 @@
   "GET /api/github-app" : {
     "body" : {
       "mode" : "string",
-      "slug" : "string"
+      "slug" : "string",
+      "webhook" : "boolean"
     },
     "status" : 200
   },

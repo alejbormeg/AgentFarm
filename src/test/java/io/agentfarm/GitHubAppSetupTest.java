@@ -100,8 +100,10 @@ class GitHubAppSetupTest {
         "http://localhost:8080/github-app/created", manifest.path("redirect_url").asText());
     assertEquals("http://localhost:8080/github-app/installed", manifest.path("setup_url").asText());
     assertFalse(manifest.path("public").asBoolean(true));
-    assertFalse(
-        manifest.path("hook_attributes").path("active").asBoolean(true), "no webhook needed");
+    assertTrue(
+        manifest.path("hook_attributes").isMissingNode(),
+        "GitHub rejects a hook URL it cannot reach, and a local panel needs no webhook");
+    assertEquals(false, started.get("webhook"));
     assertEquals("write", manifest.path("default_permissions").path("contents").asText());
     assertEquals("read", manifest.path("default_permissions").path("checks").asText());
     assertEquals(
@@ -195,5 +197,62 @@ class GitHubAppSetupTest {
     String already = "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n";
     assertEquals(already, GitHubAppSetup.pkcs8(already));
     assertThrows(IllegalArgumentException.class, () -> GitHubAppSetup.pkcs8("no es una clave"));
+  }
+
+  Map<String, Object> startAt(String panelUrl, String origin) {
+    return setup.start(origin, GitHubAppSetup.publicUrl(panelUrl));
+  }
+
+  @Test
+  void aPanelWithAPublicHttpsUrlKeepsTheInactiveWebhook() {
+    var started = startAt("https://farm.example.com/", "http://10.0.0.5:8080");
+    JsonNode manifest = Json.parse(started.get("manifest").toString());
+    assertEquals(
+        "https://farm.example.com/github-app/unused",
+        manifest.path("hook_attributes").path("url").asText());
+    assertFalse(manifest.path("hook_attributes").path("active").asBoolean(true));
+    assertEquals(
+        "http://10.0.0.5:8080/github-app/created",
+        manifest.path("redirect_url").asText(),
+        "the browser comes back where it started");
+    assertEquals(true, started.get("webhook"));
+  }
+
+  @Test
+  void aPanelGitHubCannotReachIsCreatedWithoutWebhook() {
+    for (String url :
+        List.of(
+            "",
+            "http://localhost:8080",
+            "https://localhost",
+            "https://127.0.0.1",
+            "https://192.168.1.10",
+            "https://10.1.2.3:8443",
+            "https://172.20.0.4",
+            "https://169.254.1.1",
+            "https://[::1]",
+            "https://[fd12::1]",
+            "https://[fe80::1]",
+            "https://agentfarm",
+            "https://farm.local",
+            "https://farm.lan",
+            "https://farm.internal",
+            "https://farm.home.arpa",
+            "http://farm.example.com",
+            "https://user@farm.example.com",
+            "https://farm.example.com/path",
+            "not a url")) {
+      assertTrue(GitHubAppSetup.publicUrl(url).isEmpty(), url);
+      JsonNode manifest =
+          Json.parse(startAt(url, "http://localhost:8080").get("manifest").toString());
+      assertTrue(manifest.path("hook_attributes").isMissingNode(), url);
+    }
+    assertEquals(
+        Optional.of("https://farm.example.com"),
+        GitHubAppSetup.publicUrl("https://farm.example.com/"));
+    assertEquals(
+        Optional.of("https://farm.example.com:8443"),
+        GitHubAppSetup.publicUrl("https://Farm.Example.com:8443"));
+    assertEquals(Optional.of("https://8.8.8.8"), GitHubAppSetup.publicUrl("https://8.8.8.8"));
   }
 }

@@ -45,6 +45,10 @@ el servicio de usuario no configura arranque de Windows ni linger.
 El ejecutor usa un token revocable de nodo y conserva CSRF. Su API no permite
 aprobar, crear credenciales, cambiar políticas ni reclamar órdenes de integración.
 Configura la credencial en **Gobierno → Conectar GitHub**, o con `./agentfarm github-token` o `github-app` ([qué credencial usar](TEAM.md)).
+GitHub solo admite el webhook de una App en una dirección pública. Con el panel en localhost o en
+una red privada, **Conectar GitHub** crea la App sin webhook, y el panel no lo necesita. Si lo
+despliegas, pon su dirección https en `AGENTFARM_PANEL_URL` (también en `.env` para Compose): la App
+nueva declara entonces un webhook inactivo en esa dirección, que puedes activar desde GitHub.
 La integración se procesa en el panel con `AGENTFARM_GITHUB_TOKEN_FILE`,
 un archivo privado de credenciales GitHub leído por Spring, accesible solo al
 operador del panel. Nunca lo montes en un directorio del trabajador.
