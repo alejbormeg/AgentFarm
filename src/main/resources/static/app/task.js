@@ -655,6 +655,13 @@ export const withTask = (Base) =>
             this.action("/work/" + w.id + "/actions/retry", {}),
           ),
         );
+      // Undoing integrated work is a new task through every gate; both sides say so.
+      if (w.reverted_by) actions.append(E("p", "Su reversión es la tarea " + w.reverted_by + ".", "note-line"));
+      else if (this.data.me?.role === "owner" && w.state === "integrated")
+        actions.append(
+          button("Pedir reversión", () => this.action("/work/" + w.id + "/actions/revert", {})),
+        );
+      if (w.reverts) actions.append(E("p", "Revierte la tarea " + w.reverts + ".", "note-line"));
       if (canAct && ["queued", "approved"].includes(w.state))
         actions.append(
           confirmButton(

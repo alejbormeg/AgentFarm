@@ -389,8 +389,71 @@ class WorkflowTest {
     String m = command(claim());
     assertTrue(cancelRefusal().contains("espera a su resultado"), "integration in flight");
     service.report(m, n("state", "integrated", "merged", true), "agent");
-    assertTrue(cancelRefusal().contains("pide una tarea nueva que lo revierta"));
+    assertTrue(cancelRefusal().contains("pide su reversión"));
     assertEquals("integrated", service.get("request-123").get("state"), "history stays true");
+  }
+
+  @Test
+  void undoingIntegratedWorkIsItsOwnTracedTask() {
+    String sha = inReview();
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> service.action("request-123", "revert", n(), "owner"),
+        "nothing to revert before integration");
+    service.action("request-123", "merge", n("sha", sha), "owner");
+    service.report(command(claim()), n("state", "integrated", "merged", true), "agent");
+
+    var revert = service.action("request-123", "revert", n(), "owner");
+    String revertId = revert.get("id").toString();
+    assertEquals("revert-request-123", revertId);
+    assertEquals("queued", revert.get("state"), "a revert starts with research, like any task");
+    assertTrue(revert.get("request").toString().contains("PR #12"));
+    assertTrue(revert.get("request").toString().contains(sha));
+    assertEquals("request-123", service.get(revertId).get("reverts"));
+    assertEquals(revertId, service.get("request-123").get("reverted_by"));
+    assertEquals(
+        "integrated", service.get("request-123").get("state"), "the merge stays on record");
+    assertEquals(
+        revertId,
+        service.action("request-123", "revert", n(), "owner").get("id"),
+        "asking again returns the same revert");
+    assertEquals(2, service.items().size());
+    assertTrue(
+        store
+            .tx(c -> Store.rows(c, "SELECT subject FROM audit WHERE action='work.revert'"))
+            .toString()
+            .contains("request-123 -> " + revertId));
+  }
+
+  @Test
+  void everyActionIsCheckedAgainstOneTableOfStates() {
+    var all =
+        List.of(
+            "queued",
+            "proposed",
+            "approved",
+            "review",
+            "blocked",
+            "integrating",
+            "integrated",
+            "cancelled");
+    for (var e : WorkStates.ACTIONS.entrySet())
+      for (String state : all) {
+        boolean allowed = e.getValue().from().contains(state);
+        if (allowed) assertDoesNotThrow(() -> WorkStates.require(e.getKey(), state));
+        else
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> WorkStates.require(e.getKey(), state),
+              e.getKey() + " from " + state);
+      }
+    assertThrows(IllegalArgumentException.class, () -> WorkStates.require("delete", "queued"));
+    for (String terminal : List.of("integrated", "cancelled"))
+      assertTrue(
+          WorkStates.ACTIONS.entrySet().stream()
+              .filter(e -> e.getValue().from().contains(terminal))
+              .allMatch(e -> e.getKey().equals("revert")),
+          terminal + " only admits a revert");
   }
 
   @Test

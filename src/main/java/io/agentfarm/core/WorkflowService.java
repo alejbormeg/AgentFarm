@@ -65,6 +65,9 @@ public class WorkflowService {
               + " NULL,state TEXT NOT NULL,title TEXT NOT NULL,created INTEGER NOT NULL,sent"
               + " INTEGER NOT NULL DEFAULT 0,attempts INTEGER NOT NULL DEFAULT 0)");
       ensureColumn(c, "work_commands", "claimed_at", "INTEGER");
+      // A revert and the integrated task it undoes name each other.
+      ensureColumn(c, "work_items", "reverts", "TEXT");
+      ensureColumn(c, "work_items", "reverted_by", "TEXT");
       statement(
           c,
           "CREATE TABLE IF NOT EXISTS autonomy_policies(recipe TEXT PRIMARY KEY,level TEXT NOT"
@@ -249,18 +252,38 @@ public class WorkflowService {
       var w = one(c, "SELECT * FROM work_items WHERE id=?", id);
       if (w == null) throw new IllegalArgumentException("Unknown work item");
       String state = w.get("state").toString();
+      var rule = WorkStates.require(action, state);
+      if (action.equals("revert")) {
+        // Undoing integrated work is its own task, through every gate; both sides name each
+        // other, and asking again returns the same one.
+        String revertId = "revert-" + id;
+        if (revertId.length() > 80) revertId = "revert-" + sha256(id).substring(0, 40);
+        String where =
+            (w.get("pr") == null ? "" : "la PR #" + w.get("pr") + ", ")
+                + (w.get("sha") == null ? "" : "commit " + w.get("sha") + ", ");
+        var request =
+            Json.obj(
+                "request_id",
+                revertId,
+                "repository",
+                w.get("repo"),
+                "title",
+                truncate("Revertir: " + w.get("title"), 180),
+                "request",
+                "Revierte el cambio integrado por la tarea "
+                    + id
+                    + " ("
+                    + where
+                    + "«"
+                    + w.get("title")
+                    + "»). Propón cómo deshacerlo sin romper lo que vino después y con sus pruebas.");
+        var created = create(c, parse(encode(request)), actor);
+        exec(c, "UPDATE work_items SET reverts=? WHERE id=?", id, revertId);
+        exec(c, "UPDATE work_items SET reverted_by=? WHERE id=?", revertId, id);
+        audit(c, actor, "work.revert", id + " -> " + revertId);
+        return created;
+      }
       if (action.equals("cancel")) {
-        // Integrated is final: GitHub keeps the merge, so undoing it is a new, traceable task.
-        if (state.equals("integrated"))
-          throw new IllegalArgumentException(
-              "Una tarea integrada no se cancela: su cambio ya está en la rama principal. Para"
-                  + " deshacerlo, pide una tarea nueva que lo revierta.");
-        if (state.equals("cancelled"))
-          throw new IllegalArgumentException("La tarea ya está cancelada.");
-        if (state.equals("integrating"))
-          throw new IllegalArgumentException(
-              "La integración ya está en marcha y no se puede cortar a medias: espera a su"
-                  + " resultado.");
         Long seen = null;
         try {
           seen = number(n, "version");
@@ -286,24 +309,20 @@ public class WorkflowService {
             != null) throw new IllegalArgumentException("Operation already pending");
         switch (action) {
           case "implement" -> {
-            if (!state.equals("proposed") || number(n, "version") != num(w, "version"))
+            if (rule.version() && number(n, "version") != num(w, "version"))
               throw new IllegalArgumentException("Approve the current proposal version");
             EvidenceService.capture(c, w);
             command(c, id, "implement", obj("version", num(w, "version")));
             exec(c, "UPDATE work_items SET state='approved',error=NULL WHERE id=?", id);
           }
           case "merge" -> {
-            if (!state.equals("review")
-                || w.get("pr") == null
-                || !text(n, "sha").equals(w.get("sha")))
+            if (w.get("pr") == null || !text(n, "sha").equals(w.get("sha")))
               throw new IllegalArgumentException("Approve the current PR commit");
             EvidenceService.requireReady(c, w);
             command(c, id, "merge", obj("sha", text(n, "sha")));
             exec(c, "UPDATE work_items SET state='integrating',error=NULL WHERE id=?", id);
           }
           case "correct" -> {
-            if (!Set.of("proposed", "review", "blocked").contains(state))
-              throw new IllegalArgumentException("No result to correct");
             String feedback = text(n, "feedback");
             if (n.path("retire").isArray() && !n.path("retire").isEmpty()) {
               ApprovedCriteria.retire(
@@ -315,8 +334,6 @@ public class WorkflowService {
             proposeLesson(c, w, feedback, actor);
           }
           case "retry" -> {
-            if (!state.equals("blocked"))
-              throw new IllegalArgumentException("Only blocked operations can retry");
             var previous =
                 one(
                     c,
