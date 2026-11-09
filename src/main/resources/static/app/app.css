@@ -747,7 +747,8 @@ section > h2 {
 .row-text {
   min-width: 0;
 }
-button.title {
+button.title,
+a.title {
   display: block;
   min-height: 0;
   padding: 0;
@@ -760,7 +761,13 @@ button.title {
   text-align: left;
   white-space: normal;
 }
-button.title:hover {
+a.card,
+a.title {
+  color: var(--ink);
+  text-decoration: none;
+}
+button.title:hover,
+a.title:hover {
   color: var(--link);
   background: none;
 }
@@ -950,7 +957,8 @@ button.title:hover {
   font-weight: 500;
   color: var(--muted);
 }
-button.card {
+button.card,
+a.card {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -965,11 +973,13 @@ button.card {
   white-space: normal;
   font-weight: 400;
 }
-button.card:hover {
+button.card:hover,
+a.card:hover {
   border-color: var(--line-strong);
   background: var(--raised);
 }
-button.card.stop {
+button.card.stop,
+a.card.stop {
   box-shadow: inset 0 0 0 1px var(--bad);
 }
 .card strong {

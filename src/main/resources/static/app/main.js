@@ -19,7 +19,16 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
     if (this.content) return;
     this.farm = new FarmMap();
     this.shell();
+    // Back and forward restore the view, its repository filter and the open task.
     addEventListener("popstate", () => {
+      this.fromUrl();
+      this.markNav();
+      // A task already in the list opens now, without waiting for a poll that may be in flight.
+      const id = this.pendingTask;
+      if (id && this.data?.work?.some((w) => w.id === id)) {
+        this.pendingTask = null;
+        this.showTask(id);
+      }
       this.signature = "";
       this.poll();
     });
@@ -30,14 +39,49 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
     return location.pathname.split("/").filter(Boolean).at(-1) || "overview";
   }
   go(path) {
-    history.pushState({}, "", path);
+    history.pushState({}, "", this.withFilter(path));
     this.signature = "";
     this.markNav();
     this.poll();
   }
+  // The repository filter travels in the address, so a link or the back button keeps it.
+  withFilter(path) {
+    const url = new URL(path, location.origin);
+    if (this.selectedRepo) url.searchParams.set("repositorio", this.selectedRepo);
+    else url.searchParams.delete("repositorio");
+    return url.pathname + url.search;
+  }
+  taskUrl(id) {
+    const url = new URL(this.withFilter(location.pathname), location.origin);
+    url.searchParams.set("tarea", id);
+    return url.pathname + url.search;
+  }
+  // A task opens from a real link: a plain click opens the drawer, a modified one a new tab.
+  taskLink(w, cls) {
+    const a = E("a", "", cls);
+    a.href = this.taskUrl(w.id);
+    a.dataset.task = w.id;
+    a.onclick = (e) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+      e.preventDefault();
+      this.showTask(w.id);
+    };
+    return a;
+  }
+  fromUrl() {
+    const params = new URLSearchParams(location.search);
+    this.selectedRepo = params.get("repositorio") || "";
+    const task = params.get("tarea");
+    if (task && task !== this.openTask) this.pendingTask = task;
+    if (!task && this.openTask && this.taskDrawer?.open) {
+      this.closingFromHistory = true;
+      this.taskDrawer.close();
+    }
+  }
   markNav() {
     const route = this.route();
     for (const [id, a] of Object.entries(this.navLinks)) {
+      a.href = this.withFilter("/" + id);
       a.classList.toggle("on", id === route);
       if (id === route) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
@@ -55,6 +99,8 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
     this.repositorySelect.setAttribute("aria-label", "Filtrar repositorio");
     this.repositorySelect.onchange = () => {
       this.selectedRepo = this.repositorySelect.value;
+      history.replaceState(history.state, "", this.withFilter(location.pathname + location.search));
+      this.markNav();
       this.signature = "";
       this.render();
     };
@@ -154,14 +200,21 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
       const id = this.openTask;
       this.openTask = null;
       this.taskBody.replaceChildren();
-      const url = new URL(location);
-      url.searchParams.delete("tarea");
-      history.replaceState(history.state, "", url);
+      // Opening pushed an entry: closing goes back to it, so Back never reopens a closed task.
+      // Only an entry this page pushed: a reload keeps history.state, but not this page's pushes.
+      const pushed = this.pushedTask === id;
+      this.pushedTask = null;
+      if (this.closingFromHistory) this.closingFromHistory = false;
+      else if (pushed && history.state?.task === id) history.back();
+      else {
+        const url = new URL(location);
+        url.searchParams.delete("tarea");
+        history.replaceState(history.state, "", url);
+      }
       // The card that opened the drawer may have been re-rendered meanwhile.
       [...this.live.querySelectorAll("[data-task]")].find((c) => c.dataset.task === id)?.focus();
     });
-    const linked = new URLSearchParams(location.search).get("tarea");
-    if (linked) this.pendingTask = linked;
+    this.fromUrl();
     this.classList.add("app");
     this.append(side, main, this.newDrawer, this.adoptDrawer, this.secondFactorDrawer, this.taskDrawer);
     this.markNav();
@@ -183,9 +236,10 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
   }
   showTask(id) {
     this.openTask = id;
-    const url = new URL(location);
-    url.searchParams.set("tarea", id);
-    history.replaceState(history.state, "", url);
+    if (new URLSearchParams(location.search).get("tarea") !== id) {
+      history.pushState({ task: id }, "", this.taskUrl(id));
+      this.pushedTask = id;
+    }
     this.signature = "";
     this.render();
     if (!this.taskDrawer.open) this.taskDrawer.showModal();

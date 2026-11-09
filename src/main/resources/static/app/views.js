@@ -42,8 +42,8 @@ export const withViews = (Base) =>
       icon.src = "/art/caja.png";
       icon.alt = "";
       const text = E("div", "", "row-text");
-      const title = button(w.title, () => this.showTask(w.id), "title");
-      title.dataset.task = w.id;
+      const title = this.taskLink(w, "title");
+      title.textContent = w.title;
       const meta = E("p", "", "meta");
       const parts = [w.repo];
       if (w.pr) parts.push("PR #" + w.pr);
@@ -266,8 +266,7 @@ export const withViews = (Base) =>
     taskCard(w) {
       const live = running(this.data.runtime, w.id);
       const d = this.data.dossiers?.find((x) => x.item === w.id);
-      const card = button("", () => this.showTask(w.id), "card" + (w.state === "blocked" ? " stop" : ""));
-      card.dataset.task = w.id;
+      const card = this.taskLink(w, "card" + (w.state === "blocked" ? " stop" : ""));
       card.append(E("strong", w.title), E("small", w.repo + (w.pr ? " · PR #" + w.pr : w.issue ? " · #" + w.issue : "")));
       if (w.sha) card.append(E("code", w.sha.slice(0, 7)));
       const foot = E("span", "", "card-foot");
