@@ -204,7 +204,7 @@ try {
     // A card opens its task in the drawer, by deep link too, and closing returns the address.
     await go("/overview");
     const opened = await until(() =>
-      js(`(()=>{const c=${all}.find(e=>e.tagName==='BUTTON'&&e.dataset.task);if(!c)return false;c.click();return true})()`),
+      js(`(()=>{const c=${all}.find(e=>e.tagName==='A'&&e.dataset.task&&e.getAttribute('href').includes('tarea='));if(!c)return false;c.click();return true})()`),
     );
     check(opened, "the inbox lists a task card");
     check(await until(() => js(`location.search.includes('tarea=')`)), "opening a card sets ?tarea=");
@@ -213,6 +213,28 @@ try {
     await go(link);
     check(await until(() => js(`${all}.some(e=>e.tagName==='DIALOG'&&e.open)`)), "the deep link reopens the task");
     check(await until(() => visible("Mandamientos")), "the task shows its commandments");
+    // Back closes the task, forward reopens it, and the active section follows the address.
+    await js(`history.back()`);
+    check(await until(() => js(`!${all}.some(e=>e.tagName==='DIALOG'&&e.open)&&!location.search.includes('tarea=')`)), "back closes the task");
+    await js(`history.forward()`);
+    check(await until(() => js(`${all}.some(e=>e.tagName==='DIALOG'&&e.open)`)), "forward reopens the task");
+    await js(`document.querySelector('dialog[open] .drawer-head button').click()`);
+    await go("/overview");
+    await until(() => visible("Bandeja"));
+    const repoOption = await js(`[...document.querySelector('select[aria-label="Filtrar repositorio"]').options].map(o=>o.value).find(Boolean)||''`);
+    if (repoOption) {
+      await js(`(()=>{const s=document.querySelector('select[aria-label="Filtrar repositorio"]');s.value=${JSON.stringify(repoOption)};s.dispatchEvent(new Event('change'));return true})()`);
+      check(await js(`new URLSearchParams(location.search).get('repositorio')===${JSON.stringify(repoOption)}`), "the repository filter is in the address");
+      await js(`document.querySelector('.nav a[href^="/tasks"]').click()`);
+      check(await until(() => js(`location.pathname==='/tasks'&&new URLSearchParams(location.search).get('repositorio')===${JSON.stringify(repoOption)}`)), "moving to another section keeps the filter");
+      await js(`history.back()`);
+      check(
+        await until(() => js(`location.pathname==='/overview'&&document.querySelector('.nav a[aria-current=page]')?.getAttribute('href').startsWith('/overview')`)),
+        "back returns to the section and marks it active",
+      );
+      check(await js(`document.querySelector('select[aria-label="Filtrar repositorio"]').value===${JSON.stringify(repoOption)}`), "back keeps the filter");
+      await js(`(()=>{const s=document.querySelector('select[aria-label="Filtrar repositorio"]');s.value='';s.dispatchEvent(new Event('change'));return true})()`);
+    } else check(false, "the e2e has a repository to filter by");
     // The panel reads CI every 30 seconds.
     check(await until(() => visible("La CI del commit pasó entera."), 45000), "the task reports the CI the panel read");
 
