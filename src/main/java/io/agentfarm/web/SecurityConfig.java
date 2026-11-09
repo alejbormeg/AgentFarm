@@ -153,6 +153,8 @@ public class SecurityConfig {
             e.defaultAuthenticationEntryPointFor(
                     SecurityConfig::sessionExpired, SecurityConfig::api)
                 .defaultAccessDeniedHandlerFor(SecurityConfig::denied, SecurityConfig::api))
+        // After signing in again, go back to a page, never to a JSON call the panel made meanwhile.
+        .requestCache(r -> r.requestCache(pagesOnly()))
         .formLogin(f -> f.loginPage("/login"))
         .httpBasic(Customizer.withDefaults())
         // Everything is served from here. Inline styles remain for the sign-in page and Mermaid's
@@ -165,6 +167,12 @@ public class SecurityConfig {
                         + " data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; base-uri 'none';"
                         + " frame-ancestors 'none'; form-action 'self' https://github.com")));
     return http.build();
+  }
+
+  static org.springframework.security.web.savedrequest.RequestCache pagesOnly() {
+    var cache = new org.springframework.security.web.savedrequest.HttpSessionRequestCache();
+    cache.setRequestMatcher(request -> !api(request) && "GET".equals(request.getMethod()));
+    return cache;
   }
 
   static boolean api(jakarta.servlet.http.HttpServletRequest request) {

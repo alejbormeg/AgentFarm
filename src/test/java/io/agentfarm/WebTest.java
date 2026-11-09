@@ -133,6 +133,50 @@ class WebTest {
         401, wrongPassword.statusCode(), "a script with a wrong password is still told so");
   }
 
+  /** The panel's polling hit 401 meanwhile: signing in again opens a page, not that JSON call. */
+  @Test
+  void signingInAgainNeverLandsOnAnApiCall() throws Exception {
+    var browser =
+        HttpClient.newBuilder()
+            .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
+            .build();
+    assertEquals(
+        401,
+        browser
+            .send(
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/runtime"))
+                    .build(),
+                HttpResponse.BodyHandlers.ofString())
+            .statusCode());
+    String page =
+        browser
+            .send(
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/login")).build(),
+                HttpResponse.BodyHandlers.ofString())
+            .body();
+    var token =
+        java.util.regex.Pattern.compile("name=\"_csrf\"[^>]*value=\"([^\"]+)\"").matcher(page);
+    if (!token.find())
+      token =
+          java.util.regex.Pattern.compile("value=\"([^\"]+)\"[^>]*name=\"_csrf\"").matcher(page);
+    assertTrue(token.find(0), "the sign-in form carries a CSRF token");
+    var signedIn =
+        browser.send(
+            HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/login"))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(
+                    HttpRequest.BodyPublishers.ofString(
+                        "username=rita&password="
+                            + TEAM_PASSWORD
+                            + "&_csrf="
+                            + java.net.URLEncoder.encode(token.group(1), StandardCharsets.UTF_8)))
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertEquals(302, signedIn.statusCode());
+    String to = signedIn.headers().firstValue("Location").orElse("");
+    assertFalse(to.contains("/api/"), "landed on " + to);
+  }
+
   @Test
   void reviewersDecideProposalsButOnlyOwnersIntegrateOrConfigure() throws Exception {
     assertEquals(
