@@ -245,20 +245,23 @@ public class EvidenceVerifier {
     if (statuses.path("total_count").asInt() > 0
         && !statuses.path("state").asText().equals("success"))
       return new Assessment("failed", "Un estado de commit no es correcto.", detail);
+    // "*" binds the project's own CI: then the platform never writes its template.
+    boolean ownCi = false;
     for (var expected : required) {
+      String name = expected.asText();
+      ownCi |= name.equals("*");
       boolean found =
           runs.stream()
               .anyMatch(r ->
                   "success".equals(r.get("conclusion"))
-                      && (expected.asText().equals("*")
-                          || expected.asText().equals(r.get("name"))));
-      if (!found)
-        return new Assessment("failed", "Falta en CI: " + expected.asText() + ".", detail);
+                      && (name.equals("*") || name.equals(r.get("name"))));
+      if (!found) return new Assessment("failed", "Falta en CI: " + name + ".", detail);
     }
+    boolean templateAllowed = !ownCi;
     var workflows =
         files.stream()
             .filter(f -> f.startsWith(".github/workflows/"))
-            .filter(f -> !f.equals(".github/workflows/agentfarm.yml"))
+            .filter(f -> !(templateAllowed && f.equals(Commandments.PLATFORM_WORKFLOW)))
             .toList();
     if (!workflows.isEmpty())
       return new Assessment(

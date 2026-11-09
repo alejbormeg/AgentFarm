@@ -439,14 +439,31 @@ class EvidenceVerifierTest {
             compared(".github/workflows/ci.yml", "src/App.java"));
     assertEquals("failed", result.state());
     assertTrue(result.reason().contains("ci.yml"));
+    var templateOnly =
+        n(
+            "ci_checks",
+            List.of("AgentFarm unit"),
+            "unit",
+            obj("status", "passed"),
+            "integration",
+            obj("status", "passed"));
     assertEquals(
         "success",
         EvidenceVerifier.assess(
-                reportWith("passed"),
+                templateOnly,
                 runs(),
                 github("/status"),
                 compared(".github/workflows/agentfarm.yml", "src/App.java"))
-            .state());
+            .state(),
+        "without CI of its own, the platform writes its template");
+    var ownCi =
+        EvidenceVerifier.assess(
+            reportWith("passed"),
+            runs(),
+            github("/status"),
+            compared(".github/workflows/agentfarm.yml", "src/App.java"));
+    assertEquals("failed", ownCi.state(), "with CI of its own, the template is not the platform's");
+    assertTrue(ownCi.reason().contains("agentfarm.yml"), ownCi.reason());
   }
 
   @Test

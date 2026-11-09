@@ -766,6 +766,34 @@ public class FarmDaemon extends CodexRunner {
         .anyMatch(f -> !f.isBlank() && !f.equals(".github/workflows/agentfarm.yml"));
   }
 
+  /**
+   * True when the candidate's platform workflow is the template this run writes, or untouched. A
+   * candidate in a repository with CI of its own never gets to change it.
+   */
+  static boolean platformWorkflowTrusted(JsonNode p, String baseSha, String sha) throws Exception {
+    String path = io.agentfarm.core.Commandments.PLATFORM_WORKFLOW;
+    boolean changed = !gitAt("diff", "--name-only", baseSha, sha, "--", path).isBlank();
+    String content;
+    try {
+      content = gitAt("show", sha + ":" + path);
+    } catch (IOException e) {
+      content = null;
+    }
+    return io.agentfarm.core.ExecutorWork.platformWorkflowTrusted(
+        ownWorkflows(baseSha),
+        changed,
+        content,
+        JSON.writerWithDefaultPrettyPrinter()
+            .writeValueAsString(
+                io.agentfarm.core.ExecutorWork.verificationWorkflow(p, SANDBOX_IMAGE)));
+  }
+
+  static List<String> ciChanges(List<String> changes, boolean templateTrusted) {
+    var all = new ArrayList<>(changes);
+    if (!templateTrusted) all.add(io.agentfarm.core.Commandments.PLATFORM_WORKFLOW);
+    return all;
+  }
+
   /** Checks bound to the evidence: the project's own CI ("*") or the AgentFarm template jobs. */
   static List<String> ciChecks(String sha) throws Exception {
     return io.agentfarm.core.ExecutorWork.ciChecks(ownWorkflows(sha));
@@ -1120,10 +1148,13 @@ public class FarmDaemon extends CodexRunner {
         io.agentfarm.core.TestPolicy.untestedCode(
             changed, String.valueOf(unit.get("status")), String.valueOf(integration.get("status")));
     var workflowChanges =
-        gitAt("diff", "--name-only", baseSha, sha, "--", ".github/workflows/")
-            .lines()
-            .filter(f -> !f.isBlank() && !f.equals(".github/workflows/agentfarm.yml"))
-            .toList();
+        new ArrayList<>(
+            gitAt("diff", "--name-only", baseSha, sha, "--", ".github/workflows/")
+                .lines()
+                .filter(f -> !f.isBlank() && !f.equals(".github/workflows/agentfarm.yml"))
+                .toList());
+    // The platform's workflow is exempt by its content, never by its name alone.
+    boolean templateTrusted = platformWorkflowTrusted(p, baseSha, sha);
     var protectedFiles =
         io.agentfarm.core.Commandments.protectedChanges(
             changed.stream().filter(f -> f.equals("agentfarm.yaml")).toList(),
@@ -1136,7 +1167,7 @@ public class FarmDaemon extends CodexRunner {
                 review.path("passed").asBoolean(false),
                 untested,
                 Files.isDirectory(task.checkout.resolve(".github/workflows")),
-                ownWorkflows(baseSha) ? workflowChanges : List.of(),
+                ciChanges(ownWorkflows(baseSha) ? workflowChanges : List.of(), templateTrusted),
                 protectedFiles,
                 profileValidation,
                 quality)
@@ -1170,7 +1201,9 @@ public class FarmDaemon extends CodexRunner {
             "review",
             review,
             "workflow_changes",
-            workflowChanges,
+            ciChanges(workflowChanges, templateTrusted),
+            "platform_workflow",
+            templateTrusted ? "platform" : "candidate",
             "profile_validation",
             profileValidation,
             "untested_code",
@@ -1230,6 +1263,9 @@ public class FarmDaemon extends CodexRunner {
     }
     // Once pushed a secret is exposed for good, so this check comes before the panel's own. It
     // reads the whole diff: process() keeps only the tail of what a command prints.
+    if (!platformWorkflowTrusted(p, p.path("base_sha").asText(), sha))
+      throw new IOException(
+          "El candidato cambia " + io.agentfarm.core.Commandments.PLATFORM_WORKFLOW);
     var scan =
         io.agentfarm.core.ScopeService.secretScan(task.checkout, p.path("base_sha").asText(), sha);
     if (!scan.clean()) throw new IOException(scan.refusal());
