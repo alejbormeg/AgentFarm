@@ -34,6 +34,29 @@ public final class ChangePolicy {
 
   private ChangePolicy() {}
 
+  /**
+   * A literal relative POSIX path that every disk can hold: no globs, no `..`, no reserved names.
+   */
+  public static void portablePath(String value, boolean directory) {
+    if (value == null || value.isEmpty())
+      throw new IllegalArgumentException("Nonempty literal path required");
+    String path = directory && value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
+    if (path.isEmpty()
+        || path.chars().anyMatch(c -> c < 32 || c == 127)
+        || path.matches(".*[\\\\:*?\\[\\]<>|\"].*"))
+      throw new IllegalArgumentException("Literal relative POSIX path required");
+    for (String part : path.split("/", -1)) {
+      String stem = part.split("\\.", -1)[0].toLowerCase(Locale.ROOT);
+      if (part.isEmpty()
+          || part.equals(".")
+          || part.equals("..")
+          || part.endsWith(".")
+          || part.endsWith(" ")
+          || stem.matches("con|prn|aux|nul|com[1-9]|lpt[1-9]"))
+        throw new IllegalArgumentException("Unsupported portable path");
+    }
+  }
+
   /** Parses `git diff --raw -z --no-renames`: ":old new oldsha newsha status\0path\0". */
   public static List<Change> parseRaw(byte[] raw) {
     String text = utf8(raw);
@@ -109,7 +132,7 @@ public final class ChangePolicy {
       String path = c.path();
       if (path.isBlank() || exempt.contains(path)) continue;
       try {
-        ScopeService.scopedPath(path, false);
+        portablePath(path, false);
       } catch (IllegalArgumentException e) {
         violations.add(obj("path", path, "reason", "unsupported_path"));
       }

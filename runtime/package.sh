@@ -19,7 +19,8 @@ jar --update --file "$out/executor.jar" -C "$stage" build-commit.txt
 jar --update --file "$out/executor.jar" -C target/classes prompts
 jar --update --file "$out/executor.jar" -C target/classes skills
 # The class list above is by hand: a missing one would only fail on a real executor.
-deps=$(jdeps --multi-release 21 -verbose:class -cp "$out/lib/*" "$out/executor.jar")
+# -filter:none: by default jdeps hides what a class needs from its own package, the core's gaps included.
+deps=$(jdeps --multi-release 21 -filter:none -verbose:class -cp "$out/lib/*" "$out/executor.jar")
 missing=$(grep -E 'io\.agentfarm\.[^ ]+ +not found' <<<"$deps" || true)
 if [[ -n "$missing" ]]; then
   echo "Executor jar is missing classes:" >&2
