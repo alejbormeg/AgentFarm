@@ -88,7 +88,7 @@ public class WorkflowService {
   public List<Map<String, Object>> items() {
     return db.tx(c -> {
       var items = rows(c, "SELECT * FROM work_items ORDER BY created DESC");
-      for (var item : items) withRecipe(c, item);
+      for (var item : items) withRecipe(c, redacted(item));
       return items;
     });
   }
@@ -130,8 +130,15 @@ public class WorkflowService {
     return db.tx(c -> {
       var w = one(c, "SELECT * FROM work_items WHERE id=?", id);
       if (w == null) throw new IllegalArgumentException("Unknown work item");
-      return withRecipe(c, w);
+      return withRecipe(c, redacted(w));
     });
+  }
+
+  /** What agents wrote is redacted on the way in; rows from before that, on the way out too. */
+  static Map<String, Object> redacted(Map<String, Object> item) {
+    for (String field : List.of("proposal", "evidence", "error"))
+      if (item.get(field) instanceof String text) item.put(field, Redaction.secrets(text));
+    return item;
   }
 
   private static Map<String, Object> withRecipe(java.sql.Connection c, Map<String, Object> item)
@@ -252,7 +259,7 @@ public class WorkflowService {
                 + " id=?",
             sha,
             branch,
-            encode(proposal),
+            Redaction.secrets(encode(proposal)),
             id);
         command(c, id, "review_existing", Map.of());
         audit(c, actor, "work.recover-candidate", id + " @ " + sha);
@@ -269,7 +276,7 @@ public class WorkflowService {
           text(n, "request"),
           "approved",
           1,
-          encode(proposal),
+          Redaction.secrets(encode(proposal)),
           number(n, "issue"),
           branch,
           sha,
@@ -653,10 +660,18 @@ public class WorkflowService {
             .set("doubtful_criteria", ProposalShape.doubtfulCriteria(p));
         ((com.fasterxml.jackson.databind.node.ObjectNode) p)
             .set("previous_changes", ProposalShape.changes(previous, p));
-        exec(c, "UPDATE work_items SET proposal=?,version=version+1 WHERE id=?", encode(p), id);
+        exec(
+            c,
+            "UPDATE work_items SET proposal=?,version=version+1 WHERE id=?",
+            Redaction.secrets(encode(p)),
+            id);
       }
       if (n.has("evidence"))
-        exec(c, "UPDATE work_items SET evidence=? WHERE id=?", encode(n.get("evidence")), id);
+        exec(
+            c,
+            "UPDATE work_items SET evidence=? WHERE id=?",
+            Redaction.secrets(encode(n.get("evidence"))),
+            id);
       if (phase.equals("checkpoint")) return Map.of("state", "recorded");
       if (phase.equals("integrated") && !n.path("merged").asBoolean())
         throw new IllegalArgumentException("GitHub merge confirmation required");

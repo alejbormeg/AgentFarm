@@ -74,6 +74,51 @@ class WorkflowTest {
   }
 
   @Test
+  void credentialsAnAgentReportsAreNeitherStoredNorListed() throws Exception {
+    String token = "github" + "_pat_" + "Zz9_".repeat(15),
+        node = "af" + "n_" + "q".repeat(43),
+        key = "s" + "k-ant-" + "Yy8-".repeat(10);
+    create();
+    String first = command(claim());
+    service.report(
+        first,
+        n(
+            "state",
+            "proposed",
+            "proposal",
+            obj(
+                "base_sha",
+                "b".repeat(40),
+                "summary",
+                "Uses " + token,
+                "acceptance",
+                "Tests",
+                "as_is",
+                "flowchart LR\nA-->B",
+                "to_be",
+                "flowchart LR\nA-->C",
+                "unit_test",
+                "./unit",
+                "integration_test",
+                "./integration"),
+            "evidence",
+            obj("checks", List.of(obj("output", "Authorization: Bearer " + node + " " + key)))),
+        "agent");
+    String raw =
+        store.tx(c ->
+            Store.one(c, "SELECT proposal || evidence AS t FROM work_items").get("t").toString());
+    String listed = Json.encode(service.items());
+    for (String secret : List.of(token, node, key)) {
+      assertFalse(raw.contains(secret), "stored");
+      assertFalse(listed.contains(secret), "listed");
+    }
+    assertTrue(raw.contains("[credencial oculta]"));
+    // A row written before redaction existed is still redacted on the way out.
+    store.tx(c -> Store.exec(c, "UPDATE work_items SET error=?", "fallo con " + token));
+    assertFalse(Json.encode(service.items()).contains(token));
+  }
+
+  @Test
   void idempotentRequestAndConflict() {
     create();
     create();
