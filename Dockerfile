@@ -13,7 +13,7 @@ FROM eclipse-temurin:21-jre-jammy@sha256:1eac8b8fee11ca7d6725a48bc5d41992ed15615
 RUN apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 agentfarm && useradd --uid 10001 --gid agentfarm --no-create-home agentfarm \
-    && mkdir /data && chown 10001:10001 /data
+    && install -d -m 700 -o 10001 -g 10001 /data
 WORKDIR /app
 COPY LICENSE NOTICE /app/
 COPY --from=build /build/target/agentfarm.jar /app/agentfarm.jar
