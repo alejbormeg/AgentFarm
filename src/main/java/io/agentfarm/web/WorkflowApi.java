@@ -85,9 +85,16 @@ public class WorkflowApi {
     return work.importCandidate(n, p.getName());
   }
 
+  /** Summaries only; {@code GET /api/work/{id}} has the proposal, evidence and request. */
   @GetMapping
-  public Object list() {
-    return work.items();
+  public Object list(
+      @RequestParam(defaultValue = "0") int limit, @RequestParam(defaultValue = "0") int offset) {
+    return work.summaries(limit, offset);
+  }
+
+  @GetMapping("/{id}")
+  public Object detail(@PathVariable String id) {
+    return work.get(id);
   }
 
   @PostMapping

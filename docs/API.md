@@ -24,6 +24,8 @@ contraseñas en argumentos compartidos, logs o Git.
 | POST /api/tasks/{project}/{id}/progress | worker y progress 0..100. |
 | POST /api/tasks/{project}/{id}/cancel | Cancelar ready o solicitar para assigned/running. |
 | POST /api/governance/paused/{boolean} | Pausa/reanudación global. |
+| GET /api/work?limit=&offset= | Resúmenes de tareas, de la más reciente a la más antigua, sin propuesta, evidencia ni petición. `limit` hasta 1000; 0 o ausente devuelve todas. |
+| GET /api/work/{id} | Una tarea entera: propuesta, evidencia y petición incluidas. |
 | GET /api/audit | Últimas 200 acciones de gobierno. |
 | GET /api/budget/{account} | Estado del presupuesto. |
 | POST /api/budget/{operation} | configure, open-window, observe, reserve, settle. |

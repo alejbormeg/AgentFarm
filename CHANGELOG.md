@@ -27,6 +27,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 - Si la sesión caduca, el panel lo dice, deja de consultar y ofrece entrar de nuevo, y recupera lo que estabas escribiendo (solo texto, nunca contraseñas ni códigos, durante una hora). La API responde en JSON con el motivo (sesión caducada, sin permiso o formulario caducado), y el panel distingue esos casos de una caída de red. Hay un botón «Salir».
 - Las tareas se abren desde enlaces de verdad, que se pueden abrir en otra pestaña o compartir con quien tenga acceso. El filtro de repositorio viaja en la dirección (`?repositorio=`), y atrás y adelante restauran la sección activa, el filtro y la tarea abierta.
 - Revertir algo ya integrado es una operación propia: «Pedir reversión» crea una tarea nueva, enlazada en los dos sentidos y auditada, que pasa por investigación, aprobación, pruebas e integración como cualquier otra. Todas las acciones sobre una tarea se comprueban contra una sola tabla de estados (`WorkStates`).
+- El listado de tareas (`GET /api/work`) lleva solo resúmenes, admite `limit` y `offset`, y la propuesta, la evidencia y la petición se piden con `GET /api/work/{id}` al abrir la tarea. Con 1.000 tareas el listado pesa una fracción de lo que pesaba. Una pestaña oculta consulta cada 30 s en vez de cada 2.
 - Si la CI de un repositorio no arranca o se queda en cola, el panel lo dice a los 10 minutos, con la causa probable y dónde mirar. Sigue sin integrarse nada sin ella.
 
 ## Sin publicar — lo que encontró el piloto
