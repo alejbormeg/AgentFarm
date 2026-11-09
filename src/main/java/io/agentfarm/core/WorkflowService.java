@@ -250,13 +250,34 @@ public class WorkflowService {
       if (w == null) throw new IllegalArgumentException("Unknown work item");
       String state = w.get("state").toString();
       if (action.equals("cancel")) {
+        // Integrated is final: GitHub keeps the merge, so undoing it is a new, traceable task.
+        if (state.equals("integrated"))
+          throw new IllegalArgumentException(
+              "Una tarea integrada no se cancela: su cambio ya está en la rama principal. Para"
+                  + " deshacerlo, pide una tarea nueva que lo revierta.");
+        if (state.equals("cancelled"))
+          throw new IllegalArgumentException("La tarea ya está cancelada.");
+        if (state.equals("integrating"))
+          throw new IllegalArgumentException(
+              "La integración ya está en marcha y no se puede cortar a medias: espera a su"
+                  + " resultado.");
+        Long seen = null;
+        try {
+          seen = number(n, "version");
+        } catch (IllegalArgumentException absent) {
+          // Older clients send no version: the state rules above still hold.
+        }
+        if (seen != null && seen != num(w, "version"))
+          throw new IllegalArgumentException(
+              "La tarea ha cambiado desde que la abriste: recarga antes de cancelarla.");
         exec(
             c,
             "UPDATE work_commands SET state='cancelled',updated=? WHERE item=? AND state IN"
                 + " ('queued','claimed')",
             clock.instant().getEpochSecond(),
             id);
-        exec(c, "UPDATE work_items SET state='cancelled' WHERE id=?", id);
+        exec(c, "UPDATE work_items SET state='cancelled' WHERE id=? AND state=?", id, state);
+        audit(c, actor, "work.cancel", id + " desde " + state);
       } else {
         if (one(
                 c,
