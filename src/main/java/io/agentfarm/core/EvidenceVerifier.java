@@ -43,13 +43,33 @@ public class EvidenceVerifier {
 
   public record Assessment(String state, String reason, Map<String, Object> detail) {}
 
+  /** Time one cycle may spend on GitHub; what is left waits for the next one. */
+  public static final long CYCLE_MS = 20_000;
+
+  private int next;
+
   @Scheduled(fixedDelay = 30000)
   public void tick() {
+    tick(CYCLE_MS);
+  }
+
+  /**
+   * Checks the tasks in review until {@code budgetMs} is spent. Each cycle starts where the last
+   * one stopped, so a slow GitHub can delay a task but never starve it.
+   */
+  public synchronized void tick(long budgetMs) {
     if (!configured.getAsBoolean()) return;
-    for (var item :
-        db.tx(c -> rows(c, "SELECT * FROM work_items WHERE state='review' AND sha IS NOT NULL"))) {
-      verify(item.get("id").toString());
-      reconcile(item.get("id").toString());
+    var items =
+        db.tx(c ->
+            rows(
+                c,
+                "SELECT id FROM work_items WHERE state='review' AND sha IS NOT NULL ORDER BY id"));
+    var budget = new ScheduledWork.Budget(clock, budgetMs);
+    for (int done = 0; done < items.size() && !budget.spent(); done++) {
+      next = next % items.size();
+      String id = items.get(next++).get("id").toString();
+      verify(id);
+      reconcile(id);
     }
   }
 

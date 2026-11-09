@@ -75,6 +75,8 @@ public class NotificationService {
         + title;
   }
 
+  public static final long CYCLE_MS = 30_000;
+
   @Scheduled(fixedDelay = 15000)
   public int deliver() {
     if (url.isBlank()) return 0;
@@ -83,7 +85,10 @@ public class NotificationService {
             rows(
                 c, "SELECT * FROM notifications WHERE sent=0 AND attempts<5 ORDER BY id LIMIT 20"));
     int sent = 0;
+    // A webhook that hangs can't hold the cycle: what is left goes on the next one.
+    var budget = new ScheduledWork.Budget(java.time.Clock.systemUTC(), CYCLE_MS);
     for (var n : pending) {
+      if (budget.spent()) break;
       String message = text(n.get("state").toString(), n.get("title").toString());
       String link = panel + "/tasks";
       int status;

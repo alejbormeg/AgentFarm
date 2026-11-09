@@ -14,6 +14,7 @@ public class HealthApi {
   private final Store store;
   private final TelemetryService telemetry;
   private final boolean demo;
+  private ScheduledWork scheduled = new ScheduledWork(java.time.Clock.systemUTC());
 
   public HealthApi(
       Store store,
@@ -22,6 +23,12 @@ public class HealthApi {
     this.store = store;
     this.telemetry = telemetry;
     this.demo = demo;
+  }
+
+  /** The scheduler's measurements, shown to owners; empty until Spring hands them over. */
+  @org.springframework.beans.factory.annotation.Autowired
+  void scheduled(ScheduledWork scheduled) {
+    this.scheduled = scheduled;
   }
 
   /** Who is signed in and with which role, so the panel can hide actions it cannot perform. */
@@ -70,6 +77,7 @@ public class HealthApi {
             "executors_fresh", fresh,
             "waiting_for_owner", counts.get("waiting"),
             "queued_commands", counts.get("queued"),
-            "paused", Long.valueOf(1).equals(((Number) counts.get("paused")).longValue())));
+            "paused", Long.valueOf(1).equals(((Number) counts.get("paused")).longValue()),
+            "scheduler", scheduled.report()));
   }
 }

@@ -44,3 +44,17 @@ El fichero de contraseña debe tener permiso 600 y nunca estar en Git.
 `GET /api/health` es público y solo devuelve `{"status":"UP"}` (o 503). Con la
 sesión del propietario añade ejecutores frescos, tareas que esperan tu decisión,
 comandos en cola y pausa. El healthcheck de Docker lo usa.
+
+También añade `scheduler`: una fila por tarea programada (integración, verificación de
+evidencias, notificaciones, disparadores y resumen semanal) con su último retraso, duración,
+fallos y estado:
+
+- `late`: arrancó más de 30 s después de lo previsto, o su última pasada (o la actual) dura más
+  de 60 s.
+- `failing`: su última pasada falló; `last_error` va sin secretos.
+- `ok`: ninguno de los anteriores.
+
+Cada tarea corre en su propio hilo, así que un GitHub lento o un webhook colgado solo retrasa a
+su tarea. La verificación de evidencias dedica como mucho 20 s por pasada y la siguiente
+retoma donde se quedó; las notificaciones, 30 s. Las escrituras en SQLite siguen pasando de una
+en una.
