@@ -53,6 +53,11 @@ public class NodeTokenFilter extends OncePerRequestFilter {
         response.sendError(403);
         return;
       }
+      if (((Number) identity.get("enabled")).intValue() != 1
+          && !NodeCredentials.allowedWhileDisabled(method, path)) {
+        response.sendError(403, "Nodo deshabilitado");
+        return;
+      }
       request.setAttribute("agentfarm.node", identity.get("node"));
       request.setAttribute("agentfarm.account", identity.get("account"));
       request.setAttribute("agentfarm.api-account", identity.get("api_account"));

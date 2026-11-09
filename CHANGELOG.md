@@ -16,6 +16,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 - El escáner de secretos lee el diff entero antes del push, binarios incluidos. Antes solo veía los últimos 150.000 caracteres, y un token al principio de un diff grande pasaba. Lo que no se puede leer bloquea, nunca cuenta como limpio.
 - `.github/workflows/agentfarm.yml` solo es de la plataforma si es exactamente la plantilla que escribe; con CI propia en el repositorio, cambiarlo es cambiar la CI.
 - **Conectar GitHub** funciona con el panel en localhost: GitHub rechazaba la App porque el manifiesto declaraba un webhook en una dirección que no puede alcanzar. Ahora solo lo declara si `AGENTFARM_PANEL_URL` es una dirección https pública, que Compose pasa por fin al contenedor.
+- Deshabilitar un nodo lo para también en el servidor: aunque su token siga valiendo, no recibe órdenes, tokens de GitHub, admisión ni reservas. Puede seguir enviando su señal y cerrar lo que ya tenía. Revocar el token sigue cortándolo todo.
 - Si la CI de un repositorio no arranca o se queda en cola, el panel lo dice a los 10 minutos, con la causa probable y dónde mirar. Sigue sin integrarse nada sin ella.
 
 ## Sin publicar — lo que encontró el piloto

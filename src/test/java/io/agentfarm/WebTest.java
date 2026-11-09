@@ -546,6 +546,80 @@ class WebTest {
             .statusCode());
   }
 
+  @org.springframework.beans.factory.annotation.Autowired ControlService control;
+
+  @Test
+  void disabledNodeKeepsItsTokenButTakesNoNewWorkOrCapabilities() throws Exception {
+    store.tx(c -> {
+      Store.exec(c, "INSERT OR IGNORE INTO farm_nodes(id,role) VALUES('off-node','napoleon')");
+      Store.exec(c, "INSERT OR IGNORE INTO budget_accounts VALUES('off-sub','subscription','{}')");
+      return null;
+    });
+    var issued = Json.MAPPER.valueToTree(nodeCredentials.issue("off-node", "off-sub", "test"));
+    String bearer = "Bearer " + issued.path("token").asText();
+    HttpClient node =
+        HttpClient.newBuilder()
+            .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
+            .build();
+    var csrf =
+        Json.parse(
+            node.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/csrf"))
+                        .header("Authorization", bearer)
+                        .build(),
+                    HttpResponse.BodyHandlers.ofString())
+                .body());
+    java.util.function.BiFunction<String, String, Integer> post =
+        (path, body) -> {
+          try {
+            return node.send(
+                    HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+                        .header("Authorization", bearer)
+                        .header("Content-Type", "application/json")
+                        .header(csrf.path("header").asText(), csrf.path("token").asText())
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .build(),
+                    HttpResponse.BodyHandlers.ofString())
+                .statusCode();
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        };
+    String claim = "{\"agent\":\"off-node\"}",
+        token = "/api/work/agent/commands/none/github-token",
+        reserve = "{\"account\":\"off-sub\",\"run_id\":\"off-r1\",\"amounts\":{}}";
+    assertEquals(200, post.apply("/api/work/agent/claim", claim));
+    assertNotEquals(403, post.apply(token, claim));
+
+    control.enable("node", "off-node", false, "test");
+    assertEquals(403, post.apply("/api/work/agent/claim", claim), "claim");
+    assertEquals(403, post.apply(token, claim), "github token");
+    assertEquals(403, post.apply("/api/budget/reserve", reserve), "reserve");
+    assertEquals(
+        403,
+        post.apply(
+            "/api/providers/admission",
+            "{\"provider\":\"codex\",\"account\":\"off-sub\",\"profile\":\"balanced\"}"),
+        "admission");
+    // Still visible and able to wind down what it holds.
+    assertEquals(200, post.apply("/api/heartbeat/node/off-node", "{\"state\":\"idle\"}"));
+    assertNotEquals(403, post.apply("/api/work/agent/commands/none", claim));
+    assertEquals(
+        200,
+        node.send(
+                HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/runtime"))
+                    .header("Authorization", bearer)
+                    .build(),
+                HttpResponse.BodyHandlers.ofString())
+            .statusCode());
+
+    control.enable("node", "off-node", true, "test");
+    assertEquals(200, post.apply("/api/work/agent/claim", claim));
+    nodeCredentials.revoke(issued.path("id").asText(), "test");
+    assertEquals(401, post.apply("/api/heartbeat/node/off-node", "{\"state\":\"idle\"}"));
+    assertEquals(401, post.apply("/api/work/agent/commands/none", claim));
+  }
+
   @Test
   void meteredAccountOnlyReservesAndSettles() throws Exception {
     store.tx(c -> {
