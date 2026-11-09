@@ -330,3 +330,43 @@ export const signalAge = (epoch) => (epoch ? "Última señal " + ago(Date.now() 
 export const renewal = (epoch) =>
   new Date(epoch * 1000).toLocaleString("es-ES", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 export const NODE_FRESH_SECONDS = 12;
+
+// ---- Form state across a re-render: each field by a stable name, never by position. ----
+const TEXT_TYPES = new Set(["text", "search", "url", "tel", "password", "email"]);
+// Only these support a text selection; setSelectionRange throws on number, checkbox and others.
+export const textual = (input) =>
+  input?.tagName === "TEXTAREA" || (input?.tagName === "INPUT" && TEXT_TYPES.has((input.type || "text").toLowerCase()));
+// Field → key inside its form: name, id, aria-label or its label's text; position only as a last resort.
+export const fieldKeys = (root) => {
+  const keys = new Map(),
+    seen = new Map();
+  for (const input of root.querySelectorAll("textarea,input,select")) {
+    const base =
+      input.name ||
+      input.id ||
+      input.getAttribute("aria-label") ||
+      input.closest("label")?.textContent.trim() ||
+      input.placeholder ||
+      (input.type || input.tagName).toLowerCase();
+    const n = seen.get(base) || 0;
+    seen.set(base, n + 1);
+    keys.set(input, n ? base + "#" + n : base);
+  }
+  return keys;
+};
+export const saveFields = (root) => {
+  const saved = new Map();
+  for (const [input, key] of fieldKeys(root))
+    saved.set(key, input.type === "checkbox" || input.type === "radio" ? { checked: input.checked } : { value: input.value });
+  return saved;
+};
+export const restoreFields = (root, saved) => {
+  for (const [input, key] of fieldKeys(root)) {
+    const s = saved.get(key);
+    if (!s) continue;
+    if ("checked" in s) input.checked = s.checked;
+    else if (input.tagName === "SELECT") {
+      if ([...input.options].some((o) => o.value === s.value)) input.value = s.value;
+    } else input.value = s.value;
+  }
+};

@@ -1,4 +1,4 @@
-import { E, api, button, liveSnapshots, stageAge, signalAge, waiting, when } from "./lib.js";
+import { E, api, button, fieldKeys, liveSnapshots, restoreFields, saveFields, stageAge, signalAge, textual, waiting, when } from "./lib.js";
 import { FarmMap } from "./map.js";
 import { withForms } from "./forms.js";
 import { withGovernance } from "./governance.js";
@@ -339,12 +339,12 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
     const focusState = focusOwner
       ? {
           key: focusOwner.dataset.key,
-          index: [...focusOwner.querySelectorAll("textarea,input,select")].indexOf(focused),
-          start: focused.selectionStart,
-          end: focused.selectionEnd,
+          field: fieldKeys(focusOwner).get(focused),
+          start: textual(focused) ? focused.selectionStart : null,
+          end: textual(focused) ? focused.selectionEnd : null,
         }
       : null;
-    const drafts = all("details[data-key]").map((d) => [d.dataset.key, [...d.querySelectorAll("textarea,input,select")].map((i) => i.value)]);
+    const drafts = new Map(all("details[data-key]").map((d) => [d.dataset.key, saveFields(d)]));
     const opened = all("details[open]")
       .map((e) => e.dataset.key)
       .filter(Boolean);
@@ -362,12 +362,12 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
     } else if (this.openTask && this.taskDrawer.open) this.taskDrawer.close();
     for (const d of all("details")) {
       if (opened.includes(d.dataset.key)) d.open = true;
-      const saved = drafts.find((x) => x[0] === d.dataset.key);
-      if (saved) [...d.querySelectorAll("textarea,input,select")].forEach((input, i) => (input.value = saved[1][i] || ""));
-      if (focusState && focusState.key === d.dataset.key && focusState.index >= 0) {
-        const input = [...d.querySelectorAll("textarea,input,select")][focusState.index];
+      const saved = drafts.get(d.dataset.key);
+      if (saved) restoreFields(d, saved);
+      if (focusState && focusState.key === d.dataset.key && focusState.field) {
+        const input = [...fieldKeys(d)].find(([, key]) => key === focusState.field)?.[0];
         input?.focus({ preventScroll: true });
-        input?.setSelectionRange?.(focusState.start, focusState.end);
+        if (input && textual(input) && focusState.start != null) input.setSelectionRange(focusState.start, focusState.end);
       }
     }
     if (this.taskBody.parentElement) this.taskBody.parentElement.scrollTop = drawerScroll;

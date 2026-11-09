@@ -219,6 +219,45 @@ try {
     await go("/governance");
     check(await until(() => visible("Conectar GitHub")), "an owner can connect GitHub");
 
+    // A change on the server re-renders the view: what the owner was typing, ticking and selecting stays.
+    const pause = (on) =>
+      js(`(async()=>{const t=await (await fetch('/api/csrf')).json();const r=await fetch('/api/governance/paused/${on}',{method:'POST',headers:{[t.header]:t.token,'Content-Type':'application/json'},body:'{}'});return r.status})()`);
+    const rerendered = async () => {
+      await js(`for(const e of document.querySelectorAll('details[data-key]'))e.__before=true`);
+      return () => js(`[...document.querySelectorAll('details[data-key]')].every(e=>!e.__before)`);
+    };
+    await go("/tasks");
+    check(await until(() => visible("Levantar un molino")), "the tasks view offers a new initiative");
+    await js(`(()=>{const d=document.querySelector('details[data-key="new-initiative"]');d.open=true;
+      d.querySelector('[aria-label="Nombre del molino"]').value='Molino de prueba';
+      const n=d.querySelector('input[type=number]');n.value='7';
+      const g=d.querySelector('[aria-label="Objetivo del molino"]');g.value='Objetivo escrito a medias';g.focus();g.setSelectionRange(3,9);return true})()`);
+    let fresh = await rerendered();
+    exceptions.length = 0;
+    check((await pause(true)) === 200, "the owner pauses the queue from the server");
+    check(await until(fresh, 8000), "a server change re-renders the tasks view");
+    const kept = await js(`(()=>{const d=document.querySelector('details[data-key="new-initiative"]'),g=d.querySelector('[aria-label="Objetivo del molino"]');
+      return [d.open,d.querySelector('[aria-label="Nombre del molino"]').value,d.querySelector('input[type=number]').value,g.value,document.activeElement===g,g.selectionStart,g.selectionEnd]})()`);
+    check(JSON.stringify(kept) === JSON.stringify([true, "Molino de prueba", "7", "Objetivo escrito a medias", true, 3, 9]), `a re-render keeps text, number, focus and cursor ${JSON.stringify(kept)}`);
+    await js(`document.querySelector('details[data-key="new-initiative"] input[type=number]').focus()`);
+    fresh = await rerendered();
+    await pause(false);
+    check(await until(fresh, 8000), "resuming re-renders again");
+    check(await js(`document.activeElement?.type==='number'`), "focus on a number field survives without a selection error");
+    check(exceptions.length === 0, `re-rendering forms throws nothing ${exceptions.slice(0, 2).join(" | ")}`);
+    await go("/governance");
+    check(await until(() => visible("Configurar disparadores")), "governance offers the triggers form");
+    await js(`(()=>{const d=document.querySelector('details[data-key="triggers"]');d.open=true;
+      d.querySelector('[aria-label="Repositorio"]').value='owner/repo';
+      const boxes=d.querySelectorAll('input[type=checkbox]');boxes[1].checked=true;boxes[3].checked=true;return true})()`);
+    fresh = await rerendered();
+    await pause(true);
+    check(await until(fresh, 8000), "a server change re-renders governance");
+    const ticked = await js(`(()=>{const d=document.querySelector('details[data-key="triggers"]');return [d.open,d.querySelector('[aria-label="Repositorio"]').value,...[...d.querySelectorAll('input[type=checkbox]')].map(b=>b.checked)]})()`);
+    check(JSON.stringify(ticked) === JSON.stringify([true, "owner/repo", false, true, false, true, false, false]), `a re-render keeps ticked boxes ${JSON.stringify(ticked)}`);
+    await pause(false);
+    await go("/governance");
+
     // Moving between views keeps the app alive instead of reloading it.
     await js(`window.__sameApp=true;document.querySelector('.nav a[href="/agents"]').click()`);
     check(await until(() => visible("Nodos dirigentes")), "the navigation opens a view");
