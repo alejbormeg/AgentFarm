@@ -147,6 +147,11 @@ public class SecurityConfig {
         .addFilterBefore(
             new TwoFactorFilter(twoFactor),
             org.springframework.security.web.access.intercept.AuthorizationFilter.class)
+        // The panel's own calls get JSON they can act on, never the sign-in page: an expired
+        // session (401), a missing permission or form token (403).
+        .exceptionHandling(e ->
+            e.defaultAuthenticationEntryPointFor(SecurityConfig::sessionExpired, SecurityConfig::api)
+                .defaultAccessDeniedHandlerFor(SecurityConfig::denied, SecurityConfig::api))
         .formLogin(f -> f.loginPage("/login"))
         .httpBasic(Customizer.withDefaults())
         // Everything is served from here. Inline styles remain for the sign-in page and Mermaid's
@@ -159,5 +164,40 @@ public class SecurityConfig {
                         + " data:; font-src 'self'; connect-src 'self'; manifest-src 'self'; base-uri 'none';"
                         + " frame-ancestors 'none'; form-action 'self' https://github.com")));
     return http.build();
+  }
+
+  static boolean api(jakarta.servlet.http.HttpServletRequest request) {
+    return request.getRequestURI().startsWith("/api/");
+  }
+
+  static void json(jakarta.servlet.http.HttpServletResponse response, int status, String reason, String error)
+      throws java.io.IOException {
+    response.setStatus(status);
+    response.setContentType("application/json;charset=UTF-8");
+    response
+        .getWriter()
+        .write(io.agentfarm.core.Json.encode(io.agentfarm.core.Json.obj("error", error, "reason", reason)));
+  }
+
+  static void sessionExpired(
+      jakarta.servlet.http.HttpServletRequest request,
+      jakarta.servlet.http.HttpServletResponse response,
+      org.springframework.security.core.AuthenticationException e)
+      throws java.io.IOException {
+    json(response, 401, "session_expired", "Tu sesión ha caducado. Entra de nuevo para seguir.");
+  }
+
+  static void denied(
+      jakarta.servlet.http.HttpServletRequest request,
+      jakarta.servlet.http.HttpServletResponse response,
+      org.springframework.security.access.AccessDeniedException e)
+      throws java.io.IOException {
+    if (e instanceof org.springframework.security.web.csrf.CsrfException)
+      json(
+          response,
+          403,
+          "csrf",
+          "El formulario ha caducado. Vuelve a intentarlo; si sigue fallando, recarga la página.");
+    else json(response, 403, "forbidden", "Tu cuenta no tiene permiso para esta acción.");
   }
 }

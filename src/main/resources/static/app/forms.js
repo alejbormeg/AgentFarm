@@ -148,6 +148,7 @@ export const withForms = (Base) =>
     }
     requestForm() {
       const section = E("section");
+      section.dataset.key = "new-task";
       const problem = E("p", "", "error");
       problem.setAttribute("role", "alert");
       section.append(

@@ -79,6 +79,58 @@ class WebTest {
     return client.send(b.build(), HttpResponse.BodyHandlers.ofString());
   }
 
+  /** What the panel's own fetch calls see when the session ends or a permission is missing. */
+  @Test
+  void apiFailuresAreJsonTheViewCanActOn() throws Exception {
+    HttpClient anonymous = HttpClient.newBuilder().build();
+    for (String accept : List.of("*/*", "text/html", "application/json")) {
+      var expired =
+          anonymous.send(
+              HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/work"))
+                  .header("Accept", accept)
+                  .build(),
+              HttpResponse.BodyHandlers.ofString());
+      assertEquals(401, expired.statusCode(), accept);
+      assertEquals("session_expired", Json.parse(expired.body()).path("reason").asText(), accept);
+      assertTrue(Json.parse(expired.body()).path("error").asText().contains("sesión ha caducado"));
+    }
+    var page =
+        anonymous.send(
+            HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/tasks"))
+                .header("Accept", "text/html")
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertEquals(302, page.statusCode(), "pages still send people to sign in");
+    assertTrue(page.headers().firstValue("Location").orElse("").endsWith("/login"));
+
+    var forbidden = as("oscar", "POST", "/api/work", "{}");
+    assertEquals(403, forbidden.statusCode());
+    assertEquals("forbidden", Json.parse(forbidden.body()).path("reason").asText());
+
+    var noToken =
+        anonymous.send(
+            HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/work"))
+                .header("Authorization", auth())
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{}"))
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertEquals(403, noToken.statusCode());
+    assertEquals("csrf", Json.parse(noToken.body()).path("reason").asText());
+
+    var wrongPassword =
+        anonymous.send(
+            HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/work"))
+                .header(
+                    "Authorization",
+                    "Basic "
+                        + Base64.getEncoder()
+                            .encodeToString("oscar:not-the-password".getBytes(StandardCharsets.UTF_8)))
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertEquals(401, wrongPassword.statusCode(), "a script with a wrong password is still told so");
+  }
+
   @Test
   void reviewersDecideProposalsButOnlyOwnersIntegrateOrConfigure() throws Exception {
     assertEquals(
