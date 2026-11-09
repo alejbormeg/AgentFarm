@@ -2,6 +2,7 @@ package io.agentfarm;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.agentfarm.adapters.GitChanges;
 import io.agentfarm.core.*;
 import io.agentfarm.core.ChangePolicy.Change;
 import io.agentfarm.core.ChangePolicy.GitHubFile;
@@ -42,8 +43,8 @@ class ChangePolicyTest {
   List<Map<String, Object>> violations(String candidate) {
     return ChangePolicy.violations(
         DOCS,
-        ScopeService.changes(repo, base, candidate),
-        ScopeService.tree(repo, candidate),
+        GitChanges.changes(repo, base, candidate),
+        GitChanges.tree(repo, candidate),
         ChangePolicy.PROFILE_PROTECTED,
         Set.of(Commandments.PLATFORM_WORKFLOW));
   }
@@ -125,17 +126,17 @@ class ChangePolicyTest {
     String candidate = commit();
     assertEquals(List.of(), violations(candidate));
     assertTrue(
-        ChangePolicy.paths(ScopeService.changes(repo, base, candidate))
+        ChangePolicy.paths(GitChanges.changes(repo, base, candidate))
             .contains("docs/guía/año ñandú 日本.md"),
         "names are read verbatim, without Git's quoting");
   }
 
   @Test
   void onlyFullCommitShasReachGit() {
-    assertThrows(IllegalArgumentException.class, () -> ScopeService.changes(repo, "HEAD", base));
+    assertThrows(IllegalArgumentException.class, () -> GitChanges.changes(repo, "HEAD", base));
     assertThrows(
-        IllegalArgumentException.class, () -> ScopeService.changes(repo, "--output=x", base));
-    assertThrows(IllegalArgumentException.class, () -> ScopeService.tree(repo, "-r"));
+        IllegalArgumentException.class, () -> GitChanges.changes(repo, "--output=x", base));
+    assertThrows(IllegalArgumentException.class, () -> GitChanges.tree(repo, "-r"));
   }
 
   @Test

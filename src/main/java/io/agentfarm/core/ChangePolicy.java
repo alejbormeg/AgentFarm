@@ -10,7 +10,7 @@ import java.util.*;
  * The one scope policy for a candidate: both sides of every change, read from Git without renames
  * and NUL-delimited, so moving a file out of scope shows up as a deletion outside it. The CLI's
  * scope check, the executor before pushing and the panel when verifying all ask this class. Git
- * itself is read by {@link ScopeService#changes} and {@link ScopeService#tree}.
+ * itself is read by {@code io.agentfarm.adapters.GitChanges}.
  */
 public final class ChangePolicy {
   /** A regular file, executable or not. Anything else is a symlink or a submodule. */
@@ -150,7 +150,7 @@ public final class ChangePolicy {
     return scope.endsWith("/") ? path.startsWith(scope) : path.equals(scope);
   }
 
-  static String utf8(byte[] bytes) {
+  public static String utf8(byte[] bytes) {
     try {
       return StandardCharsets.UTF_8
           .newDecoder()

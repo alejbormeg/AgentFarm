@@ -2,6 +2,7 @@ package io.agentfarm;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.agentfarm.adapters.GitChanges;
 import io.agentfarm.core.*;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -53,7 +54,7 @@ class SecretScanTest {
     Files.writeString(repo.resolve("z.txt"), filler(5000) + "end=" + TOKEN + "\n");
     String candidate = commit();
     assertTrue(git("diff", base, candidate).length() > 340_000);
-    var scan = ScopeService.secretScan(repo, base, candidate);
+    var scan = GitChanges.secretScan(repo, base, candidate);
     assertEquals("found", scan.state());
     assertEquals(
         List.of("a.txt (token de GitHub)", "m.txt (token de GitHub)", "z.txt (token de GitHub)"),
@@ -69,7 +70,7 @@ class SecretScanTest {
     Files.write(repo.resolve("image.bin"), bytes);
     String candidate = commit();
     assertTrue(git("diff", base, candidate).contains("Binary files"), "Git hides it by default");
-    assertEquals("found", ScopeService.secretScan(repo, base, candidate).state());
+    assertEquals("found", GitChanges.secretScan(repo, base, candidate).state());
   }
 
   @Test
@@ -77,7 +78,7 @@ class SecretScanTest {
     String base = base();
     Files.writeString(repo.resolve("ok.txt"), filler(20000));
     String candidate = commit();
-    var scan = ScopeService.secretScan(repo, base, candidate);
+    var scan = GitChanges.secretScan(repo, base, candidate);
     assertEquals("clean", scan.state());
     assertNull(scan.refusal());
   }
@@ -106,6 +107,6 @@ class SecretScanTest {
   @Test
   void onlyFullCommitShasReachGit() {
     assertThrows(
-        IllegalArgumentException.class, () -> ScopeService.secretScan(repo, "HEAD~1", "HEAD"));
+        IllegalArgumentException.class, () -> GitChanges.secretScan(repo, "HEAD~1", "HEAD"));
   }
 }

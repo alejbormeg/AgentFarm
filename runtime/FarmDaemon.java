@@ -1143,7 +1143,7 @@ public class FarmDaemon extends CodexRunner {
     // Both sides of a rename: moving a file out of a directory is a change there too.
     var changed =
         io.agentfarm.core.ChangePolicy.paths(
-            io.agentfarm.core.ScopeService.changes(task.checkout, baseSha, sha));
+            io.agentfarm.adapters.GitChanges.changes(task.checkout, baseSha, sha));
     boolean untested =
         io.agentfarm.core.TestPolicy.untestedCode(
             changed, String.valueOf(unit.get("status")), String.valueOf(integration.get("status")));
@@ -1253,9 +1253,9 @@ public class FarmDaemon extends CodexRunner {
       var violations =
           io.agentfarm.core.ExecutorWork.scopeViolations(
               profile,
-              io.agentfarm.core.ScopeService.changes(
+              io.agentfarm.adapters.GitChanges.changes(
                   task.checkout, p.path("base_sha").asText(), sha),
-              io.agentfarm.core.ScopeService.tree(task.checkout, sha));
+              io.agentfarm.adapters.GitChanges.tree(task.checkout, sha));
       if (!violations.isEmpty())
         throw new IOException(
             "Out of approved profile scope: "
@@ -1267,7 +1267,8 @@ public class FarmDaemon extends CodexRunner {
       throw new IOException(
           "El candidato cambia " + io.agentfarm.core.Commandments.PLATFORM_WORKFLOW);
     var scan =
-        io.agentfarm.core.ScopeService.secretScan(task.checkout, p.path("base_sha").asText(), sha);
+        io.agentfarm.adapters.GitChanges.secretScan(
+            task.checkout, p.path("base_sha").asText(), sha);
     if (!scan.clean()) throw new IOException(scan.refusal());
     String branch = gitAt("branch", "--show-current");
     guard();
