@@ -116,6 +116,7 @@ public final class TestSandbox {
         Files.deleteIfExists(archive);
       }
       ensureImage(policy.image());
+      String digest = imageDigest(policy.image());
       check(runner.run(createArgs(name, tree, policy), Duration.ofMinutes(10)), "docker create");
       check(runner.run(List.of(docker, "start", name), Duration.ofMinutes(1)), "docker start");
       var results = new ArrayList<Map<String, Object>>();
@@ -128,7 +129,7 @@ public final class TestSandbox {
           for (var test : tests.entrySet())
             results.add(
                 result(test.getKey(), "failed", test.getValue(), "setup failed: " + out.text()));
-          return results;
+          return withImage(results, policy.image(), digest);
         }
       }
       if (policy.network().equals("setup"))
@@ -152,7 +153,7 @@ public final class TestSandbox {
         results.add(
             result(test.getKey(), out.exit() == 0 ? "passed" : "failed", command, out.text()));
       }
-      return results;
+      return withImage(results, policy.image(), digest);
     } finally {
       cleanup(name, tree);
     }
@@ -271,6 +272,37 @@ public final class TestSandbox {
 
   private List<String> exec(String name, String as, String command) {
     return List.of(docker, "exec", "--user", as, name, "bash", "-lc", command);
+  }
+
+  /**
+   * The image the tests really ran in: a tag can move, its digest can't. Registry digests when the
+   * image came from one, otherwise its local id; "unknown" only if Docker would not say.
+   */
+  String imageDigest(String image) throws Exception {
+    var out =
+        runner.run(
+            List.of(
+                docker,
+                "image",
+                "inspect",
+                "--format",
+                "{{join .RepoDigests \",\"}}|{{.Id}}",
+                image),
+            Duration.ofSeconds(30));
+    if (out.exit() != 0) return "unknown";
+    String[] parts = out.text().trim().split("\\|", 2);
+    String repo = parts[0].isBlank() ? "" : parts[0].split(",")[0];
+    String id = parts.length > 1 ? parts[1].trim() : "";
+    return !repo.isBlank() ? repo : !id.isBlank() ? id : "unknown";
+  }
+
+  private static List<Map<String, Object>> withImage(
+      List<Map<String, Object>> results, String image, String digest) {
+    for (var r : results) {
+      r.put("image", image);
+      r.put("image_digest", digest);
+    }
+    return results;
   }
 
   private static Map<String, Object> result(
