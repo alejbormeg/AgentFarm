@@ -64,6 +64,7 @@ step java -jar target/agentfarm.jar memory --file agentfarm-memory.json --reposi
 step bash runtime/verify.sh
 step bash runtime/package.sh
 step bash tests/security_scan.sh
+step bash tests/vendor_inventory.sh
 
 echo; echo "#### e2e"
 step docker pull -q bash:5.2
@@ -82,6 +83,11 @@ step curl -fsS -o /dev/null "http://127.0.0.1:$port/login"
 step env PANEL_URL="http://127.0.0.1:$port/login" python3 tests/container_http.py
 step bash tests/dedicated_user.sh
 step env BACKUP_TEST_PORT="$((port + 1))" bash tests/compose_backup.sh
+
+echo; echo "#### release"
+release="$(cd "$(git rev-parse --git-common-dir)" && pwd)/agentfarm-releases/$commit"
+step bash tests/image_scan.sh agentfarm:local "$release"
+step bash runtime/release-manifest.sh "$commit" "$release" agentfarm:local
 
 printf '%s\n' "$commit" > "$record"
 echo; echo "Validado ${commit:0:7}: pasa todo lo que correría la CI."

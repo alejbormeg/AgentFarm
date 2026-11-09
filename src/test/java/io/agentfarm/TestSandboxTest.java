@@ -57,6 +57,25 @@ class TestSandboxTest {
     return t;
   }
 
+  /** A tag can move: each result says which image really ran it. */
+  @Test
+  void everyResultRecordsTheImageDigestItRanIn() throws Exception {
+    var fake = new Fake();
+    fake.answers.put("inspect", new Output(0, "bash@sha256:" + "d".repeat(64) + "|sha256:" + "1".repeat(64)));
+    var results =
+        new TestSandbox(fake, "docker", "1000:1000")
+            .run(repo, SHA, Policy.defaults("bash:5.2"), "", tests("true", "N/A: no integration here"));
+    for (var r : results) {
+      assertEquals("bash:5.2", r.get("image"));
+      assertEquals("bash@sha256:" + "d".repeat(64), r.get("image_digest"));
+    }
+    fake.answers.put("inspect", new Output(0, "|sha256:" + "2".repeat(64)));
+    var local =
+        new TestSandbox(fake, "docker", "1000:1000")
+            .run(repo, SHA, Policy.defaults("local:dev"), "", tests("true", "true"));
+    assertEquals("sha256:" + "2".repeat(64), local.get(0).get("image_digest"), "built here: its id");
+  }
+
   @Test
   void setupAsRootThenTestsOfflineAsHostUserAndAlwaysCleansUp() throws Exception {
     var fake = new Fake();

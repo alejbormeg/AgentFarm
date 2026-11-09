@@ -19,6 +19,29 @@ Spotless y SpotBugs solo corren con Java 21, porque su resultado no depende del 
 - **Trivy** falla con una vulnerabilidad alta o crítica que ya tenga arreglo. Actualiza la dependencia.
 - **gitleaks** falla con un posible secreto en el historial. Si es real, revócalo: borrarlo del repositorio no basta. Si es falso, añade su huella a `.gitleaksignore`.
 
+### La imagen y el manifiesto de cada release
+
+Tras el contenedor, `validar-local.sh` escanea también la **imagen final** (`tests/image_scan.sh`):
+paquetes del sistema y librerías, con el mismo criterio (falla con una vulnerabilidad alta o crítica
+que tenga arreglo). Guarda además, para seguimiento, el informe completo con todas las severidades,
+con arreglo o sin él, y el SBOM en CycloneDX.
+
+Después escribe el manifiesto del commit validado (`runtime/release-manifest.sh`) en
+`.git/agentfarm-releases/<sha>/`:
+
+- `manifest.json`: commit exacto, puertas que pasó, SHA-256 del jar y del paquete del ejecutor, id
+  de la imagen, hash del SBOM, recuento de vulnerabilidades en seguimiento y excepciones justificadas
+  (`.trivyignore`, si existe).
+- `sbom.cdx.json` e `image-vulnerabilities.json`.
+
+El manifiesto dice dónde se verificó: en local, con dobles en el e2e. Ni en Actions ni en un
+despliegue real. Lo que no esté en él no se ha comprobado.
+
+El workflow que AgentFarm escribe en repositorios sin CI fija `actions/checkout` por commit. Cada
+resultado del sandbox registra la imagen y su digest efectivo (`image_digest`), aunque el perfil la
+indique por etiqueta. El código de terceros servido por el panel tiene inventario y hash en
+`src/main/resources/static/vendor/INVENTORY.md`, que comprueba `tests/vendor_inventory.sh`.
+
 ## Regenerar lo generado
 
 ```bash

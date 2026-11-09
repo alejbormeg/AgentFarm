@@ -162,6 +162,10 @@ public final class ExecutorWork {
         && receipt.path("sha").asText().equals(head);
   }
 
+  /** actions/checkout v4.4.0, by commit: a tag can be moved, a commit can't. */
+  public static final String CHECKOUT =
+      "actions/checkout@11d5960a326750d5838078e36cf38b85af677262";
+
   /**
    * The workflow for a repository without CI: the approved commands, in the local sandbox's image.
    */
@@ -173,7 +177,7 @@ public final class ExecutorWork {
       if (command.isBlank()) throw new java.io.IOException("Falta estrategia de pruebas " + kind);
       var steps = new ArrayList<Object>();
       steps.add(
-          Json.obj("uses", "actions/checkout@v4", "with", Json.obj("persist-credentials", false)));
+          Json.obj("uses", CHECKOUT, "with", Json.obj("persist-credentials", false)));
       if (!p.path("setup").asText().isBlank())
         steps.add(Json.obj("name", "Dependencies", "run", p.path("setup").asText()));
       steps.add(
