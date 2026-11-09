@@ -261,6 +261,18 @@ try {
     check(JSON.stringify(ticked) === JSON.stringify([true, "owner/repo", false, true, false, true, false, false]), `a re-render keeps ticked boxes ${JSON.stringify(ticked)}`);
     await pause(false);
     await go("/governance");
+    // An action that takes a while: one click sends once, the button says it is busy, the result is announced.
+    await go("/governance");
+    await until(() => visible("Pausar agentes"));
+    const sent = await js(`(async()=>{const b=[...document.querySelectorAll('button')].find(e=>e.textContent.trim()==='Pausar agentes');
+      const before=performance.getEntriesByType('resource').length;b.click();const busy=b.getAttribute('aria-busy')==='true'&&b.disabled;b.click();b.click();
+      await new Promise(r=>setTimeout(r,1500));return {busy,posts:performance.getEntriesByType('resource').slice(before).filter(e=>e.name.includes('/api/governance/paused/')).length}})()`);
+    check(sent.busy, "a running action shows its button busy and disabled");
+    check(sent.posts === 1, `three quick clicks send one request (${sent.posts})`);
+    check(await until(() => visible("Hecho.")), "the result of an action is announced");
+    check(await js(`[...document.querySelectorAll('[role=status]')].some(e=>e.textContent==='Hecho.')`), "the announcement is in a status region");
+    await clickButton("Reanudar cola");
+    await until(() => visible("Pausar agentes"));
 
     // Moving between views keeps the app alive instead of reloading it.
     await js(`window.__sameApp=true;document.querySelector('.nav a[href="/agents"]').click()`);

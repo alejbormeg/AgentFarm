@@ -107,9 +107,13 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
 
     const sheet = E("main", "", "sheet");
     const problem = E("p", "", "error"),
-      drawerProblem = E("p", "", "error");
+      drawerProblem = E("p", "", "error"),
+      done = E("p", "", "done-note"),
+      drawerDone = E("p", "", "done-note");
     problem.setAttribute("role", "alert");
     drawerProblem.setAttribute("role", "alert");
+    done.setAttribute("role", "status");
+    drawerDone.setAttribute("role", "status");
     // Drawers sit in the top layer, so an action's error has to show inside them too.
     this.error = {
       set textContent(text) {
@@ -117,10 +121,17 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
         drawerProblem.textContent = text;
       },
     };
+    // What the last action did, announced politely; an error replaces it.
+    this.notice = {
+      set textContent(text) {
+        done.textContent = text;
+        drawerDone.textContent = text;
+      },
+    };
     this.strip = E("div", "", "strip");
     this.live = E("div", "", "live");
     this.content = sheet;
-    sheet.append(problem, this.strip, this.live);
+    sheet.append(problem, done, this.strip, this.live);
     main.append(top, sheet);
 
     this.form = this.requestForm();
@@ -137,7 +148,7 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
     this.taskDrawer = task.dialog;
     this.taskTitle = task.title;
     this.taskBody = E("div");
-    task.body.append(drawerProblem, this.taskBody);
+    task.body.append(drawerProblem, drawerDone, this.taskBody);
     this.taskDrawer.addEventListener("close", () => {
       const id = this.openTask;
       this.openTask = null;
@@ -178,13 +189,19 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
     this.render();
     if (!this.taskDrawer.open) this.taskDrawer.showModal();
   }
-  async action(path, body) {
+  // Every action reports how it ended: what was done, or why not. The button stays busy until then.
+  async action(path, body, doneText = "Hecho.") {
+    this.notice.textContent = "";
     try {
       await api(path, body);
+      this.error.textContent = "";
+      this.notice.textContent = doneText;
       this.signature = "";
       await this.poll();
+      return true;
     } catch (e) {
       this.error.textContent = e.message;
+      return false;
     }
   }
   async poll() {

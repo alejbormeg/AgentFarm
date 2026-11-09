@@ -287,8 +287,19 @@ td {
   color: var(--bad);
   font-weight: 500;
 }
-.error:empty {
+.error:empty,
+.done-note:empty {
   display: none;
+}
+.done-note {
+  color: var(--ok);
+  font-weight: 500;
+}
+button.busy {
+  cursor: progress;
+}
+.confirm {
+  display: contents;
 }
 .empty {
   padding: 14px;

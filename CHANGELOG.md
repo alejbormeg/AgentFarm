@@ -23,6 +23,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 - Cuando el panel se redibuja por un cambio del servidor, los formularios conservan lo escrito, las casillas marcadas, la opción elegida, el foco y el cursor. Cada campo se reconoce por su nombre, no por su posición, y el cursor solo se restaura en campos de texto: en uno numérico el navegador lanzaba un error.
 - Adoptar un repositorio ya no crea tareas duplicadas si falla el segundo paso: el reintento reutiliza la misma petición y el panel dice qué paso terminó y cuál falta. La vigilancia empieza al integrarse la adopción, como dice el texto, y no antes.
 - El recorrido de una tarea solo da una fase por hecha si su evidencia lo dice: una tarea cancelada antes de investigar ya no muestra la propuesta ni la implementación como hechas, y las pruebas solo aparecen superadas cuando lo están todas. Cada fase dice su estado con palabras (pendiente, en curso, te toca, hecha, fallida, bloqueada, no aplica, cancelada), no solo con color.
+- Las acciones del panel no se envían dos veces: mientras una está en marcha su botón queda ocupado, y al acabar el panel anuncia el resultado o el error. Cancelar una tarea pide confirmación y explica qué se detiene y qué queda publicado en GitHub.
 - Si la CI de un repositorio no arranca o se queda en cola, el panel lo dice a los 10 minutos, con la causa probable y dónde mirar. Sigue sin integrarse nada sin ella.
 
 ## Sin publicar — lo que encontró el piloto

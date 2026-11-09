@@ -195,11 +195,46 @@ export function link(label, url) {
   e.rel = "noopener noreferrer";
   return e;
 }
+// A button whose action may be asynchronous: while it runs the button is disabled and busy, so a
+// double click never sends twice, and it comes back when the action ends, well or badly.
 export function button(label, fn, kind = "") {
   const b = E("button", label, kind === true ? "primary" : kind);
   b.type = "button";
-  b.onclick = fn;
+  b.onclick = async (event) => {
+    if (b.getAttribute("aria-busy") === "true") return;
+    const result = fn(event);
+    if (!result || typeof result.then !== "function") return result;
+    b.setAttribute("aria-busy", "true");
+    b.disabled = true;
+    b.classList.add("busy");
+    try {
+      return await result;
+    } finally {
+      b.removeAttribute("aria-busy");
+      b.disabled = false;
+      b.classList.remove("busy");
+    }
+  };
   return b;
+}
+// Two steps for what can't be undone: the first click says what will happen, the second does it.
+export function confirmButton(label, explanation, confirmLabel, fn) {
+  const wrap = E("span", "", "confirm");
+  const note = E("p", "", "note-line");
+  note.setAttribute("role", "status");
+  const first = button(label, () => {
+    note.textContent = explanation;
+    wrap.replaceChildren(first, note, second, keep);
+    second.focus();
+  });
+  const second = button(confirmLabel, fn, "danger");
+  const keep = button("No, mantenerla", () => {
+    note.textContent = "";
+    wrap.replaceChildren(first);
+    first.focus();
+  }, "quiet");
+  wrap.append(first);
+  return wrap;
 }
 export function advancedForm(kind) {
   const d = E("details");
