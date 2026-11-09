@@ -78,6 +78,7 @@ public final class ScheduledWork {
                 "job", e.getKey(),
                 "state", state,
                 "runs", j.runs,
+                "last_start_ms", j.lastStart,
                 "failures", j.failures,
                 "last_duration_ms", j.lastDuration,
                 "lag_ms", j.lastLag,

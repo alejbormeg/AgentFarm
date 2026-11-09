@@ -332,6 +332,7 @@
         "lag_ms" : "number",
         "last_duration_ms" : "number",
         "last_error" : "string",
+        "last_start_ms" : "number",
         "max_lag_ms" : "number",
         "running_ms" : "number",
         "runs" : "number",
