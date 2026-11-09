@@ -1112,8 +1112,10 @@ public class FarmDaemon extends CodexRunner {
                                     unit + " " + integration)))
                         .text()
                     + reviewSkills.text()));
+    // Both sides of a rename: moving a file out of a directory is a change there too.
     var changed =
-        gitAt("diff", "--name-only", baseSha, sha).lines().filter(f -> !f.isBlank()).toList();
+        io.agentfarm.core.ChangePolicy.paths(
+            io.agentfarm.core.ScopeService.changes(task.checkout, baseSha, sha));
     boolean untested =
         io.agentfarm.core.TestPolicy.untestedCode(
             changed, String.valueOf(unit.get("status")), String.valueOf(integration.get("status")));
@@ -1215,12 +1217,16 @@ public class FarmDaemon extends CodexRunner {
       var profile = io.agentfarm.core.ProjectProfile.load(task.checkout.resolve("agentfarm.yaml"));
       if (!profile.hash().equals(p.path("profile_hash").asText()))
         throw new IOException("Project profile changed during execution");
-      var outside =
-          io.agentfarm.core.ExecutorWork.outOfScope(
+      var violations =
+          io.agentfarm.core.ExecutorWork.scopeViolations(
               profile,
-              gitAt("diff", "--name-only", p.path("base_sha").asText(), sha).lines().toList());
-      if (!outside.isEmpty())
-        throw new IOException("Out of approved profile scope: " + outside.getFirst());
+              io.agentfarm.core.ScopeService.changes(
+                  task.checkout, p.path("base_sha").asText(), sha),
+              io.agentfarm.core.ScopeService.tree(task.checkout, sha));
+      if (!violations.isEmpty())
+        throw new IOException(
+            "Out of approved profile scope: "
+                + io.agentfarm.core.ChangePolicy.describe(violations));
     }
     // Once pushed a secret is exposed for good, so this check comes before the panel's own.
     var secrets =

@@ -191,8 +191,20 @@ public class EvidenceVerifier {
   /** Pure decision over GitHub's answers: pending until CI ends, then success or failed. */
   public static Assessment assess(
       JsonNode evidence, JsonNode checks, JsonNode statuses, JsonNode compare) {
-    var files = new ArrayList<String>();
-    compare.path("files").forEach(f -> files.add(f.path("filename").asText()));
+    // A rename names its origin too: moving a file out of scope deletes it there.
+    var named = new ArrayList<ChangePolicy.GitHubFile>();
+    var added = new ArrayList<String>();
+    var secrets = new ArrayList<String>();
+    compare
+        .path("files")
+        .forEach(f -> {
+          String name = f.path("filename").asText(), status = f.path("status").asText();
+          named.add(
+              new ChangePolicy.GitHubFile(name, status, f.path("previous_filename").asText()));
+          if (status.equals("added")) added.add(name);
+          secrets.addAll(SecretScan.findings(name, f.path("patch").asText()));
+        });
+    var files = new ArrayList<>(ChangePolicy.paths(ChangePolicy.fromGitHub(named)));
     var runs = new ArrayList<Map<String, Object>>();
     checks
         .path("check_runs")
@@ -205,20 +217,11 @@ public class EvidenceVerifier {
                     r.path("status").asText(),
                     "conclusion",
                     r.path("conclusion").asText())));
-    var added = new ArrayList<String>();
-    var secrets = new ArrayList<String>();
-    compare
-        .path("files")
-        .forEach(f -> {
-          if (f.path("status").asText().equals("added")) added.add(f.path("filename").asText());
-          secrets.addAll(
-              SecretScan.findings(f.path("filename").asText(), f.path("patch").asText()));
-        });
     var detail = obj("checks", runs, "files", files, "added", added, "secrets", secrets);
     var required = evidence.path("ci_checks");
     if (!required.isArray() || required.isEmpty())
       return new Assessment("failed", "El informe no vincula ninguna comprobación de CI.", detail);
-    if (checks.path("total_count").asInt() > 100 || files.size() >= 300)
+    if (checks.path("total_count").asInt() > 100 || named.size() >= 300)
       return new Assessment("failed", "Demasiados resultados para comprobarlos enteros.", detail);
     if (runs.isEmpty()) return new Assessment("pending", "La CI aún no ha empezado.", detail);
     for (var run : runs)

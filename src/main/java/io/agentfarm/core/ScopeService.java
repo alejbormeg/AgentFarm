@@ -37,7 +37,7 @@ public class ScopeService {
 
   private record GitResult(int code, byte[] bytes) {}
 
-  private GitResult git(Path repo, Set<Integer> accepted, String... args) {
+  private static GitResult git(Path repo, Set<Integer> accepted, String... args) {
     Path output = null;
     try {
       output = Files.createTempFile("agentfarm-git-", ".out");
@@ -73,6 +73,43 @@ public class ScopeService {
         } catch (Exception ignored) {
         }
     }
+  }
+
+  /** Both sides of every change between two commits, renames split into deletion and addition. */
+  public static List<ChangePolicy.Change> changes(Path repo, String base, String candidate) {
+    for (String ref : List.of(base, candidate))
+      if (ref == null || !ref.matches("[0-9a-fA-F]{40}|[0-9a-fA-F]{64}"))
+        throw new IllegalArgumentException("Full immutable commit SHA required");
+    return ChangePolicy.parseRaw(
+        git(
+                repo,
+                Set.of(0),
+                "-c",
+                "core.quotePath=false",
+                "diff",
+                "--raw",
+                "-z",
+                "--no-renames",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--ignore-submodules=none",
+                base,
+                candidate,
+                "--")
+            .bytes());
+  }
+
+  /** Every path in a commit, to find names that collide when case is ignored. */
+  public static List<String> tree(Path repo, String commit) {
+    if (commit == null || !commit.matches("[0-9a-fA-F]{40}|[0-9a-fA-F]{64}"))
+      throw new IllegalArgumentException("Full immutable commit SHA required");
+    var paths = new ArrayList<String>();
+    for (String p :
+        ChangePolicy.utf8(
+                git(repo, Set.of(0), "ls-tree", "-r", "-z", "--name-only", "--full-tree", commit)
+                    .bytes())
+            .split("\u0000")) if (!p.isEmpty()) paths.add(p);
+    return paths;
   }
 
   private String commit(Path repo, String sha) {
@@ -111,14 +148,6 @@ public class ScopeService {
     return result;
   }
 
-  private String fold(String path) {
-    return path.toUpperCase(Locale.ROOT).toLowerCase(Locale.ROOT);
-  }
-
-  private boolean matches(String path, String scope) {
-    return scope.endsWith("/") ? path.startsWith(scope) : path.equals(scope);
-  }
-
   public Map<String, Object> check(Path repo, JsonNode spec, String base, String candidate) {
     CoordinatorService.validate(spec);
     List<String> allowed = new ArrayList<>();
@@ -133,40 +162,25 @@ public class ScopeService {
       throw new IllegalArgumentException("Candidate must descend from base");
     var before = snapshot(repo, base);
     var after = snapshot(repo, candidate);
-    Map<String, Integer> folded = new HashMap<>();
-    after.keySet().forEach(p -> folded.merge(fold(p), 1, Integer::sum));
     Set<String> paths = new TreeSet<>(before.keySet());
     paths.addAll(after.keySet());
-    List<Map<String, Object>> changes = new ArrayList<>(), violations = new ArrayList<>();
+    List<Map<String, Object>> changes = new ArrayList<>();
+    List<ChangePolicy.Change> policyChanges = new ArrayList<>();
     for (String path : paths) {
       var old = before.get(path);
       var next = after.get(path);
       if (Objects.equals(old, next)) continue;
-      changes.add(
-          obj(
-              "path",
+      String status = old == null ? "added" : next == null ? "deleted" : "modified";
+      changes.add(obj("path", path, "status", status, "before", old, "after", next));
+      policyChanges.add(
+          new ChangePolicy.Change(
               path,
-              "status",
-              old == null ? "added" : next == null ? "deleted" : "modified",
-              "before",
-              old,
-              "after",
-              next));
-      try {
-        scopedPath(path, false);
-      } catch (IllegalArgumentException e) {
-        violations.add(obj("path", path, "reason", "unsupported_path"));
-      }
-      if (PROTECTED.stream().anyMatch(p -> matches(fold(path), fold(p))))
-        violations.add(obj("path", path, "reason", "protected_path"));
-      if (allowed.stream().noneMatch(p -> matches(path, p)))
-        violations.add(obj("path", path, "reason", "outside_allowed_paths"));
-      if (next != null && folded.get(fold(path)) > 1)
-        violations.add(obj("path", path, "reason", "case_collision"));
-      if ((old != null && !Set.of("100644", "100755").contains(old.getFirst()))
-          || (next != null && !Set.of("100644", "100755").contains(next.getFirst())))
-        violations.add(obj("path", path, "reason", "symlink_or_submodule"));
+              status,
+              old == null ? null : old.getFirst(),
+              next == null ? null : next.getFirst()));
     }
+    List<Map<String, Object>> violations =
+        ChangePolicy.violations(allowed, policyChanges, after.keySet(), PROTECTED, Set.of());
     return obj(
         "mode",
         "scope_validation",

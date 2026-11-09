@@ -394,6 +394,26 @@ class EvidenceVerifierTest {
   }
 
   @Test
+  void aRenameReportsTheFileItTakesAway() {
+    var compare =
+        n(
+            "files",
+            List.of(
+                obj(
+                    "filename",
+                    "docs/guard.txt",
+                    "status",
+                    "renamed",
+                    "previous_filename",
+                    "private/guard.txt")));
+    var result = EvidenceVerifier.assess(reportWith("passed"), runs(), github("/status"), compare);
+    assertEquals(
+        List.of("private/guard.txt", "docs/guard.txt"),
+        result.detail().get("files"),
+        "the scope verdict sees the deletion outside docs/");
+  }
+
+  @Test
   void assessRejectsChangesToTheProjectsOwnCi() {
     var result =
         EvidenceVerifier.assess(
