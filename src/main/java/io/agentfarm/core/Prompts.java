@@ -12,7 +12,15 @@ import java.util.regex.*;
  */
 public final class Prompts {
   public static final Map<String, String> CURRENT =
-      Map.of("research", "research.v5", "implement", "implement.v2", "review", "review.v3");
+      Map.of("research", "research.v6", "implement", "implement.v3", "review", "review.v3");
+
+  /**
+   * Slots holding text written outside these rules (issues, PR reviews, alerts, corrections). They
+   * are fenced as data with a code drawn per turn, so the text cannot close its own fence.
+   */
+  static final Set<String> EXTERNAL = Set.of("request", "feedback");
+
+  private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
   private static final Pattern SLOT = Pattern.compile("\\{\\{([a-z_]+)\\}\\}");
 
   public record Rendered(String id, String hash, String text) {
@@ -46,11 +54,28 @@ public final class Prompts {
       if (!values.containsKey(key))
         throw new IllegalArgumentException("Missing prompt value " + key);
       used.add(key);
-      m.appendReplacement(out, Matcher.quoteReplacement(values.get(key)));
+      String value = values.get(key);
+      if (EXTERNAL.contains(key)) value = fenced(value);
+      m.appendReplacement(out, Matcher.quoteReplacement(value));
     }
     m.appendTail(out);
     if (!used.containsAll(values.keySet()))
       throw new IllegalArgumentException("Unused prompt values for " + id);
     return new Rendered(id, sha256(template), out.toString());
+  }
+
+  /** External text between markers whose code it cannot know; blank text is said so, unfenced. */
+  static String fenced(String text) {
+    if (text == null || text.isBlank()) return "(nada)";
+    String code;
+    do code = HexFormat.of().formatHex(bytes());
+    while (text.contains(code));
+    return "«datos " + code + "»\n" + text + "\n«fin datos " + code + "»";
+  }
+
+  private static byte[] bytes() {
+    byte[] b = new byte[8];
+    RANDOM.nextBytes(b);
+    return b;
   }
 }

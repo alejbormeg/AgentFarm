@@ -478,7 +478,10 @@ public class WorkflowService {
   private void proposeLesson(
       java.sql.Connection c, Map<String, Object> w, String feedback, String actor)
       throws Exception {
-    if (feedback.isBlank() || !level(c, "project-memory").equals("propose_on_feedback")) return;
+    // Only a person's correction teaches the project; a trigger relays text from outside.
+    if (feedback.isBlank()
+        || actor.startsWith("trigger:")
+        || !level(c, "project-memory").equals("propose_on_feedback")) return;
     var recipe = MAPPER.valueToTree(withRecipe(c, new LinkedHashMap<>(w))).path("recipe");
     if (recipe.path("id").asText().equals("project-memory")) return;
     String lesson = ("mem-" + w.get("id") + "-v" + w.get("version"));

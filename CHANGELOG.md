@@ -8,6 +8,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 - Conectar GitHub ya no devuelve al login al volver de GitHub, ni pierde la App recién creada: la cookie de sesión pasa de `SameSite=Strict` a `Lax`, que el navegador sí envía cuando GitHub te manda de vuelta al panel. Toda acción sigue exigiendo POST con token CSRF.
 - Adelante vuelve a abrir la tarea aunque llegue antes de que termine de cerrarse con Atrás: el cierre del diálogo llegaba tarde y se tragaba la reapertura.
+- La revisión de una PR solo pide una corrección si la escribe alguien con permisos en el repositorio: en uno público, cualquiera podía lanzar un turno de los agentes con su texto. El texto de issues, revisiones y correcciones llega al agente entre marcas, como datos (`research.v6`, `implement.v3`), y un disparador ya no propone lecciones para la memoria del proyecto.
 - Interfaz nueva, «La ventana» y su modo oscuro «Atardecer»: una granja en pixel art que muestra el estado real, y aprobar o integrar a un clic desde la Bandeja. Sale Mateu: el jar baja de 65 a 40 MB, desaparece la excepción de CSRF y hay política de contenido estricta.
 - Tras 5 contraseñas fallidas seguidas, el panel hace esperar de 1 a 15 minutos, por cuenta y dirección. Con una dirección https, la cookie de sesión lleva `Secure`.
 - `jackson-databind` y `sqlite-jdbc` actualizados: la versión anterior de Jackson tenía 5 vulnerabilidades altas conocidas. Cada validación busca ahora vulnerabilidades y secretos.
