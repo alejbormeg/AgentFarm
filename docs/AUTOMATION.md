@@ -16,11 +16,11 @@ alertas Dependabot). Se revisan cada 5 minutos (`agentfarm.trigger-interval-ms`)
 
 | Disparador | Señal | Propuesta |
 | --- | --- | --- |
-| `labeled_issue` | Issue abierta con la etiqueta `agentfarm` | Investigar la issue (enlazada) |
+| `labeled_issue` | Issue abierta con la etiqueta `agentfarm`, que solo pone quien tiene permiso de triaje | Investigar la issue (enlazada); la petición dice quién la escribió y si tiene permisos en el repositorio |
 | `failing_ci` | Última ejecución completada de la rama principal falla | Receta `bugfix` |
 | `dependabot` | Alerta Dependabot abierta | Receta `dependency-update` |
 | `weekly` | Una vez por semana ISO | Hasta tres mejoras priorizadas |
-| `pr_feedback` | Cambios solicitados o checks fallidos en la PR de una tarea en revisión | Corrección: nueva versión de la propuesta |
+| `pr_feedback` | Cambios solicitados por `OWNER`, `MEMBER` o `COLLABORATOR`, o checks fallidos, en la PR de una tarea en revisión. La revisión de cualquier otra persona se ignora: en un repositorio público cualquiera puede pedir cambios | Corrección: nueva versión de la propuesta |
 
 Cada señal se procesa una sola vez (`trigger_events`) y cada repositorio abre como
 máximo `max_new` propuestas por pasada (1-10). Las peticiones se auditan con el
@@ -34,6 +34,7 @@ actor `trigger:<tipo>`.
   Las migraciones y cualquier criterio manual siempre esperan.
 - `propose_on_feedback`, solo para `project-memory`: cada corrección tuya con
   texto abre una propuesta para registrar la lección en la memoria del proyecto.
+  Una corrección que abre un disparador no la abre: el texto viene de fuera.
 
 No existe nivel de autointegración.
 

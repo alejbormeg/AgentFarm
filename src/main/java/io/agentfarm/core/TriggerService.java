@@ -198,18 +198,22 @@ public class TriggerService {
     kinds.forEach(k -> wanted.add(k.asText()));
     var signals = new ArrayList<Signal>();
     if (wanted.contains("labeled_issue"))
-      for (var issue : gh.get(repo, "/issues?labels=agentfarm&state=open&per_page=20"))
-        if (!issue.has("pull_request"))
-          signals.add(
-              new Signal(
-                  "issue:" + repo + "#" + issue.path("number").asInt(),
-                  "labeled_issue",
-                  "#" + issue.path("number").asInt() + " " + issue.path("title").asText(),
-                  "Origen: issue "
-                      + issue.path("html_url").asText()
-                      + "\n\n"
-                      + issue.path("body").asText(""),
-                  null));
+      for (var issue : gh.get(repo, "/issues?labels=agentfarm&state=open&per_page=20")) {
+        if (issue.has("pull_request")) continue;
+        // It enters by its label, set by someone with triage rights; its author may be anyone.
+        signals.add(
+            new Signal(
+                "issue:" + repo + "#" + issue.path("number").asInt(),
+                "labeled_issue",
+                "#" + issue.path("number").asInt() + " " + issue.path("title").asText(),
+                "Origen: issue "
+                    + issue.path("html_url").asText()
+                    + " · "
+                    + io.agentfarm.adapters.GitHubAuthors.describe(issue)
+                    + "\n\n"
+                    + issue.path("body").asText(""),
+                null));
+      }
     if (wanted.contains("failing_ci")) {
       String branch = gh.get(repo, "/").path("default_branch").asText("main");
       for (var run :
@@ -326,7 +330,10 @@ public class TriggerService {
     return touched;
   }
 
-  /** Requested changes and failed checks on an open AgentFarm PR become a correction request. */
+  /**
+   * Requested changes and failed checks on an open AgentFarm PR become a correction request. Only
+   * reviews by people with a role in the repository count: on a public one anyone can review.
+   */
   private List<String> feedback(GitHubReader.Source gh, String repo) throws Exception {
     var touched = new ArrayList<String>();
     var reviewing =
@@ -342,7 +349,8 @@ public class TriggerService {
       var keys = new ArrayList<String>();
       for (var review : gh.get(repo, "/pulls/" + item.get("pr") + "/reviews?per_page=100"))
         if (review.path("state").asText().equals("CHANGES_REQUESTED")
-            && review.path("commit_id").asText().equals(sha)) {
+            && review.path("commit_id").asText().equals(sha)
+            && io.agentfarm.adapters.GitHubAuthors.trusted(review)) {
           keys.add("review:" + repo + ":" + review.path("id").asLong());
           notes.add(
               review.path("user").path("login").asText() + ": " + review.path("body").asText());

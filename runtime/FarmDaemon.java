@@ -675,9 +675,11 @@ public class FarmDaemon extends CodexRunner {
                 "sandbox",
                 policy == null ? "host del ejecutor" : "imagen " + policy.image(),
                 "request",
-                item.path("request").asText() + io.agentfarm.core.ExecutorWork.recipeContext(item),
+                item.path("request").asText(),
                 "feedback",
-                payload.path("feedback").asText()));
+                payload.path("feedback").asText(),
+                "recipe",
+                io.agentfarm.core.ExecutorWork.recipeContext(item)));
     var skills = skills("research", profile == null ? List.of() : profile.skills());
     String prompt =
         rendered.text() + io.agentfarm.core.ExecutorWork.adoptionContract(item) + skills.text();
@@ -1064,8 +1066,9 @@ public class FarmDaemon extends CodexRunner {
                                 "proposal",
                                 p.toString(),
                                 "request",
-                                item.path("request").asText()
-                                    + io.agentfarm.core.ExecutorWork.recipeContext(item))))
+                                item.path("request").asText(),
+                                "recipe",
+                                io.agentfarm.core.ExecutorWork.recipeContext(item))))
                     .text()
                 + io.agentfarm.core.ExecutorWork.adoptionContract(item)
                 + implementSkills.text());
