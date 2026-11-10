@@ -148,6 +148,12 @@ class WebTest {
                     .build(),
                 HttpResponse.BodyHandlers.ofString())
             .statusCode());
+    // What a browser fetches on its own while signed out: the favicon.
+    browser.send(
+        HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/favicon.ico"))
+            .header("Accept", "image/avif,image/webp,image/*,*/*;q=0.8")
+            .build(),
+        HttpResponse.BodyHandlers.discarding());
     String page =
         browser
             .send(
@@ -174,7 +180,7 @@ class WebTest {
             HttpResponse.BodyHandlers.ofString());
     assertEquals(302, signedIn.statusCode());
     String to = signedIn.headers().firstValue("Location").orElse("");
-    assertFalse(to.contains("/api/"), "landed on " + to);
+    assertFalse(to.contains("/api/") || to.contains("favicon"), "landed on " + to);
   }
 
   @Test
