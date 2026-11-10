@@ -138,9 +138,10 @@ public class WorkflowApi {
     if (!p.getName().startsWith("node:"))
       throw new org.springframework.security.access.AccessDeniedException("Only an executor");
     checkAgent(n, p);
-    String repository = work.heldRepository(id, Json.text(n, "agent"));
+    var order = work.heldRepository(id, Json.text(n, "agent"));
+    String repository = order.get("repo").toString();
     try {
-      var token = credentials.repositoryToken(repository);
+      var token = credentials.repositoryToken(repository, order.get("kind").toString());
       return token == null ? Json.obj("mode", credentials.mode()) : token;
     } catch (java.io.IOException | IllegalStateException e) {
       throw new IllegalArgumentException(

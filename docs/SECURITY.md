@@ -49,6 +49,27 @@ importante es que un fallo no dé más privilegios que ese usuario, y un proxy p
 código nuestro. **Aún no está implementado ni probado**: `TestSandbox` cambia el dueño de los archivos con el
 UID del equipo, y sin root ese UID es otro dentro del contenedor.
 
+## Lo que puede hacer el token de GitHub del ejecutor
+
+Con una GitHub App, el ejecutor pide al panel un token de una hora por orden, y el panel lo
+limita de dos maneras: **al repositorio de la orden** y **a los permisos que esa orden necesita**.
+GitHub, si no se le pide un subconjunto, da al token todo lo que tiene la App.
+
+| Orden | Permisos del token |
+|---|---|
+| `research`, `review_existing` | solo lectura: metadata, contents, pull requests, issues |
+| `implement` | además escritura en contents y pull requests, y en workflows (el flujo de verificación de los repositorios sin CI) |
+| `merge` | ninguno: integrar lo hace el panel con su propia credencial |
+
+El panel rechaza el token si GitHub lo devuelve con más repositorios o más permisos de los pedidos,
+o sin decir sus permisos. Conceder menos de lo pedido no es un error.
+
+**Límite que esto no resuelve:** un token con `contents:write` puede, por la API de GitHub, fusionar
+o empujar a la rama principal. Para que un ejecutor comprometido no pueda saltarse la decisión del
+panel hay que protegerla en GitHub: regla de rama sobre `main` que exija PR y revisión, **sin
+permitir saltarla** a la App. Esa configuración y su prueba con una App real en un repositorio
+desechable siguen pendientes (#76, #83): hasta entonces no se da por verificada.
+
 ## Secretos en lo que mandan agentes y ejecutores
 
 `core/Redaction` es la única política de redacción. La usan el ejecutor (errores, salidas de

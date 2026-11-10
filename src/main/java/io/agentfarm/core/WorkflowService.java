@@ -395,20 +395,21 @@ public class WorkflowService {
   }
 
   /**
-   * The repository of an order this agent holds right now. Integrating is the panel's, never a
-   * node's.
+   * The repository ({@code repo}) and kind ({@code kind}) of an order this agent holds right now.
+   * Integrating is the panel's, never a node's.
    */
-  public String heldRepository(String command, String agent) {
+  public Map<String, Object> heldRepository(String command, String agent) {
     return db.tx(c -> {
       var held =
           one(
               c,
-              "SELECT w.repo repo FROM work_commands k JOIN work_items w ON w.id=k.item WHERE k.id=?"
-                  + " AND k.state='claimed' AND k.claimed_by=? AND k.kind<>'merge'",
+              "SELECT w.repo repo,k.kind kind FROM work_commands k JOIN work_items w ON"
+                  + " w.id=k.item WHERE k.id=? AND k.state='claimed' AND k.claimed_by=? AND"
+                  + " k.kind<>'merge'",
               command,
               agent);
       if (held == null) throw new IllegalArgumentException("Not an order this executor holds");
-      return held.get("repo").toString();
+      return held;
     });
   }
 
