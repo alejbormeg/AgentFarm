@@ -35,6 +35,8 @@ class SecureCookieTest {
             .orElseThrow();
     assertTrue(cookie.contains("Secure"), cookie);
     assertTrue(cookie.contains("HttpOnly"), cookie);
-    assertTrue(cookie.contains("SameSite=Strict"), cookie);
+    assertTrue(
+        cookie.contains("SameSite=Lax"),
+        "Lax: the way back from GitHub to /github-app/* must keep the session. " + cookie);
   }
 }
