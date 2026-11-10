@@ -19,7 +19,16 @@ In **Governance → Connect executor**, select a registered node and account. If
 ## Executor on Linux or WSL Ubuntu 24.04
 Needs Java 21+, Git, and `gh` and Codex signed in on the account that will run the service. Use each tool's official sign-in, and never paste tokens into Git.
 
-Build the package with `bash runtime/package.sh` and extract `target/agentfarm-executor-linux.tar.gz` somewhere permanent. The destination needs neither Maven nor the source code.
+**From the panel.** In **Conectar ejecutor**, prepare this computer, create the node credential and download it. Then, in your terminal:
+
+```bash
+curl -fsSo agentfarm-install.sh http://localhost:8080/executor/install.sh
+bash agentfarm-install.sh --panel http://localhost:8080 --token-file /path/to/node-token
+```
+
+The installer checks Java 21+, Docker and Codex, downloads the executor of the panel's own version and verifies its SHA-256. It asks the panel which node and account the credential belongs to, writes a private `~/.config/agentfarm/executor.env`, and installs the `agentfarm-executor` user service. It leaves an existing executor alone unless you pass `--replace`. A panel without Docker serves `target/agentfarm-executor-linux.tar.gz`, built with `bash runtime/package.sh`.
+
+**By hand.** Build the package with `bash runtime/package.sh` and extract `target/agentfarm-executor-linux.tar.gz` somewhere permanent. The destination needs neither Maven nor the source code.
 
 Create a private state directory and save the node credential, which the wizard shows only once, as `STATE/node-token` with mode 600. Outside Git, create a private `executor.env`:
 

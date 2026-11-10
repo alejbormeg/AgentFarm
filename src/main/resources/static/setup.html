@@ -6,7 +6,7 @@
 <a href="/governance">← Gobierno</a><h1>Conecta tu ejecutor</h1>
 <p>Un nodo registrado, su cuenta Clover y una credencial revocable. La contraseña del administrador permanece en el panel.</p>
 <p id="feedback" role="status" aria-live="polite">Cargando configuración…</p>
-<section><h2>1. Herramientas y permisos</h2><p>En Linux o WSL necesitas Java 21+, Git, GitHub CLI y Codex autenticados.</p>
+<section><h2>1. Herramientas y permisos</h2><p>En Linux o WSL necesitas Java 21+, Git, Docker, GitHub CLI y Codex con sesión iniciada. El instalador del paso 3 lo comprueba.</p>
 <p><code>gh auth status</code> · <code>codex login status</code></p>
 <p class="warning">El trabajador todavía comparte la identidad Linux del servicio. Este asistente no acredita aislamiento de credenciales.</p>
 <p id="publisher"></p></section>
@@ -20,9 +20,11 @@
 <button id="download" type="button">Descargar node-token</button>
 <button id="hide" type="button">Ocultar credencial</button></div>
 <h3>Credenciales existentes</h3><ul id="credentials"></ul></section>
-<section><h2>3. Arranque y comprobación</h2>
-<p>Extrae el paquete Linux y configura los IDs elegidos en un archivo privado <code>executor.env</code>. Usa el instalador systemd incluido.</p>
-<p><code>./install-executor.sh /ruta/privada/executor.env</code></p>
+<section><h2>3. Instalar y comprobar</h2>
+<p>En la terminal de Linux o WSL donde están Codex, <code>gh</code> y Docker, descarga el instalador de este panel y ejecútalo con la credencial que acabas de descargar. Comprueba lo que falta, instala el ejecutor de esta misma versión del panel como servicio de tu usuario y escribe su configuración: no hay identificadores que copiar.</p>
+<pre><code id="install-command">curl -fsSo agentfarm-install.sh http://localhost:8080/executor/install.sh
+bash agentfarm-install.sh --panel http://localhost:8080 --token-file /ruta/al/node-token</code></pre>
+<p class="small">Pon en <code>--token-file</code> la ruta del archivo descargado; en WSL suele estar en <code>/mnt/c/Users/&lt;tu usuario&gt;/Downloads/node-token</code>. Sin <code>--token-file</code>, el instalador pide la credencial sin mostrarla. Borra el archivo descargado cuando termine. Si ya hay un ejecutor instalado, no lo toca salvo con <code>--replace</code>.</p>
 <p id="runtime">Esperando una lectura del servidor.</p>
 <p id="quota">La autenticación de Codex no acredita cuota disponible.</p>
 <button id="check" type="button">Comprobar conexión</button>

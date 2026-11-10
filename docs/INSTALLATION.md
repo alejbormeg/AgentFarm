@@ -1,7 +1,7 @@
-# Instalación portable — incremento de fase 1
-Este incremento es candidato de desarrollo. La fase 1 sigue abierta: faltan
-aislamiento de credenciales del trabajador, publicación de versiones y piloto
-de instalación. No acredita los objetivos de las fases 2–4.
+# Instalación
+
+El panel y el ejecutor. El panel decide y guarda el estado; el ejecutor, en tu Linux o WSL, lanza a
+los agentes (Codex o Claude Code) y las pruebas en contenedores.
 
 ## Panel
 Requiere Docker Compose v2. Desde el checkout: `./agentfarm up`.
@@ -18,11 +18,32 @@ La conexión comprueba después heartbeats y autenticación declarada por el eje
 no inicia inferencia ni equivale a verificar aislamiento.
 
 ## Ejecutor Linux / WSL Ubuntu 24.04
-Necesita Java 21+, Git, gh y Codex autenticados en la cuenta que ejecutará el servicio.
-Usa el inicio de sesión oficial de cada herramienta; nunca pegues tokens en Git.
-Compilar el paquete: `bash runtime/package.sh`. Extrae
-`target/agentfarm-executor-linux.tar.gz` en una ubicación permanente. El destino
-no necesita Maven ni una copia del código fuente.
+Necesita Java 21+, Git, gh, Docker y Codex con sesión iniciada (`codex login`) en la cuenta que
+ejecutará el servicio. Usa el inicio de sesión oficial de cada herramienta; nunca pegues tokens en
+Git. Con una GitHub App conectada, el panel da al ejecutor un token de una hora por tarea y `gh` no
+necesita sesión propia.
+
+**Instalar desde el panel.** En **Conectar ejecutor**, prepara el equipo, crea la credencial del
+nodo y descárgala. Después, en tu terminal:
+
+```bash
+curl -fsSo agentfarm-install.sh http://localhost:8080/executor/install.sh
+bash agentfarm-install.sh --panel http://localhost:8080 --token-file /ruta/al/node-token
+```
+
+El instalador comprueba lo que falta, descarga el ejecutor de la misma versión que el panel y
+verifica su SHA-256. Pregunta al panel a qué nodo y cuenta pertenece la credencial y escribe
+`~/.config/agentfarm/executor.env` y `~/.local/state/agentfarm/node-token`, ambos privados. Después
+instala el servicio `agentfarm-executor` de tu usuario. Si ya hay un ejecutor instalado, no lo toca
+salvo con `--replace`. Sin `--token-file`, pide la credencial sin mostrarla. Si WSL no tiene systemd,
+explica cómo activarlo y cómo arrancar el ejecutor en primer plano mientras tanto.
+
+El panel en Docker trae el paquete en su imagen. Sin Docker, compílalo con `bash runtime/package.sh`
+antes de arrancar el panel: lo sirve desde `target/agentfarm-executor-linux.tar.gz`, o desde
+`AGENTFARM_EXECUTOR_PACKAGE`.
+
+**A mano.** `bash runtime/package.sh` deja `target/agentfarm-executor-linux.tar.gz`. Extráelo en una
+ubicación permanente: el destino no necesita Maven ni una copia del código fuente.
 
 Crea un directorio privado de estado y guarda la credencial de nodo entregada
 una sola vez por el asistente en `STATE/node-token`, permiso 600.

@@ -30,6 +30,28 @@ public class ExecutorApi {
         p.getName());
   }
 
+  /**
+   * Who this node credential belongs to, so the installer can write the executor's configuration
+   * without the user copying identifiers. Workers follow the names «Preparar este equipo» gives.
+   */
+  @GetMapping("/me")
+  public Object me(jakarta.servlet.http.HttpServletRequest request, Principal p) {
+    if (!p.getName().startsWith("node:"))
+      throw new org.springframework.security.access.AccessDeniedException("Only an executor");
+    String node = request.getAttribute("agentfarm.node").toString();
+    return java.util.Map.of(
+        "node",
+        node,
+        "account",
+        request.getAttribute("agentfarm.account").toString(),
+        "api_account",
+        String.valueOf(request.getAttribute("agentfarm.api-account")).replace("null", ""),
+        "implementer",
+        node + "-boxer",
+        "reviewer",
+        node + "-reviewer");
+  }
+
   @PostMapping("/{id}/revoke")
   public Object revoke(@PathVariable String id, Principal p) {
     credentials.revoke(id, p.getName());
