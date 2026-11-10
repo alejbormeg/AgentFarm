@@ -156,22 +156,29 @@ public class GitHubCredentials {
   }
 
   /**
-   * A token for the executor, limited to one repository, so it needs no login of its own. Null
-   * without an App. A wider answer than requested is refused: the executor would hold more than it
+   * A token for the executor, limited to one repository and to the permissions its order needs (see
+   * {@link TokenScope}), so it needs no login of its own. Null without an App. A wider answer than
+   * requested, in repositories or in permissions, is refused: the executor would hold more than it
    * should.
    */
-  public java.util.Map<String, Object> repositoryToken(String repository) throws Exception {
+  public java.util.Map<String, Object> repositoryToken(String repository, String kind)
+      throws Exception {
     var app = app();
     if (app == null) return null;
     String name = repository.substring(repository.indexOf('/') + 1);
-    var body =
-        parse(
-            exchange.tokenResponse(
-                app.installation(),
-                jwtFor(app.id(), app.key()),
-                encode(obj("repositories", java.util.List.of(name)))));
+    var permissions = TokenScope.permissionsFor(kind);
+    String response =
+        exchange.tokenResponse(
+            app.installation(),
+            jwtFor(app.id(), app.key()),
+            encode(obj("repositories", java.util.List.of(name), "permissions", permissions)));
+    var body = parse(response);
     if (!body.path("repository_selection").asText().equals("selected"))
       throw new IllegalStateException("GitHub answered with a token wider than one repository");
+    var excess = io.agentfarm.adapters.TokenPermissions.excess(response, permissions);
+    if (!excess.isEmpty())
+      throw new IllegalStateException(
+          "GitHub answered with a token with more permissions than asked: " + excess);
     return obj(
         "token", body.path("token").asText(), "expires_at", body.path("expires_at").asText());
   }

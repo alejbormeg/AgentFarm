@@ -96,6 +96,12 @@ class GitHubCredentialsTest {
 
   private GitHubCredentials withApp(String selection, java.util.List<String> bodies)
       throws Exception {
+    return withApp(selection, bodies, null);
+  }
+
+  /** {@code permissions}: what the fake GitHub answers; null grants exactly what was asked. */
+  private GitHubCredentials withApp(
+      String selection, java.util.List<String> bodies, String permissions) throws Exception {
     var keys = KeyPairGenerator.getInstance("RSA");
     keys.initialize(2048);
     Path key = dir.resolve("scoped.pem");
@@ -118,31 +124,88 @@ class GitHubCredentialsTest {
           @Override
           public String tokenResponse(String installation, String jwt, String body) {
             bodies.add(body);
-            return "{\"token\":\"ghs_x\",\"expires_at\":\"2099-01-01T00:00:00Z\",\"repository_selection\":\""
+            String granted =
+                permissions != null
+                    ? permissions
+                    : Json.encode(Json.parse(body).path("permissions"));
+            return "{\"token\":\"ghs_x\",\"expires_at\":\"2099-01-01T00:00:00Z\","
+                + "\"repository_selection\":\""
                 + selection
-                + "\"}";
+                + "\",\"permissions\":"
+                + granted
+                + "}";
           }
         },
         Clock.systemUTC());
   }
 
   @Test
-  void anExecutorTokenIsLimitedToItsRepository() throws Exception {
+  void anExecutorTokenIsLimitedToItsRepositoryAndItsOrder() throws Exception {
     var bodies = new ArrayList<String>();
-    var token = withApp("selected", bodies).repositoryToken("owner/forja");
+    var token = withApp("selected", bodies).repositoryToken("owner/forja", "implement");
     assertEquals("ghs_x", token.get("token"));
-    assertEquals("{\"repositories\":[\"forja\"]}", bodies.get(0));
+    var asked = Json.parse(bodies.get(0));
+    assertEquals("forja", asked.path("repositories").get(0).asText());
+    assertEquals(1, asked.path("repositories").size());
+    assertEquals("write", asked.path("permissions").path("contents").asText());
+    assertEquals("write", asked.path("permissions").path("pull_requests").asText());
+
+    for (String kind : java.util.List.of("research", "review_existing")) {
+      bodies.clear();
+      withApp("selected", bodies).repositoryToken("owner/forja", kind);
+      var read = Json.parse(bodies.get(0)).path("permissions");
+      read.properties()
+          .forEach(e -> assertEquals("read", e.getValue().asText(), kind + " " + e.getKey()));
+      assertFalse(read.has("workflows"), kind);
+    }
   }
 
   @Test
   void aWiderTokenThanRequestedIsRefused() throws Exception {
     assertThrows(
         IllegalStateException.class,
-        () -> withApp("all", new ArrayList<>()).repositoryToken("owner/forja"));
+        () -> withApp("all", new ArrayList<>()).repositoryToken("owner/forja", "implement"));
+    // More permissions than asked: an App that grants a level or a right the order did not need.
+    for (String granted :
+        java.util.List.of(
+            "{\"metadata\":\"read\",\"contents\":\"write\"}",
+            "{\"metadata\":\"read\",\"contents\":\"read\",\"administration\":\"read\"}",
+            "{\"metadata\":\"read\",\"contents\":\"admin\"}",
+            "{\"metadata\":\"read\",\"contents\":\"surprise\"}")) {
+      var e =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  withApp("selected", new ArrayList<>(), granted)
+                      .repositoryToken("owner/forja", "research"),
+              granted);
+      assertTrue(e.getMessage().contains("more permissions than asked"), e.getMessage());
+    }
+    // A response that does not say what the token can do is not trusted either.
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            withApp("selected", new ArrayList<>(), "\"nothing\"")
+                .repositoryToken("owner/forja", "research"));
+    // Less than asked is fine: the App may not hold every right.
+    assertEquals(
+        "ghs_x",
+        withApp("selected", new ArrayList<>(), "{\"metadata\":\"read\"}")
+            .repositoryToken("owner/forja", "implement")
+            .get("token"));
+  }
+
+  @Test
+  void anOrderOfAnUnknownKindOrAMergeGetsNoToken() {
+    for (String kind : java.util.List.of("merge", "", "anything"))
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> withApp("selected", new ArrayList<>()).repositoryToken("owner/forja", kind),
+          kind);
   }
 
   @Test
   void withoutAnAppThereIsNoExecutorToken() throws Exception {
-    assertNull(GitHubCredentials.file("").repositoryToken("owner/forja"));
+    assertNull(GitHubCredentials.file("").repositoryToken("owner/forja", "implement"));
   }
 }

@@ -358,7 +358,8 @@ class WorkflowTest {
   void onlyTheExecutorHoldingAnOrderLearnsItsRepository() {
     create();
     String command = command(claim());
-    assertEquals("owner/repo", service.heldRepository(command, "agent"));
+    assertEquals("owner/repo", service.heldRepository(command, "agent").get("repo"));
+    assertEquals("research", service.heldRepository(command, "agent").get("kind"));
     assertThrows(IllegalArgumentException.class, () -> service.heldRepository(command, "other"));
     proposal(command);
     assertThrows(

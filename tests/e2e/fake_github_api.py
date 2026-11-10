@@ -23,6 +23,11 @@ def merged_tree(sha):
     return result.stdout.splitlines()[0] if result.returncode == 0 else None
 
 
+
+# What the App was created with (GitHubAppSetup.PERMISSIONS).
+APP_PERMISSIONS = {"metadata": "read", "checks": "read", "vulnerability_alerts": "read", "statuses": "read",
+                   "contents": "write", "pull_requests": "write", "actions": "read", "issues": "write", "workflows": "write"}
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_):
         pass
@@ -86,8 +91,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(401, {"message": "Bad credentials"})
         if re.fullmatch(r"/app/installations/\d+/access_tokens", self.path):
             if body.get("repositories"):
-                return self.reply(201, {"token": "ghs_e2e_repo_" + "_".join(body["repositories"]), "expires_at": "2099-01-01T00:00:00Z", "repository_selection": "selected"})
-            return self.reply(201, {"token": "ghs_e2e", "expires_at": "2099-01-01T00:00:00Z", "repository_selection": "all"})
+                # Like GitHub: the token carries the permissions asked for, or all of the App's.
+                return self.reply(201, {"token": "ghs_e2e_repo_" + "_".join(body["repositories"]), "expires_at": "2099-01-01T00:00:00Z",
+                                        "repository_selection": "selected", "permissions": body.get("permissions") or APP_PERMISSIONS})
+            return self.reply(201, {"token": "ghs_e2e", "expires_at": "2099-01-01T00:00:00Z", "repository_selection": "all", "permissions": APP_PERMISSIONS})
         self.reply(404, {"message": self.path})
 
     def do_PUT(self):
