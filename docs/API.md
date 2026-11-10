@@ -1,8 +1,9 @@
 # API local de gobierno
 
-Todas las rutas requieren autenticación del operador. No existen todavía
-credenciales por nodo ni permisos distintos para un trabajador externo.
-El panel usa esta misma API.
+Todas las rutas requieren autenticación, salvo `GET /api/health`. El panel usa esta misma API.
+Además de las cuentas de personas (propietario, revisor, observador) hay dos credenciales
+`Bearer` revocables: la del ejecutor (`afn_…`, solo sus rutas de trabajo) y la de un cliente MCP
+(`afr_…`, creada con `./agentfarm mcp-token`), que solo lee tareas y crea peticiones.
 
 GET /api/csrf entrega el token CSRF y el nombre de su cabecera. Un cliente de
 la API debe mantener la cookie de sesión y enviar ese token en los POST.
@@ -27,6 +28,8 @@ contraseñas en argumentos compartidos, logs o Git.
 | GET /api/work?limit=&offset= | Resúmenes de tareas, de la más reciente a la más antigua, sin propuesta, evidencia ni petición. `limit` hasta 1000; 0 o ausente devuelve todas. |
 | GET /api/work/{id} | Una tarea entera: propuesta, evidencia y petición incluidas. |
 | GET /api/audit | Últimas 200 acciones de gobierno. |
+| GET /api/requesters | Propietario: credenciales de clientes MCP, sin secreto, con su último uso. |
+| POST /api/requesters/{id}/revoke | Propietario: revocar una credencial de cliente MCP. |
 | GET /api/budget/{account} | Estado del presupuesto. |
 | POST /api/budget/{operation} | configure, open-window, observe, reserve, settle. |
 

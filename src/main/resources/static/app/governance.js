@@ -1,4 +1,4 @@
-import { E, api, button, link, when } from "./lib.js";
+import { E, api, button, confirmButton, link, when } from "./lib.js";
 
 export const withGovernance = (Base) =>
   class extends Base {
@@ -28,6 +28,34 @@ export const withGovernance = (Base) =>
       if (control) side.append(control);
       row.append(text, side);
       return row;
+    }
+    // Claude Code and other MCP clients get a credential that only reads tasks and files requests:
+    // their model can read any file, so the panel's password must never be the one they hold.
+    mcpClients(credentials) {
+      const live = credentials.filter((c) => !c.revoked);
+      const rows = [
+        this.connection(
+          "Claude y otros clientes MCP",
+          live.length > 0,
+          (live.length ? (live.length === 1 ? "Una credencial" : live.length + " credenciales") + " que solo leen tareas y crean peticiones. " : "") +
+            "Crea una con ./agentfarm mcp-token: se guarda en un archivo sin pasar por la pantalla. Nunca le des la contraseña del panel.",
+          null,
+        ),
+      ];
+      for (const c of live) {
+        const row = E("div", "", "setting");
+        const text = E("div");
+        text.append(E("strong", c.label), E("p", "Creada " + when(c.created * 1000) + " · " + (c.last_used ? "último uso " + when(c.last_used * 1000) : "sin usar todavía"), "small"));
+        const side = E("div", "", "acts");
+        side.append(
+          confirmButton("Revocar", "El cliente que la use dejará de leer tareas y de crear peticiones.", "Revocar credencial", () =>
+            this.action("/requesters/" + encodeURIComponent(c.id) + "/revoke", {}, "Credencial revocada."),
+          ),
+        );
+        row.append(text, side);
+        rows.push(row);
+      }
+      return rows;
     }
     viewGovernance(r, o) {
       const owner = this.data.me?.role === "owner";
@@ -68,6 +96,7 @@ export const withGovernance = (Base) =>
             github?.mode === "app" ? "GitHub App" + (github.slug ? " · " + github.slug : "") : (configured ? "Con un token personal." : "Sin él no se verifica ni se integra.") + (github && !github.webhook ? " La App se creará sin webhook: el panel no tiene dirección pública. Si lo despliegas, configura AGENTFARM_PANEL_URL con https." : ""),
             button("Conectar GitHub", () => this.startGitHubApp()),
           ),
+          ...this.mcpClients(this.data.requesters || []),
         );
       }
       const wall = E("section", "", "barn");

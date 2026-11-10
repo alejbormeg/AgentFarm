@@ -12,16 +12,49 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 public class NodeTokenFilter extends OncePerRequestFilter {
   private final NodeCredentials credentials;
+  private final io.agentfarm.adapters.RequesterCredentials requesters;
 
-  public NodeTokenFilter(NodeCredentials credentials) {
+  public NodeTokenFilter(
+      NodeCredentials credentials, io.agentfarm.adapters.RequesterCredentials requesters) {
     this.credentials = credentials;
+    this.requesters = requesters;
+  }
+
+  /**
+   * What a requester (an MCP client) may do: read tasks, the overview and its own identity, and
+   * file a request. Nothing that approves, corrects, integrates or reads the audit.
+   */
+  static boolean requesterMay(String method, String path) {
+    if (method.equals("POST")) return path.equals("/api/work");
+    return method.equals("GET")
+        && (Set.of("/api/csrf", "/api/me", "/api/overview", "/api/runtime", "/api/work")
+                .contains(path)
+            || path.matches("/api/work/[A-Za-z0-9-]{1,80}"));
   }
 
   protected void doFilterInternal(
       HttpServletRequest request, HttpServletResponse response, FilterChain chain)
       throws ServletException, IOException {
     String authorization = request.getHeader("Authorization");
-    if (authorization != null && authorization.startsWith("Bearer ")) {
+    if (authorization != null
+        && authorization.startsWith(
+            "Bearer " + io.agentfarm.adapters.RequesterCredentials.PREFIX)) {
+      String label = requesters.authenticate(authorization.substring(7));
+      if (label == null) {
+        response.sendError(401);
+        return;
+      }
+      if (!requesterMay(request.getMethod(), request.getRequestURI())) {
+        response.sendError(403);
+        return;
+      }
+      SecurityContextHolder.getContext()
+          .setAuthentication(
+              new UsernamePasswordAuthenticationToken(
+                  "requester:" + label,
+                  null,
+                  List.of(new SimpleGrantedAuthority("ROLE_REQUESTER"))));
+    } else if (authorization != null && authorization.startsWith("Bearer ")) {
       var identity = credentials.authenticate(authorization.substring(7));
       if (identity == null) {
         response.sendError(401);

@@ -73,6 +73,7 @@ class ApiContractTest {
   @Autowired WorkflowService work;
   @Autowired Store store;
   @Autowired Clock clock;
+  @Autowired io.agentfarm.adapters.RequesterCredentials requesters;
 
   private final HttpClient client =
       HttpClient.newBuilder()
@@ -189,6 +190,7 @@ class ApiContractTest {
     write("/api/workers", "/api/workers", obj("id", "demo-boxer", "node", "napoleon-demo"));
     write("/api/workers", "/api/workers", obj("id", "demo-reviewer", "node", "napoleon-demo"));
     write("/api/executors", "/api/executors", obj("node", "napoleon-demo", "account", "demo"));
+    requesters.issue("mcp-contract", "contract");
     write(
         "/api/runtime/observations",
         "/api/runtime/observations",
@@ -448,6 +450,7 @@ class ApiContractTest {
             "/api/overview",
             "/api/providers",
             "/api/recipes",
+            "/api/requesters",
             "/api/runs",
             "/api/runtime",
             "/api/skills",

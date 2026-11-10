@@ -98,6 +98,7 @@ public class SecurityConfig {
   SecurityFilterChain security(
       HttpSecurity http,
       io.agentfarm.core.NodeCredentials nodes,
+      io.agentfarm.adapters.RequesterCredentials requesters,
       io.agentfarm.core.TwoFactor twoFactor,
       io.agentfarm.core.LoginThrottle throttle)
       throws Exception {
@@ -118,11 +119,16 @@ public class SecurityConfig {
                 .hasAnyRole("OWNER", "EXECUTOR")
                 .requestMatchers(
                     HttpMethod.GET, "/api/csrf", "/api/overview", "/api/runtime", "/api/budget/**")
-                .hasAnyRole("OWNER", "EXECUTOR", "REVIEWER", "OBSERVER")
+                .hasAnyRole("OWNER", "EXECUTOR", "REVIEWER", "OBSERVER", "REQUESTER")
+                // Credentials for MCP clients are the owner's business alone.
+                .requestMatchers("/api/requesters", "/api/requesters/**")
+                .hasRole("OWNER")
+                // A requester (MCP client) files requests; NodeTokenFilter keeps it to that.
+                .requestMatchers(HttpMethod.POST, "/api/work")
+                .hasAnyRole("OWNER", "REVIEWER", "REQUESTER")
                 // Reviewers file requests and decide on proposals; integration stays with owners.
                 .requestMatchers(
                     HttpMethod.POST,
-                    "/api/work",
                     "/api/work/*/actions/implement",
                     "/api/work/*/actions/correct",
                     "/api/work/*/actions/cancel",
@@ -131,7 +137,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/me/2fa/**")
                 .hasAnyRole(people)
                 .requestMatchers(HttpMethod.GET, "/api/**")
-                .hasAnyRole(people)
+                .hasAnyRole("OWNER", "REVIEWER", "OBSERVER", "REQUESTER")
                 .requestMatchers("/api/**")
                 .hasRole("OWNER")
                 .anyRequest()
@@ -141,7 +147,7 @@ public class SecurityConfig {
             org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
                 .class)
         .addFilterBefore(
-            new NodeTokenFilter(nodes),
+            new NodeTokenFilter(nodes, requesters),
             org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
                 .class)
         .addFilterBefore(

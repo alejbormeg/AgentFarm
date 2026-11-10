@@ -33,15 +33,24 @@ public final class McpServer {
   }
 
   public static Panel http(String base, String user, String password) {
+    return http(
+        base,
+        "Basic "
+            + Base64.getEncoder()
+                .encodeToString((user + ":" + password).getBytes(StandardCharsets.UTF_8)));
+  }
+
+  /** The panel with a requester credential from {@code ./agentfarm mcp-token}. */
+  public static Panel bearer(String base, String token) {
+    return http(base, "Bearer " + token);
+  }
+
+  private static Panel http(String base, String auth) {
     var client =
         HttpClient.newBuilder()
             .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
             .connectTimeout(Duration.ofSeconds(5))
             .build();
-    String auth =
-        "Basic "
-            + Base64.getEncoder()
-                .encodeToString((user + ":" + password).getBytes(StandardCharsets.UTF_8));
     return new Panel() {
       JsonNode csrf;
 
@@ -293,9 +302,60 @@ public final class McpServer {
     }
   }
 
-  public static void main(String panelUrl, String user, Path passwordFile) throws IOException {
-    var server = new McpServer(http(panelUrl, user, Files.readString(passwordFile).trim()));
-    server.serve(
-        new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)), System.out);
+  /**
+   * Why this account must not serve a model, or null. The client's model reads every file its
+   * client can, password included; with an owner's or reviewer's it could approve or integrate.
+   */
+  static String refusal(Panel panel, boolean allowFullAccount) throws Exception {
+    String role = panel.get("/me").path("role").asText();
+    if (allowFullAccount || role.equals("requester") || role.equals("observer")) return null;
+    return "La cuenta de este MCP es de "
+        + (role.isEmpty() ? "un rol desconocido" : role)
+        + ": el modelo que lo usa puede leer su contraseña y aprobar o integrar con ella. Crea una"
+        + " credencial que solo pide trabajo con ./agentfarm mcp-token y pásala con --token-file."
+        + " Si de verdad quieres esta cuenta, añade --allow-full-account true.";
+  }
+
+  /**
+   * {@code --token-file} (by default ~/.config/agentfarm/mcp-token) or, explicitly, {@code
+   * --password-file} with {@code --user}. Returns the exit status.
+   */
+  public static int main(Map<String, String> options, String home) throws Exception {
+    String base = options.getOrDefault("--panel", "http://localhost:8080");
+    Path token =
+        Path.of(
+            options.getOrDefault(
+                "--token-file", Path.of(home, ".config", "agentfarm", "mcp-token").toString()));
+    Panel panel;
+    if (options.containsKey("--password-file"))
+      panel =
+          http(
+              base,
+              options.getOrDefault("--user", "admin"),
+              Files.readString(Path.of(options.get("--password-file"))).trim());
+    else if (Files.isReadable(token)) panel = bearer(base, Files.readString(token).trim());
+    else {
+      System.err.println(
+          "No hay credencial en "
+              + token
+              + ". Créala con ./agentfarm mcp-token desde el directorio de AgentFarm.");
+      return 2;
+    }
+    String refused;
+    try {
+      refused = refusal(panel, "true".equals(options.get("--allow-full-account")));
+    } catch (Exception e) {
+      System.err.println("El panel no acepta esta credencial: " + e.getMessage());
+      return 2;
+    }
+    if (refused != null) {
+      System.err.println(refused);
+      return 2;
+    }
+    new McpServer(panel)
+        .serve(
+            new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8)),
+            System.out);
+    return 0;
   }
 }

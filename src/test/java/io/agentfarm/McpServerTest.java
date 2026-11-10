@@ -80,4 +80,47 @@ class McpServerTest {
     assertTrue(posts.get(0).contains("\"bugfix\""));
     assertTrue(r.get(2).path("result").path("isError").asBoolean());
   }
+
+  static McpServer.Panel signedInAs(String role) {
+    return new McpServer.Panel() {
+      public JsonNode get(String path) {
+        return parse("{\"role\":\"" + role + "\"}");
+      }
+
+      public JsonNode post(String path, Object body) {
+        throw new AssertionError("no writes");
+      }
+    };
+  }
+
+  /** The model behind the client reads the credential: it must not be one that decides. */
+  @Test
+  void refusesAccountsThatCanApproveOrIntegrate() throws Exception {
+    assertNull(McpServer.refusal(signedInAs("requester"), false));
+    assertNull(McpServer.refusal(signedInAs("observer"), false));
+    for (String role : List.of("owner", "reviewer", ""))
+      assertTrue(
+          McpServer.refusal(signedInAs(role), false).contains("./agentfarm mcp-token"), role);
+    assertNull(McpServer.refusal(signedInAs("owner"), true), "only when asked in so many words");
+  }
+
+  @Test
+  void withoutACredentialItSaysHowToCreateOne(
+      @org.junit.jupiter.api.io.TempDir java.nio.file.Path home) throws Exception {
+    var err = new ByteArrayOutputStream();
+    var previous = System.err;
+    System.setErr(new PrintStream(err, true, StandardCharsets.UTF_8));
+    try {
+      assertEquals(2, McpServer.main(Map.of(), home.toString()));
+    } finally {
+      System.setErr(previous);
+    }
+    assertTrue(err.toString(StandardCharsets.UTF_8).contains("./agentfarm mcp-token"));
+  }
+
+  @Test
+  void consoleCommandsNeverStartThePanel() {
+    for (String command : List.of("2fa-reset", "requester-token", "backup", "github-check"))
+      assertTrue(AgentFarmApplication.CONSOLE.contains(command), command);
+  }
 }

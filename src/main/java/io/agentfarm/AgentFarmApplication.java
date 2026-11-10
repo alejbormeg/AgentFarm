@@ -6,6 +6,23 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @org.springframework.scheduling.annotation.EnableScheduling
 @SpringBootApplication
 public class AgentFarmApplication {
+  /** Commands answered by {@link Cli} without starting the panel. */
+  static final java.util.Set<String> CONSOLE =
+      java.util.Set.of(
+          "coordinator",
+          "budget",
+          "scope",
+          "import",
+          "doctor",
+          "github-check",
+          "sandbox-profile",
+          "profile",
+          "memory",
+          "backup",
+          "restore",
+          "2fa-reset",
+          "requester-token");
+
   public static void main(String[] args) throws Exception {
     if (args.length > 0 && args[0].equals("user-hash")) {
       // Reads one password from stdin and prints the bcrypt hash for AGENTFARM_USERS_FILE.
@@ -25,27 +42,10 @@ public class AgentFarmApplication {
       // stdout carries JSON-RPC only: no Spring context, no banner, no logs.
       var options = new java.util.HashMap<String, String>();
       for (int i = 1; i + 1 < args.length; i += 2) options.put(args[i], args[i + 1]);
-      McpServer.main(
-          options.getOrDefault("--panel", "http://localhost:8080"),
-          options.getOrDefault("--user", "admin"),
-          java.nio.file.Path.of(
-              options.getOrDefault("--password-file", "data/admin-password.txt")));
+      System.exit(McpServer.main(options, System.getProperty("user.home")));
       return;
     }
-    if (args.length > 0
-        && java.util.Set.of(
-                "coordinator",
-                "budget",
-                "scope",
-                "import",
-                "doctor",
-                "github-check",
-                "sandbox-profile",
-                "profile",
-                "memory",
-                "backup",
-                "restore")
-            .contains(args[0])) {
+    if (args.length > 0 && CONSOLE.contains(args[0])) {
       System.exit(Cli.run(args));
       return;
     }

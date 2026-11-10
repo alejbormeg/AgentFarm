@@ -2,7 +2,7 @@
 set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 command="${1:-help}"
-usage="Uso: ./agentfarm {help|github-token|github-app <id> <instalación> <clave.pem>|github-check <owner/repo>|2fa-reset <usuario>|up|demo|password|stop|logs|status|doctor|profile|backup [destino]|restore [--yes] <copia>}"
+usage="Uso: ./agentfarm {help|github-token|github-app <id> <instalación> <clave.pem>|github-check <owner/repo>|2fa-reset <usuario>|up|demo|password|mcp-token [archivo]|stop|logs|status|doctor|profile|backup [destino]|restore [--yes] <copia>}"
 java_in_image=(java -Dorg.sqlite.lib.path=/app/native -jar /app/agentfarm.jar)
 
 run_jar() {
@@ -191,8 +191,31 @@ restore_command() {
   restore_compose "$snapshot"
 }
 
+# A credential that only reads tasks and files requests, for an MCP client such as Claude Code. It
+# goes straight to a private file: the model can read that file, so it must not be a password.
+mcp_token_command() {
+  (($# <= 1)) || { echo "$usage" >&2; exit 2; }
+  local dest label report token
+  dest="$(absolute_path "${1:-$HOME/.config/agentfarm/mcp-token}")"
+  [[ ! -e "$dest" ]] || { echo "Ya existe $dest; bórralo o elige otro destino." >&2; exit 2; }
+  label="mcp-$(hostname | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9.-' | cut -c1-30)"
+  if compose_service_listed --status running; then
+    report="$(cd "$root" && docker compose exec -T agentfarm sh -c 'exec "$@" --db "$AGENTFARM_DB"' sh \
+      "${java_in_image[@]}" requester-token --label "$label" </dev/null)"
+  else
+    report="$(run_jar requester-token --db "${AGENTFARM_DB:-./data/agentfarm.db}" --label "$label")"
+  fi
+  token="$(grep -oE 'afr_[A-Za-z0-9_-]{43}' <<<"$report" | head -1)" ||
+    { echo "El panel no devolvió una credencial." >&2; exit 1; }
+  (umask 077 && mkdir -p "$(dirname "$dest")" && printf '%s\n' "$token" >"$dest")
+  unset token report
+  echo "Credencial para MCP ($label) guardada en $dest, con permiso 600."
+  echo "Solo lee tareas y crea peticiones. Revócala en Gobierno cuando deje de usarse."
+}
+
 case "$command" in
   help|-h|--help) echo "$usage"; exit ;;
+  mcp-token) shift; mcp_token_command "$@"; exit ;;
   doctor|profile) run_jar "$@"; exit ;;
   demo) exec bash "$root/runtime/demo.sh" ;;
   backup) shift; backup_command "$@"; exit ;;
