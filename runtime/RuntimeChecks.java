@@ -58,6 +58,22 @@ public class RuntimeChecks {
         new String(process.getInputStream().readAllBytes()).equals(value)
             && process.waitFor() == 0);
     check(!FarmDaemon.clean(null).isBlank());
+    // A GitHub answer longer than what is kept for display, with a warning on stderr, still parses.
+    String big =
+        FarmDaemon.processWhole(
+            isolatedState,
+            30,
+            "bash",
+            "-c",
+            "echo 'aviso de gh' >&2; printf '[{\"timeline_url\":\"%s\"}]' \"$(head -c 200000 /dev/zero | tr '\\0' x)\"");
+    check(CodexRunner.JSON.readTree(big).get(0).path("timeline_url").asText().length() == 200000);
+    boolean reported = false;
+    try {
+      FarmDaemon.processWhole(isolatedState, 30, "bash", "-c", "echo 'HTTP 502' >&2; exit 1");
+    } catch (java.io.IOException e) {
+      reported = e.getMessage().contains("HTTP 502");
+    }
+    check(reported);
     var releaseQuota = new java.util.concurrent.CountDownLatch(1);
     var heartbeat = new java.util.concurrent.CountDownLatch(1);
     var loops =
