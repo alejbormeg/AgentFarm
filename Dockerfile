@@ -7,6 +7,11 @@ ARG AGENTFARM_COMMIT=unknown
 RUN printf %s "$AGENTFARM_COMMIT" > src/main/resources/build-commit.txt
 COPY runtime/mvn-retry.sh /usr/local/bin/mvn-retry
 RUN bash /usr/local/bin/mvn-retry -B -ntp -Dspotless.check.skip=true -Dspotbugs.skip=true -Djacoco.skip=true verify
+# The executor package of this same version: the panel serves it with its installer (/executor/).
+COPY runtime ./runtime
+COPY docs/INSTALLATION.md ./docs/INSTALLATION.md
+COPY LICENSE NOTICE ./
+RUN MVN=mvn AGENTFARM_COMMIT="$AGENTFARM_COMMIT" bash runtime/package.sh
 RUN mkdir /native && cd /native     && jar xf /root/.m2/repository/org/xerial/sqlite-jdbc/*/sqlite-jdbc-*.jar     && cp "org/sqlite/native/Linux/$(uname -m)/libsqlitejdbc.so" /native/libsqlitejdbc.so
 
 FROM eclipse-temurin:21-jre-jammy@sha256:1eac8b8fee11ca7d6725a48bc5d41992ed1561504ebae25490d2d062847e8269
@@ -20,8 +25,10 @@ WORKDIR /app
 COPY LICENSE NOTICE /app/
 COPY --from=build /build/target/agentfarm.jar /app/agentfarm.jar
 COPY --from=build /native/libsqlitejdbc.so /app/native/libsqlitejdbc.so
+COPY --from=build /build/target/agentfarm-executor-linux.tar.gz /app/executor/agentfarm-executor-linux.tar.gz
 USER 10001:10001
-ENV AGENTFARM_BIND=0.0.0.0 AGENTFARM_DB=/data/agentfarm.db
+ENV AGENTFARM_BIND=0.0.0.0 AGENTFARM_DB=/data/agentfarm.db \
+    AGENTFARM_EXECUTOR_PACKAGE=/app/executor/agentfarm-executor-linux.tar.gz
 EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=3s --start-period=40s --retries=6 CMD curl -fsS http://127.0.0.1:8080/api/health >/dev/null || exit 1
 ENTRYPOINT ["java","-Dorg.sqlite.lib.path=/app/native","-jar","/app/agentfarm.jar"]

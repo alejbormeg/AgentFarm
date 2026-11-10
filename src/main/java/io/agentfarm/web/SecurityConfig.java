@@ -104,8 +104,11 @@ public class SecurityConfig {
       throws Exception {
     String[] people = {"OWNER", "REVIEWER", "OBSERVER"};
     http.authorizeHttpRequests(a ->
-            a.requestMatchers("/login", "/error", "/api/health", "/art/**", "/fonts/**")
+            a.requestMatchers(
+                    "/login", "/error", "/api/health", "/art/**", "/fonts/**", "/executor/**")
                 .permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/executors/me")
+                .hasRole("EXECUTOR")
                 .requestMatchers("/github-app/**")
                 .hasRole("OWNER")
                 // Executor (node credential) operations; NodeTokenFilter narrows them further.

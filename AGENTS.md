@@ -47,6 +47,7 @@ Lo pendiente vive en las issues de GitHub, no en listas de la documentación.
 | `tests/pilot/run.py` | además `python3 -I tests/pilot/test_run.py` |
 | Aislamiento de los agentes | además `bash tests/codex_sandbox.sh`, sin inferencia, contra el Codex instalado |
 | `runtime/install-dedicated-user.sh` | además `bash tests/dedicated_user.sh`, en un contenedor |
+| `src/main/resources/executor/install.sh`, `runtime/package.sh` o `runtime/install-executor.sh` | además `bash runtime/package.sh` y `bash tests/executor_install.sh` |
 
 `tests/e2e/run.sh` necesita Docker y la imagen `bash:5.2`; con `E2E_SANDBOX=host` corre sin contenedor. `tests/eval/run.sh` y los
 pilotos reales de `docs/PILOTS.md` gastan cuota: mírala antes y no los lances sin que te lo pidan, salvo que la tarea lo exija.

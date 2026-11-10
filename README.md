@@ -76,9 +76,10 @@ git clone https://github.com/alejbormeg/AgentFarm.git && cd AgentFarm
 ```
 
 1. Abre **http://localhost:8080** con el usuario **admin** y la contraseña anterior.
-2. Conecta el ejecutor WSL (Codex CLI y GitHub CLI autenticados): en **Conectar ejecutor**,
-   **Preparar este equipo** crea el nodo, sus trabajadores y la cuenta. Después, genera la credencial
-   o sigue [la guía del ejecutor](docs/OPERATIONS.md#instalación-del-ejecutor-local).
+2. Conecta el ejecutor en tu Linux o WSL (Java 21, Docker y Codex con sesión iniciada): en
+   **Conectar ejecutor**, **Preparar este equipo** crea el nodo, sus trabajadores y la cuenta. Crea la
+   credencial, descárgala y ejecuta las dos órdenes que muestra la página: el instalador del panel
+   hace el resto. [Detalles](docs/INSTALLATION.md#ejecutor-linux--wsl-ubuntu-2404)
 3. Pulsa **Adoptar repositorio** e indica `owner/repositorio`. Revisa la propuesta de configuración
    y pulsa **Implementar propuesta**. Desde entonces puedes pedir tareas con **Nueva tarea**, y los
    agentes te traerán propuestas cuando falle la CI, haya alertas de dependencias o cada semana.

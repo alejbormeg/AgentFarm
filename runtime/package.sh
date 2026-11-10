@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-MVN=./mvnw bash runtime/mvn-retry.sh -B -ntp -DskipTests package dependency:copy-dependencies -DoutputDirectory=target/dependency -DincludeGroupIds=com.fasterxml.jackson.core,org.yaml
+MVN="${MVN:-./mvnw}" bash runtime/mvn-retry.sh -B -ntp -DskipTests package dependency:copy-dependencies -DoutputDirectory=target/dependency -DincludeGroupIds=com.fasterxml.jackson.core,org.yaml
 stage=$(mktemp -d "$PWD/target/executor-dist.XXXXXX")
 trap 'rm -rf -- "$stage"' EXIT
 out="$stage/agentfarm-executor"
@@ -14,7 +14,9 @@ for name in ExecutorWork\$Verdict ExecutorWork\$Candidate SkillCatalog SkillCata
   jar --update --file "$out/executor.jar" -C target/classes "io/agentfarm/core/$name.class"
 done
 jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/GitChanges.class
-git rev-parse HEAD 2>/dev/null > "$stage/build-commit.txt" || echo unknown > "$stage/build-commit.txt"
+# The image build has no .git: it passes the commit it was built from.
+if [[ -n "${AGENTFARM_COMMIT:-}" ]]; then printf '%s\n' "$AGENTFARM_COMMIT" > "$stage/build-commit.txt"
+else git rev-parse HEAD 2>/dev/null > "$stage/build-commit.txt" || echo unknown > "$stage/build-commit.txt"; fi
 jar --update --file "$out/executor.jar" -C "$stage" build-commit.txt
 jar --update --file "$out/executor.jar" -C target/classes prompts
 jar --update --file "$out/executor.jar" -C target/classes skills

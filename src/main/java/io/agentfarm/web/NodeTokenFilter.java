@@ -63,7 +63,8 @@ public class NodeTokenFilter extends OncePerRequestFilter {
       String path = request.getRequestURI(), method = request.getMethod();
       boolean allowed =
           method.equals("GET")
-              && (Set.of("/api/csrf", "/api/overview", "/api/runtime").contains(path)
+              && (Set.of("/api/csrf", "/api/overview", "/api/runtime", "/api/executors/me")
+                      .contains(path)
                   || path.equals("/api/budget/" + identity.get("account"))
                   || path.equals("/api/budget/" + identity.get("account") + "/reservations")
                   || (!identity.get("api_account").toString().isEmpty()

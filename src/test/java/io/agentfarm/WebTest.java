@@ -50,6 +50,9 @@ class WebTest {
             + hash
             + "\"}]");
     r.add("agentfarm.users-file", users::toString);
+    Files.write(
+        dir.resolve("executor.tar.gz"), "paquete del ejecutor".getBytes(StandardCharsets.UTF_8));
+    r.add("agentfarm.executor-package", () -> dir.resolve("executor.tar.gz").toString());
   }
 
   HttpResponse<String> as(String user, String method, String path, String body) throws Exception {
@@ -631,6 +634,81 @@ class WebTest {
             .send(at.apply("/api/work").GET().build(), HttpResponse.BodyHandlers.ofString())
             .statusCode(),
         "a revoked credential opens nothing");
+  }
+
+  /** Anyone can fetch the installer and the package; only a node learns who it is. */
+  @Test
+  void theExecutorInstallsFromThePanel() throws Exception {
+    var script = get("/executor/install.sh", false);
+    assertEquals(200, script.statusCode());
+    assertTrue(script.body().contains("panel='http://localhost:8080'"), "from configuration");
+    assertFalse(script.body().contains("@PANEL_URL@"));
+    var spoofed =
+        client.send(
+            HttpRequest.newBuilder(
+                    URI.create("http://localhost:" + port + "/executor/install.sh?x=$(id)"))
+                .header("X-Forwarded-Host", "evil.example")
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertFalse(spoofed.body().contains("evil"), "the request never writes into the script");
+
+    var archive =
+        client.send(
+            HttpRequest.newBuilder(
+                    URI.create(
+                        "http://localhost:" + port + "/executor/agentfarm-executor-linux.tar.gz"))
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.ofByteArray());
+    assertEquals(200, archive.statusCode());
+    assertArrayEquals(Files.readAllBytes(dir.resolve("executor.tar.gz")), archive.body());
+    var sum = get("/executor/agentfarm-executor-linux.tar.gz.sha256", false);
+    assertEquals(
+        java.util.HexFormat.of()
+                .formatHex(
+                    java.security.MessageDigest.getInstance("SHA-256").digest(archive.body()))
+            + "  agentfarm-executor-linux.tar.gz\n",
+        sum.body());
+
+    store.tx(c -> {
+      Store.exec(c, "INSERT OR IGNORE INTO farm_nodes(id,role) VALUES('install-node','napoleon')");
+      Store.exec(
+          c, "INSERT OR IGNORE INTO budget_accounts VALUES('install-account','subscription','{}')");
+      return null;
+    });
+    var issued =
+        Json.MAPPER.valueToTree(nodeCredentials.issue("install-node", "install-account", "test"));
+    var me =
+        client.send(
+            HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/executors/me"))
+                .header("Authorization", "Bearer " + issued.path("token").asText())
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, me.statusCode(), me.body());
+    var identity = Json.parse(me.body());
+    assertEquals("install-node", identity.path("node").asText());
+    assertEquals("install-account", identity.path("account").asText());
+    assertEquals("install-node-boxer", identity.path("implementer").asText());
+    assertEquals("install-node-reviewer", identity.path("reviewer").asText());
+    assertEquals(403, get("/api/executors/me", true).statusCode(), "not for people");
+  }
+
+  @Test
+  void aPanelWithoutThePackageSaysHowToBuildIt() throws Exception {
+    var api =
+        new io.agentfarm.web.ExecutorPackageApi(
+            dir.resolve("none.tar.gz").toString(), "x;rm -rf /");
+    var archive = api.archive();
+    assertEquals(404, archive.getStatusCode().value());
+    assertTrue(archive.getBody().toString().contains("bash runtime/package.sh"));
+    assertTrue(
+        api.installer().contains("panel='http://localhost:8080'"), "a bad address is not used");
+    assertTrue(
+        new io.agentfarm.web.ExecutorPackageApi("", "https://farm.example.com/")
+            .installer()
+            .contains("panel='https://farm.example.com'"));
   }
 
   @org.springframework.beans.factory.annotation.Autowired NodeCredentials nodeCredentials;

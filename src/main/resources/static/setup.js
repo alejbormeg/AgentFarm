@@ -57,3 +57,4 @@ async function load(){
  status($("create").disabled?"Prepara este equipo para continuar.":"Selecciona el nodo y su cuenta.");
 }
 try{await load();}catch(e){status(e.message);}
+{const origin=location.origin;$("install-command").textContent="curl -fsSo agentfarm-install.sh "+origin+"/executor/install.sh\nbash agentfarm-install.sh --panel "+origin+" --token-file /ruta/al/node-token";}
