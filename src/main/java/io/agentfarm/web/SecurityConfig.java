@@ -171,7 +171,12 @@ public class SecurityConfig {
 
   static org.springframework.security.web.savedrequest.RequestCache pagesOnly() {
     var cache = new org.springframework.security.web.savedrequest.HttpSessionRequestCache();
-    cache.setRequestMatcher(request -> !api(request) && "GET".equals(request.getMethod()));
+    // Only a page the person navigated to: never the API, the favicon or another resource the
+    // browser fetched on its own while signed out (it would land there after signing in).
+    cache.setRequestMatcher(request ->
+        "GET".equals(request.getMethod())
+            && !api(request)
+            && String.valueOf(request.getHeader("Accept")).contains("text/html"));
     return cache;
   }
 
