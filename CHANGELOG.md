@@ -6,6 +6,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 ## Sin publicar — camino a la versión 1.0
 
+- Adelante vuelve a abrir la tarea aunque llegue antes de que termine de cerrarse con Atrás: el cierre del diálogo llegaba tarde y se tragaba la reapertura.
 - Interfaz nueva, «La ventana» y su modo oscuro «Atardecer»: una granja en pixel art que muestra el estado real, y aprobar o integrar a un clic desde la Bandeja. Sale Mateu: el jar baja de 65 a 40 MB, desaparece la excepción de CSRF y hay política de contenido estricta.
 - Tras 5 contraseñas fallidas seguidas, el panel hace esperar de 1 a 15 minutos, por cuenta y dirección. Con una dirección https, la cookie de sesión lleva `Secure`.
 - `jackson-databind` y `sqlite-jdbc` actualizados: la versión anterior de Jackson tenía 5 vulnerabilidades altas conocidas. Cada validación busca ahora vulnerabilidades y secretos.

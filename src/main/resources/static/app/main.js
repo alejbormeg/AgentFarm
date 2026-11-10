@@ -80,7 +80,9 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
     const params = new URLSearchParams(location.search);
     this.selectedRepo = params.get("repositorio") || "";
     const task = params.get("tarea");
-    if (task && task !== this.openTask) this.pendingTask = task;
+    // The task may still be "open" while its drawer is already closed: going back closes it, but the
+    // close event arrives later, in another task. Forward in between must still reopen it.
+    if (task && (task !== this.openTask || !this.taskDrawer?.open)) this.pendingTask = task;
     if (!task && this.openTask && this.taskDrawer?.open) {
       this.closingFromHistory = true;
       this.taskDrawer.close();
@@ -205,6 +207,11 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
     this.taskBody = E("div");
     task.body.append(drawerProblem, drawerDone, this.taskBody);
     this.taskDrawer.addEventListener("close", () => {
+      // A close that arrives after the drawer reopened (back, then forward at once) is stale.
+      if (this.taskDrawer.open) {
+        this.closingFromHistory = false;
+        return;
+      }
       const id = this.openTask;
       this.openTask = null;
       this.taskBody.replaceChildren();
