@@ -536,6 +536,103 @@ class WebTest {
     assertTrue(Set.of(401, 302).contains(get("/api/work", false).statusCode()));
   }
 
+  @org.springframework.beans.factory.annotation.Autowired
+  io.agentfarm.adapters.RequesterCredentials requesterCredentials;
+
+  /** An MCP client reads tasks and files requests; it cannot decide, integrate or look around. */
+  @Test
+  void aRequesterFilesRequestsButCannotDecide() throws Exception {
+    var issued = requesterCredentials.issue("mcp-test", "test");
+    String bearer = "Bearer " + issued.get("token");
+    HttpClient client =
+        HttpClient.newBuilder()
+            .cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL))
+            .build();
+    java.util.function.Function<String, HttpRequest.Builder> at =
+        path ->
+            HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+                .header("Authorization", bearer);
+    var me = client.send(at.apply("/api/me").GET().build(), HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, me.statusCode());
+    assertEquals("requester", Json.parse(me.body()).path("role").asText());
+    assertEquals("requester:mcp-test", Json.parse(me.body()).path("user").asText());
+    for (String allowed : List.of("/api/work", "/api/overview", "/api/runtime"))
+      assertEquals(
+          200,
+          client
+              .send(at.apply(allowed).GET().build(), HttpResponse.BodyHandlers.ofString())
+              .statusCode(),
+          allowed);
+    for (String denied :
+        List.of(
+            "/api/audit",
+            "/api/requesters",
+            "/api/executors",
+            "/api/evidence",
+            "/api/automation",
+            "/api/budget/test-account",
+            "/api/work/digest/x"))
+      assertEquals(
+          403,
+          client
+              .send(at.apply(denied).GET().build(), HttpResponse.BodyHandlers.ofString())
+              .statusCode(),
+          denied);
+    var csrf =
+        Json.parse(
+            client
+                .send(at.apply("/api/csrf").GET().build(), HttpResponse.BodyHandlers.ofString())
+                .body());
+    java.util.function.BiFunction<String, String, HttpRequest> post =
+        (path, body) ->
+            at.apply(path)
+                .header("Content-Type", "application/json")
+                .header(csrf.path("header").asText(), csrf.path("token").asText())
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+    var created =
+        client.send(
+            post.apply(
+                "/api/work",
+                "{\"request_id\":\"mcp-request-0001\",\"repository\":\"o/r\",\"title\":\"T\",\"request\":\"R\"}"),
+            HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, created.statusCode(), created.body());
+    for (String denied :
+        List.of(
+            "/api/work/mcp-request-0001/actions/implement",
+            "/api/work/mcp-request-0001/actions/merge",
+            "/api/work/mcp-request-0001/actions/cancel",
+            "/api/work/batch/merge",
+            "/api/governance/paused/true"))
+      assertEquals(
+          403,
+          client
+              .send(post.apply(denied, "{\"version\":0}"), HttpResponse.BodyHandlers.ofString())
+              .statusCode(),
+          denied);
+    assertTrue(
+        store.tx(c ->
+            Store.one(
+                c,
+                "SELECT 1 FROM audit WHERE actor='requester:mcp-test' AND action='work.request'"))
+            != null,
+        "the request is recorded as the client's, not the owner's");
+
+    var listed = as("paula", "GET", "/api/requesters", null);
+    assertEquals(200, listed.statusCode());
+    assertFalse(listed.body().contains("afr_"), "no token or hash leaves the panel");
+    assertEquals(403, as("rita", "GET", "/api/requesters", null).statusCode());
+    assertEquals(
+        200,
+        as("paula", "POST", "/api/requesters/" + issued.get("id") + "/revoke", "{}").statusCode());
+    assertEquals(
+        401,
+        client
+            .send(at.apply("/api/work").GET().build(), HttpResponse.BodyHandlers.ofString())
+            .statusCode(),
+        "a revoked credential opens nothing");
+  }
+
   @org.springframework.beans.factory.annotation.Autowired NodeCredentials nodeCredentials;
   @org.springframework.beans.factory.annotation.Autowired Store store;
 

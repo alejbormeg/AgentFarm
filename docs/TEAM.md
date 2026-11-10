@@ -32,7 +32,8 @@ cuenta pide el código después de la contraseña.
 - **Exigirlo para integrar:** un propietario con su segundo factor activo puede pulsar **Exigir para
   integrar**. Desde entonces, solo integra quien lo tenga activo.
 - **Cuentas con segundo factor:** no pueden usar autenticación HTTP Basic, porque no conserva el código
-  validado. Para el [servidor MCP](MCP.md) o tus scripts, usa una cuenta `reviewer` u `observer` sin él.
+  validado. Para tus scripts, usa una cuenta `reviewer` u `observer` sin él; para el
+  [servidor MCP](MCP.md), su propia credencial (`./agentfarm mcp-token`).
 - **Teléfono perdido:** en el equipo del panel, `./agentfarm 2fa-reset <usuario>`. Queda en la auditoría.
 - **Dónde se guarda:** la clave está sin cifrar en la base de datos del panel, y por tanto en sus copias.
   Protege esas copias como la contraseña.

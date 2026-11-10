@@ -45,6 +45,13 @@ public final class Cli {
                 "removed",
                 new TwoFactor(store, Clock.systemUTC())
                     .reset(required(options, "user"), "host-operator"));
+      } else if (mode.equals("requester-token")) {
+        // ./agentfarm mcp-token reads the token from here and writes it to a private file.
+        String db = options.getOrDefault("db", env("AGENTFARM_DB"));
+        if (db.isBlank()) throw new IllegalArgumentException("Missing --db or AGENTFARM_DB");
+        result =
+            new io.agentfarm.adapters.RequesterCredentials(new Store(db), Clock.systemUTC())
+                .issue(required(options, "label"), "host-operator");
       } else if (mode.equals("github-check")) {
         var credentials =
             new GitHubCredentials(

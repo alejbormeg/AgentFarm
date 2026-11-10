@@ -12,6 +12,7 @@ así que **no sustituye a una revisión independiente**, y el repositorio no deb
 | Sesión de `gh` y de Codex | Home del usuario del ejecutor. Con una GitHub App en el panel, el ejecutor no necesita sesión de `gh`: recibe por orden un token de una hora limitado a ese repositorio. Solo probado con dobles | Publicar como esa persona y gastar su cuota |
 | Token del nodo | `AGENTFARM_STATE/node-token` | Reclamar trabajo e informar como ese nodo, sin poder fusionar |
 | Contraseña del panel y claves de segundo factor | Volumen del panel y sus copias | Aprobar e integrar como esa persona |
+| Credencial de un cliente MCP (`afr_…`) | Archivo privado del usuario, legible por el modelo de ese cliente | Leer tareas y crear peticiones; nada más |
 | Docker del ejecutor | Socket del equipo | Equivale a root en el equipo |
 | Código de otros proyectos | Home del usuario del ejecutor | Filtrarlo a través de lo que lea un agente |
 

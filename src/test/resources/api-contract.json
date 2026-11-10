@@ -527,6 +527,16 @@
     } ],
     "status" : 200
   },
+  "GET /api/requesters" : {
+    "body" : [ {
+      "created" : "number",
+      "id" : "string",
+      "label" : "string",
+      "last_used" : "null",
+      "revoked" : "number"
+    } ],
+    "status" : 200
+  },
   "GET /api/runs" : {
     "body" : [ {
       "hash" : "string",

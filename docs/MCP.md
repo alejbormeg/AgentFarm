@@ -1,7 +1,8 @@
 # AgentFarm desde Claude Code o Claude Desktop (MCP)
 
 `agentfarm.jar mcp` es un servidor [Model Context Protocol](https://modelcontextprotocol.io)
-por stdio que habla con tu panel con la credencial del propietario.
+por stdio que habla con tu panel con una credencial propia, que **solo lee tareas y crea
+peticiones**.
 
 | Herramienta | Qué hace |
 | --- | --- |
@@ -11,15 +12,37 @@ por stdio que habla con tu panel con la credencial del propietario.
 | `agentfarm_metrics` | Resultados por semana |
 | `agentfarm_status` | Pausa, ejecutores conectados y cuota |
 
-No hay herramientas para aprobar, implementar ni integrar: un modelo no debe
-aprobar trabajo de agentes. Eso sigue en el panel.
+## Por qué no tu contraseña
+
+El modelo que usa el MCP puede leer cualquier archivo que lea su cliente, también el de la
+credencial. Con la contraseña del propietario podría aprobar, integrar o pausar la granja por la
+API, aunque el MCP no tenga herramientas para ello. Por eso el MCP usa una credencial que el panel
+limita a leer tareas (`/api/work`, `/api/overview`, `/api/runtime`) y a crear peticiones
+(`POST /api/work`): cualquier otra ruta responde 403. Las peticiones quedan en la auditoría como
+`requester:<nombre>`.
+
+Si le das una cuenta de propietario o de revisor, el MCP no arranca. Solo con
+`--allow-full-account true` acepta una, y no es recomendable.
+
+## Crear la credencial
+
+Desde el directorio de AgentFarm, con el panel en marcha:
+
+```bash
+./agentfarm mcp-token
+```
+
+La guarda en `~/.config/agentfarm/mcp-token` con permiso 600, sin mostrarla. Puedes elegir otro
+archivo: `./agentfarm mcp-token /ruta/archivo`. En **Gobierno → Conexiones** ves cada credencial con
+su último uso y la revocas.
 
 ## Claude Code
 
 ```bash
-./agentfarm password > ~/.config/agentfarm-password && chmod 600 ~/.config/agentfarm-password
-claude mcp add agentfarm -- java -jar /ruta/AgentFarm/target/agentfarm.jar mcp --panel http://localhost:8080 --password-file ~/.config/agentfarm-password
+claude mcp add agentfarm -- java -jar /ruta/AgentFarm/target/agentfarm.jar mcp --panel http://localhost:8080
 ```
+
+Sin `--token-file`, usa `~/.config/agentfarm/mcp-token`.
 
 ## Claude Desktop (`claude_desktop_config.json`)
 
@@ -29,16 +52,14 @@ claude mcp add agentfarm -- java -jar /ruta/AgentFarm/target/agentfarm.jar mcp -
     "agentfarm": {
       "command": "java",
       "args": ["-jar", "/ruta/agentfarm.jar", "mcp", "--panel", "http://localhost:8080",
-               "--password-file", "/ruta/agentfarm-password"]
+               "--token-file", "/ruta/mcp-token"]
     }
   }
 }
 ```
 
-Por defecto entra como `admin`. Con `--user` usas otra cuenta, y es lo que necesitas si `admin` tiene
-[segundo factor](TEAM.md#segundo-factor), porque ese acceso usa HTTP Basic.
-
-El fichero de contraseña debe tener permiso 600 y nunca estar en Git.
+La credencial no lleva segundo factor ni caduca: revócala en Gobierno cuando deje de usarse. Si ya
+habías copiado la contraseña del panel para el MCP, borra ese archivo y cámbiala.
 
 ## Salud
 `GET /api/health` es público y solo devuelve `{"status":"UP"}` (o 503). Con la
