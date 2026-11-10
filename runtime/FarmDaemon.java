@@ -91,12 +91,24 @@ public class FarmDaemon extends CodexRunner {
   }
 
   static String process(Path cwd, int seconds, String... args) throws Exception {
+    return run(cwd, seconds, false, args);
+  }
+
+  /**
+   * For output that is parsed, not shown: whole, and with stderr apart. A page of a repository's
+   * issues can pass the 150 000 characters kept for display, and a warning on stderr would break
+   * the JSON just the same.
+   */
+  static String processWhole(Path cwd, int seconds, String... args) throws Exception {
+    return run(cwd, seconds, true, args);
+  }
+
+  private static String run(Path cwd, int seconds, boolean whole, String... args) throws Exception {
     Path log = Files.createTempFile(STATE, "command-", ".log");
-    var b =
-        new ProcessBuilder(args)
-            .directory(cwd.toFile())
-            .redirectErrorStream(true)
-            .redirectOutput(log.toFile());
+    Path errors = whole ? Files.createTempFile(STATE, "command-", ".err") : null;
+    var b = new ProcessBuilder(args).directory(cwd.toFile()).redirectOutput(log.toFile());
+    if (whole) b.redirectError(errors.toFile());
+    else b.redirectErrorStream(true);
     var running = task;
     if (running != null
         && running.githubToken != null
@@ -122,13 +134,16 @@ public class FarmDaemon extends CodexRunner {
         throw new IOException("Command timed out: " + args[0]);
       }
       String output = Files.readString(log);
-      if (output.length() > 150000) output = output.substring(output.length() - 150000);
-      if (p.exitValue() != 0)
+      if (!whole && output.length() > 150000) output = output.substring(output.length() - 150000);
+      if (p.exitValue() != 0) {
+        String shown = whole ? Files.readString(errors) + "\n" + output : output;
         throw new IOException(
-            args[0] + ": " + clean(output).substring(0, Math.min(clean(output).length(), 1800)));
+            args[0] + ": " + clean(shown).substring(0, Math.min(clean(shown).length(), 1800)));
+      }
       return output.trim();
     } finally {
       Files.deleteIfExists(log);
+      if (errors != null) Files.deleteIfExists(errors);
     }
   }
 
@@ -141,7 +156,7 @@ public class FarmDaemon extends CodexRunner {
       // Reads are retried on transient network failures; writes are not, to avoid duplicates.
       for (int attempt = 1; ; attempt++) {
         try {
-          String result = process(STATE, 45, args.toArray(String[]::new));
+          String result = processWhole(STATE, 45, args.toArray(String[]::new));
           return result.isBlank() ? JSON.createObjectNode() : JSON.readTree(result);
         } catch (IOException e) {
           String m = String.valueOf(e.getMessage());

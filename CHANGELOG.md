@@ -6,6 +6,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 ## Sin publicar — camino a la versión 1.0
 
+- Adoptar un repositorio con muchas issues ya no falla con «Unrecognized token»: el ejecutor recortaba a 150 000 caracteres la respuesta de GitHub y mezclaba en ella los avisos de `gh`. Ahora las respuestas que se leen como JSON llegan enteras y con los avisos aparte.
 - Conectar GitHub ya no devuelve al login al volver de GitHub, ni pierde la App recién creada: la cookie de sesión pasa de `SameSite=Strict` a `Lax`, que el navegador sí envía cuando GitHub te manda de vuelta al panel. Toda acción sigue exigiendo POST con token CSRF.
 - Adelante vuelve a abrir la tarea aunque llegue antes de que termine de cerrarse con Atrás: el cierre del diálogo llegaba tarde y se tragaba la reapertura.
 - La revisión de una PR solo pide una corrección si la escribe alguien con permisos en el repositorio: en uno público, cualquiera podía lanzar un turno de los agentes con su texto. El texto de issues, revisiones y correcciones llega al agente entre marcas, como datos (`research.v6`, `implement.v3`), y un disparador ya no propone lecciones para la memoria del proyecto.
