@@ -1865,3 +1865,12 @@ ol.commandments {
 .skill-roles { display: flex; flex-wrap: wrap; gap: 0.75rem; }
 .skill-roles label { font-weight: 400; }
 .profile .exports a { margin-right: 0.5rem; }
+
+/* Skill catalogue */
+.skill-finder .topic-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-block: 0.5rem; }
+.skill-finder .finder-official { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-block: 0.5rem; }
+.skill-finder .finder-official input { flex: 1 1 14rem; min-width: 0; }
+.skill-hit { border: 1px solid var(--line, #8884); border-radius: 8px; padding: 0.5rem 0.75rem; margin-block: 0.5rem; display: grid; gap: 0.25rem; }
+.skill-hit p { margin: 0; }
+.source-row { padding-block: 0.35rem; border-bottom: 1px solid var(--line, #8883); }
+.skill-preview pre { max-height: 20rem; overflow: auto; white-space: pre-wrap; }
