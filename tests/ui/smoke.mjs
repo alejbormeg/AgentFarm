@@ -276,6 +276,14 @@ try {
     await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Generar comando').click()`);
     check(await until(() => js(`${all}.some(e=>e.tagName==='PRE'&&e.textContent.includes('--code afc_'))`)), "the drawer gives a one-use install command");
     await js(`document.querySelector('dialog[open] .drawer-head button').click()`);
+    check(await until(() => visible("Configurar e2e/demo")), "an owner can configure the agents of a repository");
+    await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Configurar e2e/demo').click()`);
+    check(await until(() => visible("Buscar skills online")), "the repository drawer offers to search skills online");
+    check(await js(`['Anthropic','OpenAI','Buscar'].every(t=>${all}.some(e=>e.tagName==='BUTTON'&&e.textContent.trim()===t&&e.getBoundingClientRect().width>0))`), "the skill search has its official catalogues and a search button");
+    await js(`(()=>{const i=document.querySelector('dialog[open] input[aria-label="Repositorio o búsqueda de skills"]');i.value='skills';return true})()`);
+    await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Buscar').click()`);
+    check(await until(() => visible("e2e/skills")), "searching skills lists the repositories found");
+    await js(`document.querySelector('dialog[open] .drawer-head button').click()`);
     check(await visible("Proveedores"), "an owner can choose the providers of the agents");
     await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Proveedores').click()`);
     check(await until(() => visible("Cómo conectar una cuenta")), "the providers drawer explains how to connect each account");
