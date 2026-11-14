@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 # Installs the AgentFarm executor from the panel that served this script, as a systemd user
-# service. Usage: bash install.sh [--panel URL] [--code afc_…|--token-file node-token] [--replace]
+# service. Usage: bash install.sh [--panel URL] [--node NAME] [--code afc_…|--token-file node-token] [--replace]
+# With --node several executors can share a machine: each gets its own unit, configuration and state.
 # The node credential comes from --token-file or is typed at the terminal: never as an argument.
 set -euo pipefail
 panel=@PANEL_URL@
 token_file=""
 code=""
+name=""
 replace=0
 die() { echo "$*" >&2; exit 1; }
-usage() { echo "Uso: bash install.sh [--panel URL] [--code afc_…|--token-file node-token] [--replace]"; }
+usage() { echo "Uso: bash install.sh [--panel URL] [--node NOMBRE] [--code afc_…|--token-file node-token] [--replace]"; }
 while (($#)); do
   case "$1" in
     --panel) panel="${2:-}"; shift 2 || die "Falta la dirección tras --panel." ;;
     --token-file) token_file="${2:-}"; shift 2 || die "Falta el archivo tras --token-file." ;;
+    --node) name="${2:-}"; shift 2 || die "Falta el nombre tras --node." ;;
     --code) code="${2:-}"; shift 2 || die "Falta el código tras --code." ;;
     --replace) replace=1; shift ;;
     -h|--help) usage; exit 0 ;;
@@ -20,6 +23,16 @@ while (($#)); do
   esac
 done
 panel="${panel%/}"
+[[ -z "$name" || "$name" =~ ^[A-Za-z0-9_-]{1,80}$ ]] || die "Nombre de nodo no válido: $name"
+# Where this executor lives. A named one has its own files, so it never collides with another.
+config="${XDG_CONFIG_HOME:-$HOME/.config}"
+env_file="$config/agentfarm/executor${name:+-$name}.env"
+unit="$config/systemd/user/agentfarm-executor${name:+-$name}.service"
+unit_name="agentfarm-executor${name:+-$name}"
+# Before anything is spent: a code is single-use, so a refusal here must not burn it.
+if ((replace == 0)) && [[ -e "$env_file" || -e "$unit" ]]; then
+  die "Ya hay un ejecutor instalado con ese nombre en este equipo ($env_file o $unit). Para sustituirlo, vuelve a ejecutar con --replace."
+fi
 [[ "$panel" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?$ ]] || die "Dirección del panel no válida: $panel"
 
 echo "Comprobando este equipo..."
@@ -73,13 +86,7 @@ field() { grep -oE "\"$1\" *: *\"[A-Za-z0-9._-]*\"" <<<"$identity" | head -1 | s
 node="$(field node)" account="$(field account)" implementer="$(field implementer)" reviewer="$(field reviewer)"
 [[ -n "$node" && -n "$account" && -n "$implementer" && -n "$reviewer" ]] ||
   die "El panel no devolvió la identidad del nodo."
-
-config="${XDG_CONFIG_HOME:-$HOME/.config}"
-env_file="$config/agentfarm/executor.env"
-unit="$config/systemd/user/agentfarm-executor.service"
-if ((replace == 0)) && [[ -e "$env_file" || -e "$unit" ]]; then
-  die "Ya hay un ejecutor instalado en este equipo ($env_file o $unit). Para sustituirlo, vuelve a ejecutar con --replace."
-fi
+[[ -z "$name" || "$name" == "$node" ]] || die "Este comando es para el nodo $name y el panel devolvió $node."
 
 echo "Descargando el ejecutor de $panel..."
 curl -fsS --max-time 300 -o "$tmp/executor.tar.gz" "$panel/executor/agentfarm-executor-linux.tar.gz" ||
@@ -95,7 +102,7 @@ tar -xzf "$tmp/executor.tar.gz" -C "$release"
 root="$release/agentfarm-executor"
 [[ -x "$root/executor" && -f "$root/executor.jar" ]] || die "El paquete no trae el ejecutor."
 
-state="${XDG_STATE_HOME:-$HOME/.local/state}/agentfarm"
+state="${XDG_STATE_HOME:-$HOME/.local/state}/agentfarm${name:+-$name}"
 install -d -m 700 "$state" "$(dirname "$env_file")"
 (umask 077 && printf '%s\n' "$token" >"$state/node-token")
 unset token
@@ -123,6 +130,6 @@ Mientras tanto, puedes arrancarlo en primer plano:
 TEXT
   exit 0
 fi
-"$root/install-executor.sh" "$env_file"
-echo "Servicio en marcha: systemctl --user status agentfarm-executor"
+"$root/install-executor.sh" "$env_file" "" "$name"
+echo "Servicio en marcha: systemctl --user status $unit_name"
 echo "Vuelve al panel y pulsa Comprobar conexión en Conectar ejecutor."

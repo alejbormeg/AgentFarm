@@ -77,6 +77,29 @@ printf 'afn_%s\n' "$(printf 'x%.0s' $(seq 1 43))" >"$work/bad-token"
 if out="$(bash "$work/install.sh" --token-file "$work/bad-token" --replace 2>&1)"; then fail "accepted an unknown credential"; fi
 [[ "$out" == *"no reconoce"* ]] || fail "unclear message for an unknown credential: $out"
 
+# A second executor on the same machine, from an enrolment code: its own files, the first untouched.
+second="$(owner /executors/enroll '{"node":"install-node-2","account":"install-account"}')"
+grep -q -- '--node install-node-2 --code afc_' <<<"$second" || fail "the command lacks the node name: $second"
+code="$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["code"])' "$second")"
+before="$(cat "$env_file")"
+out="$(bash "$work/install.sh" --node install-node-2 --code "$code" 2>&1)" || fail "second executor failed: $out"
+env2="$HOME/.config/agentfarm/executor-install-node-2.env"
+grep -qx "AGENTFARM_NODE=install-node-2" "$env2" || fail "the second executor.env lacks its node"
+grep -qx "AGENTFARM_STATE=$HOME/.local/state/agentfarm-install-node-2" "$env2" || fail "the second executor shares a state directory"
+[[ -f "$HOME/.config/systemd/user/agentfarm-executor-install-node-2.service" ]] || fail "the second executor has no unit of its own"
+grep -q 'restart agentfarm-executor-install-node-2.service' "$work/systemctl.log" || fail "the second service was not started"
+[[ "$(cat "$env_file")" == "$before" ]] || fail "installing a second executor changed the first"
+# A refusal because it is already installed must not spend a fresh code.
+fresh="$(owner /executors/enroll '{"node":"install-node-2","account":"install-account"}')"
+code2="$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["code"])' "$fresh")"
+if bash "$work/install.sh" --node install-node-2 --code "$code2" >/dev/null 2>&1; then fail "reinstalled a named executor without --replace"; fi
+bash "$work/install.sh" --node install-node-2 --code "$code2" --replace >/dev/null 2>&1 || fail "the code was burned by the refusal"
+# A command made for one node does not install another.
+wrong="$(owner /executors/enroll '{"node":"install-node-3","account":"install-account"}')"
+code3="$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["code"])' "$wrong")"
+if out="$(bash "$work/install.sh" --node install-node-4 --code "$code3" 2>&1)"; then fail "installed the wrong node"; fi
+[[ "$out" == *"install-node-3"* ]] || fail "unclear message for a node mismatch: $out"
+
 # Without systemd it installs the files and says how to run it.
 printf '#!/usr/bin/env bash\n[[ "$*" == *show-environment* ]] && exit 1\necho "$*" >> "%s"\n' "$work/systemctl.log" >"$work/bin/systemctl"
 : >"$work/systemctl.log"

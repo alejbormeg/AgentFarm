@@ -6,6 +6,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 ## Sin publicar — camino a la versión 1.0
 
+- Se pueden instalar **varios ejecutores en la misma máquina**: el comando de «Añadir nodo» lleva `--node NOMBRE` y cada ejecutor tiene su propio servicio (`agentfarm-executor-NOMBRE`), configuración y estado. Si el instalador se niega porque ya hay uno, el código de un solo uso no se gasta.
 - En el cajón de agentes de un repositorio se pueden **buscar skills online**: los catálogos de Anthropic y OpenAI (repos de GitHub), cualquier repositorio o una búsqueda. El panel las descarga, las enseña enteras y solo se añaden cuando el propietario lo acepta, fijadas por su SHA y su hash. Google no publica un registro oficial: sus skills usan el mismo formato y se buscan como cualquier repo.
 - **Agentes → Proveedores**: eliges qué proveedor usa Napoleon, Boxer y Benjamin en cada nodo (Codex, Claude Code o Antigravity) y ves si está listo en ese equipo, con los pasos para conectar cada cuenta. Las claves y los inicios de sesión siguen en el equipo del nodo: el panel nunca los ve. Antigravity (`agy`) entra como proveedor de ejecución, con el gasto limitado por una cuenta Clover `api` estimada por tokens.
 - **Agentes → Añadir nodo** genera un comando de una línea con un código de un solo uso (caduca en 15 minutos) que el equipo nuevo canjea por su credencial: el token largo ya no viaja en la línea de comandos. El mismo cajón lista las credenciales y permite revocarlas. `install.sh` acepta `--code`.

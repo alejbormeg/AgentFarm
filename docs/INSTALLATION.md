@@ -128,6 +128,12 @@ minutos; el instalador lo canjea por la credencial del nodo (`afn_…`), que que
 `~/.local/state/agentfarm/node-token` con permiso 600. El código sí se ve en la lista de procesos
 mientras dura el instalador: por eso caduca y no se puede reutilizar.
 
+El comando lleva `--node NOMBRE`: cada nodo se instala con su propio servicio
+(`agentfarm-executor-NOMBRE`), su configuración (`~/.config/agentfarm/executor-NOMBRE.env`) y su
+estado (`~/.local/state/agentfarm-NOMBRE`), así que puedes tener varios ejecutores en un equipo. Si
+ya había uno con ese nombre, el instalador se niega **antes** de gastar el código; añade `--replace`
+para sustituirlo.
+
 ## Perfil de repositorio y diagnóstico
 Copia `examples/agentfarm.yaml` a la raíz del repositorio y adapta repositorio,
 comandos y rutas. Revísalo mediante:
