@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 # Installs the AgentFarm executor from the panel that served this script, as a systemd user
-# service. Usage: bash install.sh [--panel URL] [--token-file node-token] [--replace]
+# service. Usage: bash install.sh [--panel URL] [--code afc_…|--token-file node-token] [--replace]
 # The node credential comes from --token-file or is typed at the terminal: never as an argument.
 set -euo pipefail
 panel=@PANEL_URL@
 token_file=""
+code=""
 replace=0
 die() { echo "$*" >&2; exit 1; }
-usage() { echo "Uso: bash install.sh [--panel URL] [--token-file node-token] [--replace]"; }
+usage() { echo "Uso: bash install.sh [--panel URL] [--code afc_…|--token-file node-token] [--replace]"; }
 while (($#)); do
   case "$1" in
     --panel) panel="${2:-}"; shift 2 || die "Falta la dirección tras --panel." ;;
     --token-file) token_file="${2:-}"; shift 2 || die "Falta el archivo tras --token-file." ;;
+    --code) code="${2:-}"; shift 2 || die "Falta el código tras --code." ;;
     --replace) replace=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; exit 2 ;;
@@ -40,7 +42,15 @@ codex login status >/dev/null 2>&1 || die "Codex no tiene sesión. Entra con: co
 systemd=1
 systemctl --user show-environment >/dev/null 2>&1 || systemd=0
 
-if [[ -n "$token_file" ]]; then
+if [[ -n "$code" ]]; then
+  # A one-use code from "Añadir nodo" in the panel, valid for minutes: it is exchanged for the
+  # node credential here, so the long-lived token never appears in a command line.
+  [[ "$code" =~ ^afc_[A-Za-z0-9_-]{32}$ ]] || die "Eso no parece un código de enrolamiento (afc_…)."
+  redeemed="$(printf '{"code":"%s"}' "$code" | curl -fsS --max-time 15 -H 'Content-Type: application/json' -d @- "$panel/executor/redeem")" ||
+    die "El panel no aceptó el código: caduca a los 15 minutos y solo vale una vez. Genera otro en Agentes → Añadir nodo."
+  token="$(grep -oE '"token" *: *"afn_[A-Za-z0-9_-]{43}"' <<<"$redeemed" | head -1 | sed -E 's/.*"(afn_[^"]*)"$/\1/')"
+  unset redeemed code
+elif [[ -n "$token_file" ]]; then
   [[ -r "$token_file" ]] || die "No se puede leer $token_file."
   token="$(tr -d '[:space:]' <"$token_file")"
 else

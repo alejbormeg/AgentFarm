@@ -106,6 +106,12 @@ owner /executors '{"node":"e2e-node","account":"e2e-sub"}' \
   | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])' > "$work/state/node-token"
 chmod 600 "$work/state/node-token"
 # The owner's per-repository instructions must reach every agent of that repository.
+# A node added from the panel: the one-use code is exchanged for a credential once, with no session.
+enroll_code=$(owner /executors/enroll '{"node":"e2e-extra"}' | python3 -c 'import json,sys;d=json.load(sys.stdin);assert d["command"].endswith("--code "+d["code"]),d;print(d["code"])') || fail "the panel did not give an enrolment code"
+extra_token=$(curl -fsS -H 'Content-Type: application/json' -X POST "$panel/executor/redeem" -d "{\"code\":\"$enroll_code\"}" | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])') || fail "the enrolment code was not accepted"
+curl -fs -H "Authorization: Bearer $extra_token" "$panel/api/executors/me" | grep -q e2e-extra || fail "the enrolled credential does not identify its node"
+if curl -fs -o /dev/null -H 'Content-Type: application/json' -X POST "$panel/executor/redeem" -d "{\"code\":\"$enroll_code\"}"; then fail "an enrolment code worked twice"; fi
+echo "Node enrolled with a one-use code"
 owner /repos/e2e/demo/agents '{"roles":{"research":{"system":"MARCA-NAPOLEON"},"implement":{"system":"MARCA-BOXER"},"review":{"system":"MARCA-BENJAMIN"}},"skills":[{"id":"casa-e2e","title":"Casa","roles":["implement"],"text":"MARCA-SKILL"}]}' \
   | python3 -c 'import json,sys;d=json.load(sys.stdin);assert d["roles"]["research"]["custom"] and d["skills"][0]["id"]=="casa-e2e", d' || fail "the agent profile was not saved"
 curl -fs -u "admin:$password" "$panel/api/repos/e2e/demo/agents/export?format=gemini" | grep -q "MARCA-SKILL" || fail "the Gemini export lacks the skill"

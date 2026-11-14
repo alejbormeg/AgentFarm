@@ -269,6 +269,13 @@ try {
     check(await until(() => visible("La cosecha")), "the inbox shows the harvest");
     check(await js(`[...document.querySelectorAll('.farm .scene')].some(e=>e.complete&&e.naturalWidth===420&&e.getBoundingClientRect().width===840)`), "the farm is drawn at a whole-pixel scale");
     check(await visible("Adoptar repositorio"), "an owner can adopt a repository");
+    await go("/agents");
+    check(await until(() => visible("Añadir nodo")), "an owner can add an executor node");
+    await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Añadir nodo').click()`);
+    check(await until(() => visible("Generar comando")), "adding a node opens its drawer");
+    await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Generar comando').click()`);
+    check(await until(() => js(`${all}.some(e=>e.tagName==='PRE'&&e.textContent.includes('--code afc_'))`)), "the drawer gives a one-use install command");
+    await js(`document.querySelector('dialog[open] .drawer-head button').click()`);
     await go("/governance");
     check(await until(() => visible("Conectar GitHub")), "an owner can connect GitHub");
 
