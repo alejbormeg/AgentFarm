@@ -19,11 +19,16 @@ public final class TokenScope {
     p.put("pull_requests", "read");
     p.put("issues", "read");
     switch (kind) {
-      case "research", "review_existing" -> {}
+      case "review_existing" -> {}
+      // Every order opens by making sure the task has its issue (FarmDaemon.ensureIssue), and the
+      // first one, the research, is the one that creates it. Writing issues is all it adds.
+      case "research" -> p.put("issues", "write");
       // Pushes its branch, opens and edits its PR and, in a repository without CI, adds the
       // verification workflow. Merging is not here as a separate right: contents:write can merge,
       // which is why the branch rules of the repository matter (docs/SECURITY.md).
       case "implement" -> {
+        // It writes the result into the task's issue (FarmDaemon.publish) once the PR exists.
+        p.put("issues", "write");
         p.put("contents", "write");
         p.put("pull_requests", "write");
         p.put("workflows", "write");

@@ -31,3 +31,9 @@ WSL observer/executor availability and Codex inference are separate signals.
 Signals expire after 12 seconds. Quota older than 60 seconds is unknown; a prior
 reading belongs in dated details. Provider quota and ledger margin are distinct.
 Mermaid 11.12.0 is served locally with strict security.
+Proposals from `research.v7` bring typed diagrams (`as_is_graph`, `to_be_graph`): `static/app/diagram.js` draws them as
+SVG with one shape and icon per kind (service, database, file, config, agent, person, external, CI), marks what is new,
+changed or removed in words as well as colour, and offers the same drawing as a `.drawio` file. Mermaid stays for
+proposals made before v7 and for the issue and PR bodies, derived from the graph. The task drawer opens with a glance:
+what the agents decided, what will change and what will not be touched. The Bandeja shows three groups, each with its
+count, colour and glyph: waiting for you, in progress, finished.

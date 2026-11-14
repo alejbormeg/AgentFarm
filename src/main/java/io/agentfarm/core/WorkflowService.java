@@ -240,6 +240,7 @@ public class WorkflowService {
     var proposal = n.path("proposal");
     if (proposal.has("project_memory"))
       ProjectMemory.validate(proposal.get("project_memory"), repo);
+    io.agentfarm.adapters.ProposalGraph.apply(proposal);
     for (String key :
         List.of(
             "summary", "acceptance", "as_is", "to_be", "unit_test", "integration_test", "base_sha"))
@@ -656,6 +657,7 @@ public class WorkflowService {
                     .get("proposal")
                     .toString());
         ApprovedCriteria.apply(c, id, previous, (com.fasterxml.jackson.databind.node.ObjectNode) p);
+        io.agentfarm.adapters.ProposalGraph.apply(p);
         EvidenceService.criteria(p);
         for (String key :
             List.of("summary", "acceptance", "as_is", "to_be", "unit_test", "integration_test"))

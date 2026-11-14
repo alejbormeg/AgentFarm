@@ -36,6 +36,16 @@ Cada nombre es del catálogo o una skill instalada por el operador del ejecutor 
 `AGENTFARM_STATE/skills/<nombre>/SKILL.md` (máximo 32 KiB). Un nombre desconocido es un error.
 El contenido de esas skills es texto: no se ejecuta nada.
 
+## Instrucciones y skills por repositorio (panel)
+
+En **Agentes → Instrucciones por repositorio**, el propietario elige para cada repositorio el system
+message de Napoleon, Boxer y Benjamin (hay uno por defecto, editable y restaurable) y sube skills
+`.md` propias, activables por rol. Se guardan en el panel, no en el repositorio, por la misma razón
+de arriba: los archivos del repositorio los escriben los agentes. Llegan al ejecutor con la orden,
+se escriben en el prompt del turno con la nota de que la petición, el alcance aprobado y las reglas
+de AgentFarm prevalecen, y la evidencia registra su hash. No conceden permisos. El mismo perfil se
+descarga como `CLAUDE.md`, `AGENTS.md` (ChatGPT/Codex) o `GEMINI.md`.
+
 ## Comprobar si ayudan
 
 Usar una skill no garantiza nada: lo que cuenta es el resultado. `tests/eval/run.sh` ejecuta tres

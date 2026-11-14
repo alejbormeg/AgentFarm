@@ -112,6 +112,9 @@ class ExecutorWorkTest {
             "Integración: i",
             "flowchart LR; B",
             "no una orden")) assertTrue(body.contains(part), part);
+    assertTrue(
+        body.indexOf("Criterio") < body.indexOf("<details>"),
+        "what a person needs comes before the technical detail");
     assertEquals("", ExecutorWork.memoryContext(Json.parse("{}").path("project_memory")));
     assertEquals("", ExecutorWork.recipeContext(Json.parse("{}")));
   }
@@ -466,17 +469,32 @@ class ExecutorWorkTest {
             Json.parse("{\"passed\":true}"),
             empty);
     assertTrue(body.startsWith("Closes #7\n"));
-    assertTrue(body.contains("Commit: abc"));
-    assertTrue(body.contains("Unitarias: {\"status\":\"passed\"}"));
-    assertTrue(body.contains("Revisión: {\"passed\":true}"));
-    assertTrue(body.endsWith("Ninguna"));
+    assertTrue(body.contains("Commit: `abc`"));
+    assertTrue(body.contains("✅ Pruebas unitarias: pasan"));
+    assertTrue(body.contains("✅ Revisión de Benjamin: aprobada"));
+    assertTrue(body.contains("## Limitaciones\nNinguna"));
+    assertTrue(body.indexOf("## Comprobaciones") < body.indexOf("<details>"));
+    var failed = Json.parse("{\"status\":\"failed\",\"command\":\"pytest\"}");
+    String bad =
+        ExecutorWork.pullRequestBody(
+            item,
+            7,
+            Json.parse("{}"),
+            change,
+            "abc",
+            failed,
+            empty,
+            Json.parse("{\"passed\":false,\"findings\":\"Falta una prueba\"}"),
+            empty);
+    assertTrue(bad.contains("❌ Pruebas unitarias: fallan (`pytest`)"));
+    assertTrue(bad.contains("❌ Revisión de Benjamin: con hallazgos — Falta una prueba"));
     var huge = Json.parse(Json.encode(Map.of("summary", "x".repeat(70000))));
     String cut =
         ExecutorWork.pullRequestBody(
             item, 7, Json.parse("{}"), huge, "abc", empty, empty, empty, empty);
     assertTrue(cut.length() < 60000, "GitHub rejects longer bodies");
     assertTrue(cut.startsWith("Closes #7\n"), "the issue still closes");
-    assertTrue(cut.endsWith("consultar ejecución."));
+    assertTrue(cut.contains("## Resultado"), "the summary on top is short");
   }
 
   @Test

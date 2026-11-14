@@ -24,8 +24,8 @@ class PromptsTest {
                 "",
                 "recipe",
                 ""));
-    assertEquals("research.v6", research.id());
-    assertEquals(Json.sha256(Prompts.template("research.v6")), research.hash());
+    assertEquals("research.v7", research.id());
+    assertEquals(Json.sha256(Prompts.template("research.v7")), research.hash());
     assertTrue(research.text().contains("Arregla {{repo}}"), "values are not re-expanded");
     assertFalse(research.text().contains("{{sandbox}}"));
     assertDoesNotThrow(() ->

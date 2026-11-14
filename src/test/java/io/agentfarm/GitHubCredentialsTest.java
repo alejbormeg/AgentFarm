@@ -149,13 +149,20 @@ class GitHubCredentialsTest {
     assertEquals(1, asked.path("repositories").size());
     assertEquals("write", asked.path("permissions").path("contents").asText());
     assertEquals("write", asked.path("permissions").path("pull_requests").asText());
+    assertEquals(
+        "write", asked.path("permissions").path("issues").asText(), "implement writes the result");
 
     for (String kind : java.util.List.of("research", "review_existing")) {
       bodies.clear();
       withApp("selected", bodies).repositoryToken("owner/forja", kind);
       var read = Json.parse(bodies.get(0)).path("permissions");
+      // The research creates the task's issue, so it may write issues and nothing else.
       read.properties()
-          .forEach(e -> assertEquals("read", e.getValue().asText(), kind + " " + e.getKey()));
+          .forEach(e ->
+              assertEquals(
+                  kind.equals("research") && e.getKey().equals("issues") ? "write" : "read",
+                  e.getValue().asText(),
+                  kind + " " + e.getKey()));
       assertFalse(read.has("workflows"), kind);
     }
   }

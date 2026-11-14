@@ -14,6 +14,10 @@ for name in ExecutorWork\$Verdict ExecutorWork\$Candidate SkillCatalog SkillCata
   jar --update --file "$out/executor.jar" -C target/classes "io/agentfarm/core/$name.class"
 done
 jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/GitChanges.class
+jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/ProposalGraph.class
+jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/GitHubText.class
+jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/ProfilePrompt.class
+jar --update --file "$out/executor.jar" -C target/classes 'io/agentfarm/adapters/ProfilePrompt$Section.class'
 # The image build has no .git: it passes the commit it was built from.
 if [[ -n "${AGENTFARM_COMMIT:-}" ]]; then printf '%s\n' "$AGENTFARM_COMMIT" > "$stage/build-commit.txt"
 else git rev-parse HEAD 2>/dev/null > "$stage/build-commit.txt" || echo unknown > "$stage/build-commit.txt"; fi

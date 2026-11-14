@@ -117,7 +117,7 @@ const clickButton = (text) =>
   js(`(()=>{const b=${all}.find(e=>e.tagName==='BUTTON'&&e.textContent.trim()===${JSON.stringify(text)}&&e.getBoundingClientRect().width>0);if(!b)return false;b.click();return true})()`);
 
 const views = {
-  overview: "Espera tu decisión",
+  overview: "Esperan tu atención",
   tasks: "Molinos · iniciativas",
   agents: "Nodos dirigentes",
   budgets: "Cuota del proveedor",
@@ -135,7 +135,20 @@ const checkNotices = async () => {
     "the inbox warns about a broken sandbox",
   );
   check(await until(() => visible("Claude Code solo tiene reglas de bloqueo.")), "the inbox warns that Claude Code has no system sandbox");
+  check(
+    await js(`(()=>{const t=[...document.querySelectorAll('.status-tile')];return t.length===3&&t.every(x=>x.textContent.trim().length>2)&&['grupo-atencion','grupo-proceso','grupo-terminadas'].every(id=>document.getElementById(id))})()`),
+    "the inbox has three groups, waiting, in progress and finished, each with its count",
+  );
   await go("/overview?tarea=e2e-request-0001");
+  check(await until(() => visible("Falta un saludo en el repositorio")), "a task opens with what the agents decided");
+  check(await until(() => visible("Qué cambiará")), "the glance says what will change");
+  check(
+    await js(`(()=>{const g=document.querySelector('.glance'),d=document.querySelector('.task > .decision');return !!g&&!!d&&!!(g.compareDocumentPosition(d)&Node.DOCUMENT_POSITION_FOLLOWING)})()`),
+    "the glance comes before the decision",
+  );
+  await js(`${all}.find(e=>e.tagName==='SUMMARY'&&e.textContent.startsWith('Ver cómo está')).click()`);
+  check(await until(() => js(`!!document.querySelector('.dgram svg.dg .dg-node.dg-new')`)), "the diagram is drawn with typed shapes and marks what is new");
+  check(await js(`${all}.some(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Descargar .drawio')`), "the diagram can be downloaded for draw.io");
   check(await until(() => visible("Squealer dice · unitarias: Superadas")), "test results are in plain words");
   check(
     await js(`(()=>{const items=[...document.querySelectorAll('.journey li')];return items.length===6&&items.every(li=>li.querySelector('small')?.textContent.trim())})()`),

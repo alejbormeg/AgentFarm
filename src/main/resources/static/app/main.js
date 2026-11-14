@@ -2,6 +2,7 @@ import { DRAFTS_KEY, E, api, button, fieldKeys, keepDrafts, takeDrafts, liveSnap
 import { FarmMap } from "./map.js";
 import { withForms } from "./forms.js";
 import { withGovernance } from "./governance.js";
+import { withProfile } from "./agentprofile.js";
 import { withTask } from "./task.js";
 import { withViews } from "./views.js";
 
@@ -14,7 +15,7 @@ const ROUTES = [
 ];
 const THEME_NAMES = { auto: "Tema: como el sistema", light: "Tema: La ventana", dark: "Tema: Atardecer" };
 
-class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))) {
+class FarmApp extends withProfile(withGovernance(withViews(withTask(withForms(HTMLElement))))) {
   connectedCallback() {
     if (this.content) return;
     this.farm = new FarmMap();
@@ -201,6 +202,9 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
     const secondFactor = this.drawer("Segundo factor");
     this.secondFactorDrawer = secondFactor.dialog;
     secondFactor.body.append(this.secondFactorForm());
+    const profile = this.drawer("Agentes del repositorio");
+    this.profileDrawer = profile.dialog;
+    profile.body.append(this.profileForm());
     const task = this.drawer("Tarea");
     this.taskDrawer = task.dialog;
     this.taskTitle = task.title;
@@ -231,7 +235,7 @@ class FarmApp extends withGovernance(withViews(withTask(withForms(HTMLElement)))
     });
     this.fromUrl();
     this.classList.add("app");
-    this.append(side, main, this.newDrawer, this.adoptDrawer, this.secondFactorDrawer, this.taskDrawer);
+    this.append(side, main, this.newDrawer, this.adoptDrawer, this.secondFactorDrawer, this.profileDrawer, this.taskDrawer);
     this.markNav();
   }
   drawer(name) {

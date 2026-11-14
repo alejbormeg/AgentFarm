@@ -89,6 +89,47 @@ export const withViews = (Base) =>
       row.append(icon, text, wall(w.state === "proposed" || w.state === "blocked" ? (d?.commandments?.some((c) => c.status !== "pending" && c.status !== "not_evaluated") ? d : null) : d), actions);
       return row;
     }
+    // Three counts at the top of the Bandeja. Each differs in shape and in words, not only in colour.
+    statusStrip(waitingCount, movingCount, doneCount) {
+      const strip = E("nav", "", "status-strip");
+      strip.setAttribute("aria-label", "Resumen de tareas");
+      for (const [cls, glyph, count, label, target] of [
+        ["attention", "●", waitingCount, waitingCount === 1 ? "espera tu atención" : "esperan tu atención", "grupo-atencion"],
+        ["progress", "◐", movingCount, "en proceso", "grupo-proceso"],
+        ["finished", "✓", doneCount, doneCount === 1 ? "terminada" : "terminadas", "grupo-terminadas"],
+      ]) {
+        const tile = E("a", "", "status-tile " + cls + (count ? "" : " none"));
+        tile.href = "#" + target;
+        tile.addEventListener("click", (event) => {
+          event.preventDefault();
+          document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        tile.append(E("span", glyph, "status-glyph"), E("strong", String(count)), E("span", label));
+        strip.append(tile);
+      }
+      return strip;
+    }
+    finishedRow(w) {
+      const row = E("article", "", "row finished-row");
+      const mark = E("span", w.state === "integrated" ? "✓" : "–", "done-mark");
+      mark.setAttribute("aria-hidden", "true");
+      const text = E("div", "", "row-text");
+      const title = this.taskLink(w, "title");
+      title.textContent = w.title;
+      const meta = E("p", "", "meta");
+      meta.append([w.repo, w.pr ? "PR #" + w.pr : w.issue ? "Issue #" + w.issue : null].filter(Boolean).join(" · "));
+      if (w.state_since) {
+        const age = E("span", " · " + stageAge(w.state_since).toLowerCase());
+        age.dataset.since = w.state_since;
+        age.dataset.prefix = " · ";
+        meta.append(age);
+      }
+      text.append(title, meta);
+      const actions = E("div", "", "acts");
+      actions.append(pill(w.state === "integrated" ? "Integrada" : "Cancelada", w.state === "integrated" ? "ok" : ""), button("Ver", () => this.showTask(w.id)));
+      row.append(mark, text, actions);
+      return row;
+    }
     batchButton(ready) {
       return button(
         ready.length === 1 ? "Integrar la lista" : "Integrar las " + ready.length + " listas",
@@ -228,25 +269,38 @@ export const withViews = (Base) =>
       if (first) this.live.append(first);
       this.live.append(up);
 
-      const list = E("section", "", "list");
+      const moving = work.filter((w) => ["queued", "approved", "integrating"].includes(w.state)).sort(byAttention);
+      const finished = work.filter((w) => ["integrated", "cancelled"].includes(w.state)).sort(byRecentlyClosed);
+      this.live.append(this.statusStrip(yours.length, moving.length || (busy ? 1 : 0), finished.length));
+
+      const list = E("section", "", "list attention");
+      list.id = "grupo-atencion";
       const bar = E("div", "", "list-head");
-      bar.append(E("h2", "Espera tu decisión"));
+      bar.append(E("h2", "Esperan tu atención"));
       if (ready.length && this.data.me?.role === "owner") bar.append(this.batchButton(ready));
       list.append(bar);
       if (!yours.length) list.append(E("p", "Nada espera tu decisión ahora mismo.", "empty"));
       for (const w of yours) list.append(this.decisionRow(w));
       this.live.append(list);
 
-      const moving = work.filter((w) => ["queued", "approved", "integrating"].includes(w.state)).sort(byAttention);
-      if (moving.length || busy) {
-        const flow = E("section", "", "list");
-        const h = E("div", "", "list-head");
-        h.append(E("h2", "En curso"));
-        flow.append(h);
-        if (!moving.length) flow.append(E("p", s.task_title || "Hay una ejecución en curso.", "empty"));
-        for (const w of moving) flow.append(this.decisionRow(w));
-        this.live.append(flow);
-      }
+      const flow = E("section", "", "list progress");
+      flow.id = "grupo-proceso";
+      const h = E("div", "", "list-head");
+      h.append(E("h2", "En proceso"));
+      flow.append(h);
+      if (!moving.length) flow.append(E("p", busy ? s.task_title || "Hay una ejecución en curso." : "Ningún agente está trabajando ahora.", "empty"));
+      for (const w of moving) flow.append(this.decisionRow(w));
+      this.live.append(flow);
+
+      const done = E("section", "", "list finished");
+      done.id = "grupo-terminadas";
+      const dh = E("div", "", "list-head");
+      dh.append(E("h2", "Terminadas"));
+      done.append(dh);
+      if (!finished.length) done.append(E("p", "Todavía no hay tareas terminadas.", "empty"));
+      for (const w of finished.slice(0, closedShown)) done.append(this.finishedRow(w));
+      if (finished.length > closedShown) done.append(E("p", "Hay " + (finished.length - closedShown) + " más en Tareas → Cerradas.", "empty"));
+      this.live.append(done);
       this.console(r.events || []);
       const detail = E("details", "", "fold");
       detail.dataset.key = "technical";
@@ -614,7 +668,14 @@ export const withViews = (Base) =>
         recent.append(line);
       }
       up.append(this.farm.root, recent);
-      this.live.append(head, up, this.agentSection("Nodos dirigentes", o.nodes, "node", r), this.agentSection("Trabajadores Boxer", o.workers, "worker", r));
+      const repos = [...new Set(this.data.work.map((w) => w.repo).filter(Boolean))].sort();
+      const profiles = E("section");
+      profiles.append(E("h2", "Instrucciones por repositorio"), E("p", "Elige cómo trabajan Napoleon, Boxer y Benjamin en cada repositorio: su system message y las skills que quieres que usen.", "small"));
+      if (this.data.me?.role === "owner")
+        for (const repo of repos) profiles.append(button("Configurar " + repo, () => this.openProfile(repo)));
+      else profiles.append(E("p", "Solo el propietario puede configurarlo.", "empty"));
+      if (!repos.length) profiles.append(E("p", "Adopta un repositorio para configurarlo.", "empty"));
+      this.live.append(head, up, profiles, this.agentSection("Nodos dirigentes", o.nodes, "node", r), this.agentSection("Trabajadores Boxer", o.workers, "worker", r));
       if (this.data.me?.role === "owner")
         for (const kind of ["nodes", "workers"]) {
           const form = advancedForm(kind);

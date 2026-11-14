@@ -12,7 +12,7 @@ import java.util.regex.*;
  */
 public final class Prompts {
   public static final Map<String, String> CURRENT =
-      Map.of("research", "research.v6", "implement", "implement.v3", "review", "review.v3");
+      Map.of("research", "research.v7", "implement", "implement.v3", "review", "review.v3");
 
   /**
    * Slots holding text written outside these rules (issues, PR reviews, alerts, corrections). They

@@ -106,21 +106,7 @@ public final class ExecutorWork {
   }
 
   public static String issueBody(String marker, JsonNode item, JsonNode p) {
-    return marker
-        + "\n## Petición\n"
-        + (item.path("request").asText() + recipeContext(item))
-        + "\n\n## Propuesta\n"
-        + p.path("summary").asText()
-        + "\n\n## Aceptación\n"
-        + p.path("acceptance").asText()
-        + "\n\n## Pruebas\nUnitarias: "
-        + p.path("unit_test").asText()
-        + "\nIntegración: "
-        + p.path("integration_test").asText()
-        + "\n\n## Fuentes\n"
-        + p.path("sources").asText()
-        + diagrams(p)
-        + memoryContext(p.path("project_memory"));
+    return io.agentfarm.adapters.GitHubText.issue(marker, item, p);
   }
 
   /** What the platform adds to a proposal, so an approval binds these exact rules and this base. */
@@ -290,30 +276,8 @@ public final class ExecutorWork {
       JsonNode integration,
       JsonNode review,
       JsonNode memoryValidation) {
-    String body =
-        "Closes #"
-            + issue
-            + "\n\n## Qué resuelve\n"
-            + (item.path("request").asText() + recipeContext(item))
-            + "\n\n"
-            + change.path("summary").asText()
-            + diagrams(change)
-            + "\n## Evidencias\nCommit: "
-            + sha
-            + "\n\nUnitarias: "
-            + unit
-            + "\n\nIntegración: "
-            + integration
-            + "\n\nRevisión: "
-            + review
-            + "\n\nMemoria candidata (validación de esquema, no aceptación funcional): "
-            + memoryValidation
-            + memoryContext(p.path("project_memory"))
-            + "\n\n## Limitaciones\n"
-            + change.path("limitations").asText();
-    return body.length() > 60000
-        ? body.substring(0, 59000) + "\nSalida recortada; consultar ejecución."
-        : body;
+    return io.agentfarm.adapters.GitHubText.pullRequest(
+        item, issue, p, change, sha, unit, integration, review, memoryValidation);
   }
 
   /** With several slots each run reserves its share, so the others can still be admitted. */

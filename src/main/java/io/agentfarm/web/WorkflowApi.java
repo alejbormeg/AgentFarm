@@ -16,6 +16,7 @@ public class WorkflowApi {
 
   private final io.agentfarm.core.TwoFactor twoFactor;
   private final io.agentfarm.core.GitHubCredentials credentials;
+  private final io.agentfarm.adapters.AgentProfiles profiles;
 
   public WorkflowApi(
       WorkflowService work,
@@ -24,7 +25,9 @@ public class WorkflowApi {
       InsightsService insights,
       DigestService digest,
       io.agentfarm.core.TwoFactor twoFactor,
-      io.agentfarm.core.GitHubCredentials credentials) {
+      io.agentfarm.core.GitHubCredentials credentials,
+      io.agentfarm.adapters.AgentProfiles profiles) {
+    this.profiles = profiles;
     this.twoFactor = twoFactor;
     this.credentials = credentials;
     this.work = work;
@@ -129,7 +132,21 @@ public class WorkflowApi {
   @PostMapping("/agent/claim")
   public Object claim(@RequestBody JsonNode n, Principal p) {
     checkAgent(n, p);
-    return work.claim(Json.text(n, "agent"), !p.getName().startsWith("node:"));
+    var claimed = work.claim(Json.text(n, "agent"), !p.getName().startsWith("node:"));
+    // The owner's per-repository instructions travel with the order, never inside the repository.
+    if (claimed instanceof java.util.Map<?, ?> m
+        && m.get("item") instanceof java.util.Map<?, ?> item) {
+      var withProfile = new java.util.LinkedHashMap<Object, Object>(m);
+      var copy = new java.util.LinkedHashMap<Object, Object>(item);
+      try {
+        copy.put("agent_profile", profiles.stored(String.valueOf(item.get("repo"))));
+      } catch (IllegalArgumentException e) {
+        // An old row with an odd repository name simply has no profile.
+      }
+      withProfile.put("item", copy);
+      return withProfile;
+    }
+    return claimed;
   }
 
   @PostMapping("/agent/commands/{id}/github-token")
