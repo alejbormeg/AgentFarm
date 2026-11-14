@@ -54,6 +54,19 @@ o una búsqueda de repositorios. Ves el `SKILL.md` entero, con su origen y su ha
 «Añadir»; después, «Guardar». Google no publica un registro oficial: sus skills (Antigravity) usan el
 mismo formato y se encuentran como cualquier repo.
 
+### El catálogo del panel
+
+El panel mantiene un catálogo de skills (solo nombre, descripción y etiquetas; el texto se pide al
+añadir). Se sincroniza una vez al día y bajo demanda con `anthropics/skills`, `openai/skills` y los
+repositorios que el propietario añada (`POST /api/skill-catalog/sources`): una llamada al árbol de
+GitHub por repositorio y solo se leen los `SKILL.md` cuyo SHA cambió (máx. 500 por fuente, 300
+llamadas por ejecución). Si falla, conserva lo anterior y lo dice.
+
+La búsqueda (`GET /api/skill-catalog/search?q=`) entiende español e inglés con un diccionario de
+temas (`skill-topics.json`: programar, diseño gráfico, documentos, datos, seguridad…): añade los
+términos en inglés del tema detectado y responde qué entendió. El texto del usuario nunca llega a
+FTS como sintaxis: solo letras y números, entre comillas.
+
 ## Comprobar si ayudan
 
 Usar una skill no garantiza nada: lo que cuenta es el resultado. `tests/eval/run.sh` ejecuta tres

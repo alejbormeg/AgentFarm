@@ -6,6 +6,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 ## Sin publicar — camino a la versión 1.0
 
+- **Catálogo de skills** dentro del panel (primera parte, sin interfaz todavía): se sincroniza a diario con `anthropics/skills`, `openai/skills` y los repos que añadas, y se busca con texto libre en español o inglés («programar», «diseño gráfico») sobre SQLite FTS5. La API (`/api/skill-catalog`) es solo del propietario. Arreglo de paso: un repositorio llamado `..` o `.` ya no pasa la validación.
 - Arreglo: la sección «Buscar skills online» del cajón de agentes de un repositorio no se mostraba. Ahora aparece, con una comprobación de interfaz que lo vigila.
 - Se pueden instalar **varios ejecutores en la misma máquina**: el comando de «Añadir nodo» lleva `--node NOMBRE` y cada ejecutor tiene su propio servicio (`agentfarm-executor-NOMBRE`), configuración y estado. Si el instalador se niega porque ya hay uno, el código de un solo uso no se gasta.
 - En el cajón de agentes de un repositorio se pueden **buscar skills online**: los catálogos de Anthropic y OpenAI (repos de GitHub), cualquier repositorio o una búsqueda. El panel las descarga, las enseña enteras y solo se añaden cuando el propietario lo acepta, fijadas por su SHA y su hash. Google no publica un registro oficial: sus skills usan el mismo formato y se buscan como cualquier repo.

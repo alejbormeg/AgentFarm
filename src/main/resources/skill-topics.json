@@ -1,0 +1,671 @@
+{
+ "topics": [
+  {
+   "id": "programming",
+   "label": "Programación",
+   "es": [
+    "programar",
+    "programacion",
+    "programador",
+    "codigo",
+    "desarrollo de software",
+    "desarrollar",
+    "software",
+    "backend",
+    "frontend"
+   ],
+   "en": [
+    "programming",
+    "code",
+    "coding",
+    "developer",
+    "development",
+    "software",
+    "engineering",
+    "backend",
+    "frontend"
+   ]
+  },
+  {
+   "id": "python",
+   "label": "Python",
+   "es": [
+    "python",
+    "pytest",
+    "django",
+    "flask",
+    "fastapi"
+   ],
+   "en": [
+    "python",
+    "pytest",
+    "django",
+    "flask",
+    "fastapi",
+    "pip"
+   ]
+  },
+  {
+   "id": "javascript",
+   "label": "JavaScript y TypeScript",
+   "es": [
+    "javascript",
+    "typescript",
+    "node",
+    "react",
+    "vue",
+    "angular",
+    "next"
+   ],
+   "en": [
+    "javascript",
+    "typescript",
+    "node",
+    "nodejs",
+    "react",
+    "vue",
+    "angular",
+    "nextjs",
+    "npm"
+   ]
+  },
+  {
+   "id": "java",
+   "label": "Java",
+   "es": [
+    "java",
+    "spring",
+    "maven",
+    "kotlin"
+   ],
+   "en": [
+    "java",
+    "spring",
+    "maven",
+    "gradle",
+    "kotlin",
+    "jvm"
+   ]
+  },
+  {
+   "id": "go-rust",
+   "label": "Go, Rust y sistemas",
+   "es": [
+    "golang",
+    "rust",
+    "sistemas"
+   ],
+   "en": [
+    "golang",
+    "rust",
+    "cpp",
+    "systems"
+   ]
+  },
+  {
+   "id": "design",
+   "label": "Diseño gráfico y UI",
+   "es": [
+    "diseno grafico",
+    "diseno",
+    "grafico",
+    "graficos",
+    "interfaz",
+    "interfaces",
+    "ui",
+    "ux",
+    "maquetar",
+    "estetica",
+    "visual"
+   ],
+   "en": [
+    "design",
+    "graphic",
+    "graphics",
+    "ui",
+    "ux",
+    "interface",
+    "visual",
+    "layout",
+    "typography",
+    "css",
+    "frontend-design"
+   ]
+  },
+  {
+   "id": "art",
+   "label": "Arte, imagen y creatividad",
+   "es": [
+    "arte",
+    "imagen",
+    "imagenes",
+    "ilustracion",
+    "creativo",
+    "creatividad",
+    "musica",
+    "dibujo",
+    "poster",
+    "animacion"
+   ],
+   "en": [
+    "art",
+    "image",
+    "images",
+    "illustration",
+    "creative",
+    "music",
+    "canvas",
+    "poster",
+    "animation",
+    "generative"
+   ]
+  },
+  {
+   "id": "documents",
+   "label": "Documentos",
+   "es": [
+    "documento",
+    "documentos",
+    "word",
+    "pdf",
+    "informe",
+    "informes",
+    "texto",
+    "redactar",
+    "redaccion"
+   ],
+   "en": [
+    "document",
+    "documents",
+    "docx",
+    "word",
+    "pdf",
+    "report",
+    "writing",
+    "text"
+   ]
+  },
+  {
+   "id": "spreadsheets",
+   "label": "Hojas de cálculo",
+   "es": [
+    "excel",
+    "hoja de calculo",
+    "hojas de calculo",
+    "calculo",
+    "xlsx",
+    "csv",
+    "tabla",
+    "tablas"
+   ],
+   "en": [
+    "excel",
+    "spreadsheet",
+    "spreadsheets",
+    "xlsx",
+    "csv",
+    "table"
+   ]
+  },
+  {
+   "id": "presentations",
+   "label": "Presentaciones",
+   "es": [
+    "presentacion",
+    "presentaciones",
+    "diapositivas",
+    "powerpoint",
+    "slides"
+   ],
+   "en": [
+    "presentation",
+    "presentations",
+    "slides",
+    "pptx",
+    "powerpoint",
+    "deck"
+   ]
+  },
+  {
+   "id": "data",
+   "label": "Datos y análisis",
+   "es": [
+    "datos",
+    "analisis",
+    "analitica",
+    "sql",
+    "base de datos",
+    "bases de datos",
+    "estadistica",
+    "grafica"
+   ],
+   "en": [
+    "data",
+    "analysis",
+    "analytics",
+    "sql",
+    "database",
+    "databases",
+    "statistics",
+    "dataset",
+    "visualization"
+   ]
+  },
+  {
+   "id": "ml",
+   "label": "IA y aprendizaje automático",
+   "es": [
+    "inteligencia artificial",
+    "ia",
+    "aprendizaje automatico",
+    "modelo",
+    "modelos",
+    "llm",
+    "agente",
+    "agentes",
+    "prompt",
+    "prompts"
+   ],
+   "en": [
+    "ai",
+    "artificial intelligence",
+    "machine learning",
+    "ml",
+    "model",
+    "models",
+    "llm",
+    "agent",
+    "agents",
+    "prompt",
+    "prompts"
+   ]
+  },
+  {
+   "id": "security",
+   "label": "Seguridad",
+   "es": [
+    "seguridad",
+    "seguro",
+    "vulnerabilidad",
+    "vulnerabilidades",
+    "criptografia",
+    "autenticacion",
+    "auditoria de seguridad"
+   ],
+   "en": [
+    "security",
+    "secure",
+    "vulnerability",
+    "vulnerabilities",
+    "crypto",
+    "authentication",
+    "auth",
+    "pentest",
+    "owasp"
+   ]
+  },
+  {
+   "id": "testing",
+   "label": "Pruebas",
+   "es": [
+    "prueba",
+    "pruebas",
+    "test",
+    "tests",
+    "testing",
+    "calidad",
+    "qa",
+    "cobertura"
+   ],
+   "en": [
+    "test",
+    "tests",
+    "testing",
+    "quality",
+    "qa",
+    "coverage",
+    "tdd",
+    "unit",
+    "e2e"
+   ]
+  },
+  {
+   "id": "review",
+   "label": "Revisión de código",
+   "es": [
+    "revision",
+    "revisar",
+    "revision de codigo",
+    "code review",
+    "pull request",
+    "refactorizar",
+    "refactor"
+   ],
+   "en": [
+    "review",
+    "code review",
+    "pull request",
+    "pr",
+    "refactor",
+    "refactoring",
+    "lint"
+   ]
+  },
+  {
+   "id": "devops",
+   "label": "DevOps e infraestructura",
+   "es": [
+    "devops",
+    "despliegue",
+    "desplegar",
+    "infraestructura",
+    "docker",
+    "kubernetes",
+    "contenedores",
+    "nube"
+   ],
+   "en": [
+    "devops",
+    "deploy",
+    "deployment",
+    "infrastructure",
+    "docker",
+    "kubernetes",
+    "containers",
+    "cloud",
+    "terraform"
+   ]
+  },
+  {
+   "id": "git",
+   "label": "Git y control de versiones",
+   "es": [
+    "git",
+    "commit",
+    "commits",
+    "rama",
+    "ramas",
+    "versiones",
+    "control de versiones"
+   ],
+   "en": [
+    "git",
+    "commit",
+    "commits",
+    "branch",
+    "branches",
+    "version control",
+    "github"
+   ]
+  },
+  {
+   "id": "web",
+   "label": "Web y navegador",
+   "es": [
+    "web",
+    "navegador",
+    "html",
+    "scraping",
+    "pagina web",
+    "paginas web",
+    "sitio web",
+    "playwright"
+   ],
+   "en": [
+    "web",
+    "browser",
+    "html",
+    "scraping",
+    "website",
+    "playwright",
+    "chrome",
+    "automation"
+   ]
+  },
+  {
+   "id": "api-mcp",
+   "label": "APIs y MCP",
+   "es": [
+    "api",
+    "apis",
+    "mcp",
+    "integracion",
+    "integraciones",
+    "servidor mcp",
+    "webhook"
+   ],
+   "en": [
+    "api",
+    "apis",
+    "mcp",
+    "integration",
+    "integrations",
+    "server",
+    "webhook",
+    "rest",
+    "graphql"
+   ]
+  },
+  {
+   "id": "docs",
+   "label": "Documentación técnica",
+   "es": [
+    "documentacion",
+    "documentar",
+    "readme",
+    "guia",
+    "tutorial",
+    "manual"
+   ],
+   "en": [
+    "documentation",
+    "docs",
+    "readme",
+    "guide",
+    "tutorial",
+    "manual",
+    "changelog"
+   ]
+  },
+  {
+   "id": "writing",
+   "label": "Escritura y comunicación",
+   "es": [
+    "escribir",
+    "escritura",
+    "comunicacion",
+    "correo",
+    "email",
+    "marketing",
+    "blog",
+    "copy",
+    "marca"
+   ],
+   "en": [
+    "writing",
+    "communication",
+    "email",
+    "marketing",
+    "blog",
+    "copywriting",
+    "brand",
+    "content",
+    "seo"
+   ]
+  },
+  {
+   "id": "business",
+   "label": "Negocio y producto",
+   "es": [
+    "negocio",
+    "producto",
+    "ventas",
+    "finanzas",
+    "estrategia",
+    "proyecto",
+    "gestion",
+    "planificacion"
+   ],
+   "en": [
+    "business",
+    "product",
+    "sales",
+    "finance",
+    "strategy",
+    "project",
+    "management",
+    "planning",
+    "roadmap"
+   ]
+  },
+  {
+   "id": "mobile",
+   "label": "Móvil",
+   "es": [
+    "movil",
+    "moviles",
+    "android",
+    "ios",
+    "aplicacion movil",
+    "swift",
+    "flutter"
+   ],
+   "en": [
+    "mobile",
+    "android",
+    "ios",
+    "swift",
+    "flutter",
+    "react native"
+   ]
+  },
+  {
+   "id": "games",
+   "label": "Videojuegos",
+   "es": [
+    "juego",
+    "juegos",
+    "videojuego",
+    "videojuegos",
+    "unity",
+    "godot"
+   ],
+   "en": [
+    "game",
+    "games",
+    "gamedev",
+    "unity",
+    "godot",
+    "unreal"
+   ]
+  },
+  {
+   "id": "database",
+   "label": "Bases de datos",
+   "es": [
+    "postgres",
+    "postgresql",
+    "mysql",
+    "sqlite",
+    "mongodb",
+    "redis",
+    "esquema",
+    "migraciones"
+   ],
+   "en": [
+    "postgres",
+    "postgresql",
+    "mysql",
+    "sqlite",
+    "mongodb",
+    "redis",
+    "schema",
+    "migrations",
+    "supabase"
+   ]
+  },
+  {
+   "id": "performance",
+   "label": "Rendimiento",
+   "es": [
+    "rendimiento",
+    "optimizar",
+    "optimizacion",
+    "lento",
+    "velocidad",
+    "memoria",
+    "perfilado"
+   ],
+   "en": [
+    "performance",
+    "optimize",
+    "optimization",
+    "slow",
+    "speed",
+    "memory",
+    "profiling",
+    "latency"
+   ]
+  },
+  {
+   "id": "accessibility",
+   "label": "Accesibilidad",
+   "es": [
+    "accesibilidad",
+    "accesible",
+    "wcag",
+    "lector de pantalla"
+   ],
+   "en": [
+    "accessibility",
+    "accessible",
+    "a11y",
+    "wcag",
+    "screen reader"
+   ]
+  },
+  {
+   "id": "research",
+   "label": "Investigación",
+   "es": [
+    "investigar",
+    "investigacion",
+    "buscar informacion",
+    "fuentes",
+    "papers",
+    "articulos"
+   ],
+   "en": [
+    "research",
+    "investigate",
+    "sources",
+    "papers",
+    "literature",
+    "search"
+   ]
+  },
+  {
+   "id": "automation",
+   "label": "Automatización",
+   "es": [
+    "automatizar",
+    "automatizacion",
+    "script",
+    "scripts",
+    "bash",
+    "shell",
+    "tareas"
+   ],
+   "en": [
+    "automate",
+    "automation",
+    "script",
+    "scripts",
+    "bash",
+    "shell",
+    "workflow",
+    "cli"
+   ]
+  }
+ ]
+}

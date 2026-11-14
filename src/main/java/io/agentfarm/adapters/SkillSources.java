@@ -107,6 +107,10 @@ public class SkillSources {
   static String repo(String repo) {
     if (repo == null || !repo.matches("[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}"))
       throw new IllegalArgumentException("Repositorio no válido: usa propietario/nombre");
+    // "." and ".." fit the pattern but would walk out of /repos/ in the URL.
+    for (String part : repo.split("/"))
+      if (part.equals(".") || part.equals(".."))
+        throw new IllegalArgumentException("Repositorio no válido: usa propietario/nombre");
     return repo;
   }
 

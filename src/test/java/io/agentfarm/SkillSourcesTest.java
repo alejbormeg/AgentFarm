@@ -68,6 +68,9 @@ class SkillSourcesTest {
           {"o/r", "skills/bin/SKILL.md"},
           {"o/r", "skills/casa/README.md"},
           {"o/r", "../etc/SKILL.md"},
+          {"../x", "skills/casa/SKILL.md"},
+          {"o/..", "skills/casa/SKILL.md"},
+          {"./x", "skills/casa/SKILL.md"},
           {"o/r", "skills/a b;rm/SKILL.md"},
           {"nope", "skills/casa/SKILL.md"},
           {"o/r/extra", "x/SKILL.md"}

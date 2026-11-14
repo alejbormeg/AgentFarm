@@ -123,3 +123,13 @@ El panel (no el navegador ni los nodos) las pide a GitHub, con el token de la Ap
 entero antes de añadirlo y queda fijado por su SHA y su hash en el perfil del repositorio; nunca se
 activa solo ni lo elige un repositorio. Es texto hostil como cualquier otro: lo que dice no amplía
 permisos y la petición, el alcance aprobado y las reglas de AgentFarm mandan.
+
+## Catálogo de skills y fuentes que añade el propietario
+
+Las fuentes del catálogo las añade solo el propietario (máximo 30; las oficiales no se quitan). El
+panel lee de GitHub, con el token de la App, el árbol y los `SKILL.md`, con tope de tamaño (32 KiB),
+de skills (500) y de llamadas (300). Se guardan solo nombre, descripción (≤500) y etiquetas, sin
+caracteres de control; el frontmatter YAML se lee con tipos seguros y límites, y si es raro se
+usa el texto plano. Un repositorio cuya descripción dice algo hostil no cambia nada: añadir una
+skill a un repo sigue siendo una decisión del propietario tras ver el texto entero. Los
+repositorios llamados `.` o `..` se rechazan para que no salgan de `/repos/` en la URL.

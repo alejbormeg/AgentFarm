@@ -113,6 +113,18 @@ curl -fs -u "admin:$password" "$panel/api/skill-sources/browse?repo=e2e/skills&p
 curl -fs -u "admin:$password" "$panel/api/skill-sources/skill?repo=e2e/skills&path=skills/casa/SKILL.md" | grep -q 'nombres claros' || fail "a skill was not fetched whole"
 curl -fs -u "admin:$password" "$panel/api/skill-sources/search?q=skills" | grep -q 'e2e/skills' || fail "the skill search found nothing"
 if curl -fs -o /dev/null -u "admin:$password" "$panel/api/skill-sources/browse?repo=e2e/skills&path=../x"; then fail "a path traversal was accepted"; fi
+# The catalogue: follow a repository, let it synchronise, and find its skill by free text in Spanish.
+owner /skill-catalog/sources '{"repo":"e2e/skills","path":"skills"}' | grep -q '"kind":"custom"' || fail "the catalogue source was not added"
+for _ in $(seq 1 30); do
+  curl -fs -u "admin:$password" "$panel/api/skill-catalog/sources" | python3 -c 'import json,sys;d=json.load(sys.stdin);s=[x for x in d["sources"] if x["repo"]=="e2e/skills"][0];sys.exit(0 if s["skills"]>=1 and not s["syncing"] else 1)' && break
+  sleep 1
+done
+found="$(curl -fs -u "admin:$password" --get --data-urlencode 'q=quiero algo para git y commits' "$panel/api/skill-catalog/search")"
+grep -q '"repo":"e2e/skills"' <<<"$found" || fail "the catalogue did not find the synchronised skill: $found"
+grep -q '"understood"' <<<"$found" || fail "the search does not say what it understood"
+curl -fs -u "admin:$password" --get --data-urlencode 'q=" OR *' "$panel/api/skill-catalog/search" > /dev/null || fail "a hostile search broke the catalogue"
+if owner /skill-catalog/sources '{"repo":"../x","path":""}' > /dev/null 2>&1; then fail "a bad catalogue source was accepted"; fi
+echo "Skill catalogue synchronised and searched"
 # The owner picks a provider per role from the panel; unknown providers are refused.
 owner /executors/e2e-node/providers '{"roles":{"review":"antigravity"}}' | grep -q antigravity || fail "the provider choice was not saved"
 curl -fs -u "admin:$password" "$panel/api/executors/e2e-node/providers" | grep -q '"review":"antigravity"' || fail "the provider choice was not kept"

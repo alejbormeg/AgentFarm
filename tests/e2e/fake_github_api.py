@@ -53,6 +53,12 @@ class Handler(BaseHTTPRequestHandler):
             import base64
             text = "# Casa\nUsa nombres claros en los commits.\n"
             return self.reply(200, {"type": "file", "size": len(text), "encoding": "base64", "sha": "0123456789abcdef", "html_url": "https://github.com/e2e/skills", "content": base64.b64encode(text.encode()).decode()})
+        if path == "/repos/e2e/skills":
+            return self.reply(200, {"default_branch": "main", "stargazers_count": 7})
+        if path == "/repos/e2e/skills/git/trees/main":
+            return self.reply(200, {"truncated": False, "tree": [
+                {"path": "skills/casa/SKILL.md", "type": "blob", "sha": "0123456789abcdef"},
+                {"path": "README.md", "type": "blob", "sha": "r"}]})
         if path == "/search/repositories":
             return self.reply(200, {"items": [{"full_name": "e2e/skills", "description": "Skills de prueba", "stargazers_count": 7}]})
         if path == "/repos/e2e/demo":
