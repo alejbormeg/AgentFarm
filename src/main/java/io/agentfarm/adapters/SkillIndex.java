@@ -213,9 +213,21 @@ public class SkillIndex {
     var scored = new ArrayList<Map.Entry<Double, Map<String, Object>>>();
     for (var r : rows) {
       double score = ((Number) r.get("rank")).doubleValue();
-      String hay =
-          SkillTopics.normalize(r.get("name") + " " + r.get("description") + " " + r.get("tags"));
-      if (tokens.stream().anyMatch(t -> (" " + hay + " ").contains(" " + t + " "))) score -= 2;
+      String name = SkillTopics.normalize(r.get("name") + " " + r.get("path"));
+      String hay = SkillTopics.normalize(r.get("description") + " " + r.get("tags"));
+      // A word of the request, or an English word of its topic, in the name says the most; in the
+      // description, less. This keeps "security" skills ahead of a skill that merely mentions it.
+      boolean inName =
+          terms.stream()
+              .anyMatch(t ->
+                  (" " + name + " ").contains(" " + t + " ")
+                      || name.contains(t) && t.length() >= 5);
+      long inDescription =
+          terms.stream().filter(t -> (" " + hay + " ").contains(" " + t + " ")).count();
+      if (inName) score -= 3;
+      score -= Math.min(2.0, 0.5 * inDescription);
+      if (tokens.stream().anyMatch(t -> (" " + name + " " + hay + " ").contains(" " + t + " ")))
+        score -= 1;
       boolean official = "official".equals(r.get("kind"));
       if (official) score -= 1;
       score -= 0.3 * Math.log10(1 + ((Number) r.get("stars")).doubleValue());

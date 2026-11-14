@@ -90,6 +90,41 @@ class SkillIndexTest {
   }
 
   @Test
+  void aNameThatSaysTheTopicBeatsAMention() {
+    long id = ((Number) catalog.sources().get(0).get("id")).longValue();
+    catalog.apply(
+        id,
+        0,
+        List.of(
+            entry(
+                "o/r",
+                "skills/gh-address-comments/SKILL.md",
+                "gh-address-comments",
+                "Address review comments and keep authentication tokens out of the diff"),
+            entry(
+                "o/r",
+                "skills/security-threat-model/SKILL.md",
+                "security-threat-model",
+                "Threat modeling for repositories"),
+            entry("o/r", "skills/pdf/SKILL.md", "pdf", "Work with PDF files")),
+        Set.of(
+            "skills/gh-address-comments/SKILL.md",
+            "skills/security-threat-model/SKILL.md",
+            "skills/pdf/SKILL.md"));
+    assertEquals(
+        "security-threat-model", catalog.search("seguridad", null, 5).results().get(0).get("name"));
+  }
+
+  @Test
+  void graphicDesignIsNotDataAndVerbFormsStillMatch() {
+    var topics = SkillTopics.detect("diseño gráfico").stream().map(SkillTopics.Topic::id).toList();
+    assertTrue(topics.contains("design"));
+    assertFalse(topics.contains("data"), "a graphic is not a data analysis");
+    assertTrue(
+        SkillTopics.detect("programando").stream().anyMatch(t -> t.id().equals("programming")));
+  }
+
+  @Test
   void searchTextNeverReachesFtsAsSyntax() {
     seed();
     for (String hostile :
@@ -190,7 +225,7 @@ class SkillIndexTest {
   }
 
   /** A repository with two skills; counts the calls it receives. */
-  static final class Github implements SkillSources.Fetch {
+  static class Github implements SkillSources.Fetch {
     final List<String> calls = new ArrayList<>();
     String shaOfPdf = "pdf-1";
     boolean failTree = false, truncated = false;
@@ -257,6 +292,23 @@ class SkillIndexTest {
     sync.sync(id);
     assertEquals(3, github.calls.size(), "one changed file is read again");
     assertTrue(first > 2);
+  }
+
+  @Test
+  void aSkillThatCannotBeIndexedIsReportedNotSilentlyDropped() {
+    var github =
+        new Github() {
+          public JsonNode get(String repo, String path) {
+            if (path.contains("pdf"))
+              return parse(
+                  "{\"type\":\"file\",\"size\":99999,\"encoding\":\"base64\",\"sha\":\"pdf-1\",\"content\":\"\"}");
+            return super.get(repo, path);
+          }
+        };
+    long id = ((Number) catalog.sources().get(0).get("id")).longValue();
+    new SkillCatalogSync(catalog, github, () -> true).sync(id);
+    assertEquals(1, catalog.size());
+    assertTrue(catalog.source(id).get("last_error").toString().contains("1 skill no se indexa"));
   }
 
   @Test

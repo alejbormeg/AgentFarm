@@ -6,6 +6,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 ## Sin publicar — camino a la versión 1.0
 
+- Búsqueda de skills más certera (comprobada contra el GitHub real): un nombre que dice el tema (p. ej. `security-…`) va por delante de una skill que solo lo menciona, «diseño gráfico» ya no activa «Datos y análisis», y el catálogo avisa de las skills que no indexa (más de 32 KiB).
 - **Buscar skills por texto libre**: en el cajón de agentes de un repositorio, «Cuéntanos qué necesitas» (por ejemplo «programar en Python» o «diseño gráfico») busca en el catálogo del panel, con temas sugeridos, y dice qué entendió. «Fuentes del catálogo» deja añadir repos, quitarlos y actualizar el catálogo. El explorador carpeta a carpeta sigue debajo.
 - **Catálogo de skills** dentro del panel (primera parte, sin interfaz todavía): se sincroniza a diario con `anthropics/skills`, `openai/skills` y los repos que añadas, y se busca con texto libre en español o inglés («programar», «diseño gráfico») sobre SQLite FTS5. La API (`/api/skill-catalog`) es solo del propietario. Arreglo de paso: un repositorio llamado `..` o `.` ya no pasa la validación.
 - Arreglo: la sección «Buscar skills online» del cajón de agentes de un repositorio no se mostraba. Ahora aparece, con una comprobación de interfaz que lo vigila.
