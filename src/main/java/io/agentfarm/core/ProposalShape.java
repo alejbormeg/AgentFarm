@@ -105,6 +105,7 @@ public final class ProposalShape {
   }
 
   public static void normalize(JsonNode proposal) {
+    io.agentfarm.adapters.ProposalGraph.apply(proposal);
     for (var criterion : proposal.path("criteria")) {
       if (!(criterion instanceof ObjectNode c) || !c.path("method").asText().equals("test"))
         continue;

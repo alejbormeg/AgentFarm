@@ -561,9 +561,8 @@ public class FarmDaemon extends CodexRunner {
                 "body",
                 marker()
                     + "\n## Petición\n"
-                    + (item.path("request").asText()
-                        + io.agentfarm.core.ExecutorWork.recipeContext(item))
-                    + "\n\nEstado: investigación pendiente."))
+                    + item.path("request").asText()
+                    + "\n\nEstado: los agentes están investigando."))
         .path("number")
         .asInt();
   }
@@ -783,14 +782,24 @@ public class FarmDaemon extends CodexRunner {
   /** Off only to compare results with and without skills; see docs/SKILLS.md. */
   static final boolean SKILLS = !"off".equals(System.getProperty("agentfarm.skills"));
 
+  /** The owner's instructions for the repository of the order being run, from the panel. */
+  static JsonNode ownerProfile = JSON.createObjectNode();
+
   static io.agentfarm.core.SkillCatalog.Selection skills(String role, List<String> named)
       throws Exception {
     if (!SKILLS) return new io.agentfarm.core.SkillCatalog.Selection("", List.of());
-    return io.agentfarm.core.SkillCatalog.select(
-        role,
-        io.agentfarm.core.SkillCatalog.detectStacks(task.checkout),
-        named,
-        STATE.resolve("skills"));
+    var base =
+        io.agentfarm.core.SkillCatalog.select(
+            role,
+            io.agentfarm.core.SkillCatalog.detectStacks(task.checkout),
+            named,
+            STATE.resolve("skills"));
+    var owner = io.agentfarm.adapters.ProfilePrompt.section(ownerProfile, role);
+    if (owner.text().isEmpty()) return base;
+    var references = new ArrayList<>(base.references());
+    references.addAll(owner.references());
+    return new io.agentfarm.core.SkillCatalog.Selection(
+        base.text() + owner.text(), List.copyOf(references));
   }
 
   static List<String> namedSkills(JsonNode p) {
@@ -1433,6 +1442,7 @@ public class FarmDaemon extends CodexRunner {
   static void work(JsonNode claim) throws Exception {
     task = new Task(claim);
     var item = claim.path("item");
+    ownerProfile = item.path("agent_profile");
     var cmd = claim.path("command");
     String kind = cmd.path("kind").asText();
     boolean reserved = false;

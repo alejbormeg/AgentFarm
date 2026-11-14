@@ -921,6 +921,7 @@
         "updated" : "number"
       },
       "item" : {
+        "agent_profile" : { },
         "branch" : "null",
         "created" : "number",
         "error" : "null",

@@ -105,8 +105,13 @@ mkdir -p "$work/state"
 owner /executors '{"node":"e2e-node","account":"e2e-sub"}' \
   | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])' > "$work/state/node-token"
 chmod 600 "$work/state/node-token"
+# The owner's per-repository instructions must reach every agent of that repository.
+owner /repos/e2e/demo/agents '{"roles":{"research":{"system":"MARCA-NAPOLEON"},"implement":{"system":"MARCA-BOXER"},"review":{"system":"MARCA-BENJAMIN"}},"skills":[{"id":"casa-e2e","title":"Casa","roles":["implement"],"text":"MARCA-SKILL"}]}' \
+  | python3 -c 'import json,sys;d=json.load(sys.stdin);assert d["roles"]["research"]["custom"] and d["skills"][0]["id"]=="casa-e2e", d' || fail "the agent profile was not saved"
+curl -fs -u "admin:$password" "$panel/api/repos/e2e/demo/agents/export?format=gemini" | grep -q "MARCA-SKILL" || fail "the Gemini export lacks the skill"
 owner /work '{"request_id":"e2e-request-0001","repository":"e2e/demo","title":"Añadir saludo","request":"Crea greeting.txt con un saludo."}' > /dev/null
 
+export E2E_PROMPT_LOG="$work/marks.log"
 export E2E_QUOTA_RESETS=$(($(date +%s) + 3 * 86400))
 start_executor() {
   E2E_GH_STATE="$work/gh.json" E2E_REMOTE="$work/remote.git" \
@@ -192,10 +197,18 @@ assert evidence["passed"] is True, evidence
 assert evidence["unit"]["status"] == "passed" and evidence["integration"]["status"] == "passed", evidence
 assert evidence["review"]["passed"] is True
 assert evidence["prompts"]["review"]["id"] == "review.v3"
+proposal = json.loads(item["proposal"])
+assert proposal["headline"].startswith("Falta un saludo"), proposal
+assert [n["type"] for n in proposal["to_be_graph"]["nodes"]] == ["file", "file"], proposal
+assert proposal["to_be"].startswith("flowchart LR") and "greeting.txt" in proposal["to_be"], proposal
 pulls = json.load(open(gh))["pulls"]
 assert pulls["1"]["draft"] is False and pulls["1"]["head"] == item["branch"], pulls
 print("E2E OK:", item["state"], "PR", item["pr"], item["sha"][:12], "sandbox", evidence["unit"].get("sandbox", {}).get("mode", "host"))
 PY
+for mark in MARCA-NAPOLEON MARCA-BOXER MARCA-BENJAMIN MARCA-SKILL; do
+  grep -q -- "$mark" "$work/marks.log" || fail "the owner instructions never reached $mark"
+done
+echo "The owner instructions reached Napoleon, Boxer, Benjamin and the skill"
 git -C "$work/remote.git" rev-parse --verify -q "refs/heads/$(state >/dev/null; curl -fs -u "admin:$password" "$panel/api/work" | python3 -c 'import json,sys;print([x for x in json.load(sys.stdin) if x["id"]=="e2e-request-0001"][0]["branch"])')" > /dev/null \
   || fail "branch not pushed to the remote"
 echo "Branch pushed to remote"
@@ -226,6 +239,8 @@ summaries = json.load(urllib.request.urlopen(req))
 assert all("evidence" not in x and "proposal" not in x for x in summaries), "the list carries summaries only"
 detail = lambda i: json.load(urllib.request.urlopen(urllib.request.Request(panel + "/api/work/" + i, headers=req.headers)))
 first, fix = (json.loads(detail("e2e-request-000%d" % i)["evidence"]) for i in (1, 2))
+v6 = json.loads(detail("e2e-request-0002")["proposal"])
+assert "to_be_graph" not in v6 and v6["to_be"].startswith("flowchart LR"), v6
 assert first["regression"]["status"] == "not_required", first
 assert first["untested_code"] is False, first
 assert fix["quality"]["checks"][0]["status"] == "passed", fix["quality"]

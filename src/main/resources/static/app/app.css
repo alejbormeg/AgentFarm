@@ -1600,3 +1600,268 @@ ol.commandments {
     animation: none;
   }
 }
+
+/* Bandeja: three groups of work, told apart by colour, glyph and words. */
+.status-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.status-tile {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-left-width: 5px;
+  border-radius: 10px;
+  background: var(--sheet);
+  color: var(--text);
+  text-decoration: none;
+}
+.status-tile strong {
+  font-size: 22px;
+  line-height: 26px;
+  color: var(--ink);
+}
+.status-glyph {
+  font-size: 14px;
+}
+.status-tile.attention {
+  border-left-color: var(--barn);
+}
+.status-tile.attention .status-glyph {
+  color: var(--barn);
+}
+.status-tile.attention:not(.none) {
+  background: var(--bad-bg);
+}
+.status-tile.progress {
+  border-left-color: var(--info);
+  border-left-style: dashed;
+}
+.status-tile.progress .status-glyph {
+  color: var(--info);
+}
+.status-tile.finished {
+  border-left-color: var(--ok);
+}
+.status-tile.finished .status-glyph {
+  color: var(--ok);
+}
+.status-tile.none {
+  opacity: 0.72;
+}
+.status-tile:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}
+.list.attention {
+  border-left: 5px solid var(--barn);
+}
+.list.progress {
+  border-left: 5px dashed var(--info);
+}
+.list.finished {
+  border-left: 5px solid var(--ok);
+}
+.list.finished .row {
+  opacity: 0.88;
+}
+.done-mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--ok-bg);
+  color: var(--ok);
+  font-weight: 700;
+}
+.finished-row .pill {
+  margin-right: 6px;
+}
+@media (max-width: 640px) {
+  .status-strip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The task drawer: what the agents decided, at a glance. */
+.glance {
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-left: 5px solid var(--barn);
+  border-radius: 10px;
+  background: var(--soft);
+}
+.glance-who {
+  font-size: 12px;
+  color: var(--muted);
+}
+.glance-headline {
+  margin: 2px 0 8px;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.glance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.glance-grid h4 {
+  margin: 0 0 4px;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+.glance-grid ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 18px;
+}
+.glance-change li::before {
+  content: "+ ";
+  font-weight: 700;
+  color: var(--ok);
+}
+.glance-keep li::before {
+  content: "= ";
+  font-weight: 700;
+  color: var(--muted);
+}
+.glance .note-line {
+  margin-top: 8px;
+}
+@media (max-width: 640px) {
+  .glance-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Typed diagrams (diagram.js). */
+.compare.stacked {
+  grid-template-columns: minmax(0, 1fr);
+}
+.dgram {
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--sheet);
+  overflow-x: auto;
+}
+.dgram svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.dgram-download {
+  margin-top: 8px;
+}
+.dg-body {
+  fill: var(--soft);
+  stroke: var(--dg, var(--line-strong));
+  stroke-width: 1.6;
+}
+.dg-glyph {
+  fill: none;
+  stroke: var(--dg, var(--muted));
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.dg-label,
+.dg-legend,
+.dg-edge-label,
+.dg-badge-text {
+  font: 12px Geist, system-ui, sans-serif;
+  fill: var(--ink);
+}
+.dg-legend {
+  fill: var(--muted);
+  font-size: 11px;
+}
+.dg-edge-label {
+  font-size: 11px;
+  fill: var(--muted);
+  paint-order: stroke;
+  stroke: var(--sheet);
+  stroke-width: 4px;
+}
+.dg-edge {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.4;
+}
+.dg-arrow {
+  fill: var(--muted);
+}
+.dg-service { --dg: #3a6ea5; }
+.dg-database { --dg: #6a4c93; }
+.dg-file { --dg: #8a6d1d; }
+.dg-config { --dg: #2f7d75; }
+.dg-agent { --dg: var(--barn); }
+.dg-person { --dg: #44505f; }
+.dg-external { --dg: var(--muted); }
+.dg-ci { --dg: var(--ok); }
+.dg-legend-service { --dg: #3a6ea5; }
+.dg-legend-database { --dg: #6a4c93; }
+.dg-legend-file { --dg: #8a6d1d; }
+.dg-legend-config { --dg: #2f7d75; }
+.dg-legend-agent { --dg: var(--barn); }
+.dg-legend-person { --dg: #44505f; }
+.dg-legend-external { --dg: var(--muted); }
+.dg-legend-ci { --dg: var(--ok); }
+.dg-new .dg-body {
+  fill: var(--ok-bg);
+  stroke: var(--ok);
+  stroke-width: 2.6;
+}
+.dg-modified .dg-body {
+  fill: var(--warn-bg);
+  stroke: var(--warn);
+  stroke-width: 2.6;
+}
+.dg-removed .dg-body {
+  fill: var(--bad-bg);
+  stroke: var(--bad);
+  stroke-width: 2.2;
+  stroke-dasharray: 5 4;
+}
+.dg-removed .dg-label {
+  text-decoration: line-through;
+}
+.dg-badge {
+  fill: var(--ink);
+}
+.dg-badge-text {
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--sheet);
+  letter-spacing: 0.04em;
+}
+:root[data-theme="dark"] .dg-service,
+:root[data-theme="dark"] .dg-legend-service { --dg: #7fb0e8; }
+:root[data-theme="dark"] .dg-database,
+:root[data-theme="dark"] .dg-legend-database { --dg: #b79ae6; }
+:root[data-theme="dark"] .dg-file,
+:root[data-theme="dark"] .dg-legend-file { --dg: #e0c06a; }
+:root[data-theme="dark"] .dg-config,
+:root[data-theme="dark"] .dg-legend-config { --dg: #6fcdc3; }
+:root[data-theme="dark"] .dg-person,
+:root[data-theme="dark"] .dg-legend-person { --dg: #b9c4d4; }
+
+/* Per-repository agent instructions */
+.profile textarea { width: 100%; font: inherit; }
+.profile label { display: block; margin-block: 0.75rem 0.25rem; font-weight: 600; }
+.profile .skill-list { display: grid; gap: 0.5rem; margin-block: 0.5rem; }
+.skill-row { border: 1px solid var(--line, #8884); border-radius: 8px; padding: 0.5rem 0.75rem; display: grid; gap: 0.35rem; }
+.skill-row label { margin: 0; font-weight: 600; display: flex; gap: 0.5rem; align-items: center; }
+.skill-roles { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.skill-roles label { font-weight: 400; }
+.profile .exports a { margin-right: 0.5rem; }

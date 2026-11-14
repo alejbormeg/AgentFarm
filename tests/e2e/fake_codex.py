@@ -23,8 +23,21 @@ def send(obj):
 PROPOSAL = {
     "summary": "Añadir greeting.txt con un saludo",
     "acceptance": "Existe greeting.txt y contiene hola",
-    "as_is": "flowchart LR; R[Repo] --> N[Sin saludo]",
-    "to_be": "flowchart LR; R[Repo] --> G[greeting.txt]",
+    # research.v7 shape: the agent writes graphs and a glance summary; the Mermaid text is derived.
+    "headline": "Falta un saludo en el repositorio: se añade un fichero greeting.txt",
+    "will_change": ["Se crea greeting.txt con la palabra hola"],
+    "will_not_change": ["El resto de los ficheros y la configuración"],
+    "as_is_graph": {
+        "nodes": [{"id": "repo", "label": "Repositorio", "type": "file"}],
+        "edges": [],
+    },
+    "to_be_graph": {
+        "nodes": [
+            {"id": "repo", "label": "Repositorio", "type": "file"},
+            {"id": "greeting", "label": "greeting.txt", "type": "file", "change": "new"},
+        ],
+        "edges": [{"from": "repo", "to": "greeting", "label": "contiene"}],
+    },
     "unit_test": "test -f greeting.txt",
     "integration_test": "grep -q hola greeting.txt",
     "setup": "",
@@ -39,8 +52,12 @@ PROPOSAL = {
 
 
 # A bug fix with its regression test: tests/test_fix.sh fails on the base commit.
+# It keeps the research.v6 shape (Mermaid text, no graphs), which stored proposals still have.
+V6 = {k: v for k, v in PROPOSAL.items() if k not in ("headline", "will_change", "will_not_change", "as_is_graph", "to_be_graph")}
+V6["as_is"] = "flowchart LR; R[Repo] --> N[Sin saludo]"
+V6["to_be"] = "flowchart LR; R[Repo] --> G[greeting.txt]"
 BUGFIX = dict(
-    PROPOSAL,
+    V6,
     summary="Corregir el saludo",
     acceptance="fixed.txt contiene arreglado",
     unit_test="bash tests/test_fix.sh",
@@ -95,7 +112,7 @@ def adoption(thread, prompt):
             f.write(GOOD_PROFILE if corrected else BAD_PROFILE)
         with open(os.path.join(thread["cwd"], "adopted.txt"), "w") as f:
             f.write("adoptado\n")
-        return {"summary": "Adoptado", "as_is": ADOPT["as_is"], "to_be": ADOPT["to_be"], "limitations": "Ninguna"}
+        return {"summary": "Adoptado", "as_is": V6["as_is"], "to_be": V6["to_be"], "limitations": "Ninguna"}
     if prompt.startswith("Revisión independiente"):
         assert '"profile_validation"' in prompt and "los decide el operador" in prompt, "the reviewer sees the platform checks"
         return {"passed": True, "findings": "Sin hallazgos bloqueantes."}
@@ -106,6 +123,10 @@ def answer(thread, prompt):
     assert "Skills de AgentFarm" in prompt, "every turn receives its skills"
     if "Adopta este repositorio" in prompt:
         return adoption(thread, prompt)
+    marks = sorted({m for m in ("MARCA-NAPOLEON", "MARCA-BOXER", "MARCA-BENJAMIN", "MARCA-SKILL") if m in prompt})
+    if marks and os.environ.get("E2E_PROMPT_LOG"):
+        with open(os.environ["E2E_PROMPT_LOG"], "a") as log:
+            log.write(" ".join(marks) + "\n")
     scenario = demo(prompt)
     if scenario and not prompt.startswith("Revisión independiente"):
         summary, name, criterion = scenario
@@ -127,7 +148,7 @@ def answer(thread, prompt):
         os.makedirs(os.path.join(thread["cwd"], "tests"), exist_ok=True)
         with open(os.path.join(thread["cwd"], "tests", "fixture.txt"), "w") as f:
             f.write("token=ghp_" + "E2E" * 12 + "\n" + "inofensivo\n" * 40000)
-        return {"summary": "Añadido un fixture", "as_is": PROPOSAL["as_is"], "to_be": PROPOSAL["to_be"], "limitations": "Ninguna"}
+        return {"summary": "Añadido un fixture", "as_is": V6["as_is"], "to_be": V6["to_be"], "limitations": "Ninguna"}
     if "Corrige el saludo" in prompt and thread["sandbox"] == "workspace-write":
         os.makedirs(os.path.join(thread["cwd"], "tests"), exist_ok=True)
         with open(os.path.join(thread["cwd"], "fixed.txt"), "w") as f:
@@ -140,7 +161,7 @@ def answer(thread, prompt):
     if thread["sandbox"] == "workspace-write":
         with open(os.path.join(thread["cwd"], "greeting.txt"), "w") as f:
             f.write("hola desde AgentFarm\n")
-        return {"summary": "Añadido greeting.txt", "as_is": PROPOSAL["as_is"], "to_be": PROPOSAL["to_be"], "limitations": "Ninguna"}
+        return {"summary": "Añadido greeting.txt", "as_is": V6["as_is"], "to_be": V6["to_be"], "limitations": "Ninguna"}
     if prompt.startswith("Revisión independiente"):
         return {"passed": True, "findings": "Cumple los criterios; sin hallazgos bloqueantes."}
     if "otro saludo" in prompt:

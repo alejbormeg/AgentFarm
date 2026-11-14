@@ -91,5 +91,5 @@ disponibles como compatibilidad, separados del nuevo flujo de ejecución.
 
 ## Dependencias visuales
 
-Mermaid 11.12.0 se sirve localmente, con `securityLevel: strict` y licencia MIT.
+Mermaid 11.12.0 se sirve localmente, con `securityLevel: strict` y licencia MIT. Las propuestas nuevas (`research.v7`) traen sus diagramas como grafos tipados que el panel dibuja con iconos y que se descargan como `.drawio`; Mermaid se conserva para las propuestas anteriores y para el cuerpo de las issues y las PR.
 No se envían los diagramas a un servicio externo. La interfaz son módulos propios servidos por el panel, sin recursos externos.

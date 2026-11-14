@@ -58,8 +58,9 @@ GitHub, si no se le pide un subconjunto, da al token todo lo que tiene la App.
 
 | Orden | Permisos del token |
 |---|---|
-| `research`, `review_existing` | solo lectura: metadata, contents, pull requests, issues |
-| `implement` | además escritura en contents y pull requests, y en workflows (el flujo de verificación de los repositorios sin CI) |
+| `review_existing` | solo lectura: metadata, contents, pull requests, issues |
+| `research` | lo mismo, y escritura en issues: crea la issue de la tarea si aún no existe |
+| `implement` | además escritura en contents, pull requests e issues (anota el resultado en la issue de la tarea), y en workflows (el flujo de verificación de los repositorios sin CI) |
 | `merge` | ninguno: integrar lo hace el panel con su propia credencial |
 
 El panel rechaza el token si GitHub lo devuelve con más repositorios o más permisos de los pedidos,

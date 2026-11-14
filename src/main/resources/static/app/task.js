@@ -1,4 +1,5 @@
 import { E, activity, api, button, confirmButton, expectedCost, json, link, names, pill, rawRecord, running, testEvidence, testStatus, whyYou, wall, journey } from "./lib.js";
+import { drawio, fromMermaid, graphOf, scene, toDom } from "./diagram.js";
 
 export const withTask = (Base) =>
   class extends Base {
@@ -269,6 +270,8 @@ export const withTask = (Base) =>
       );
       task.append(row);
       if (["proposed", "review"].includes(w.state)) task.append(E("p", whyYou(w)));
+      const glance = this.glance(w, json(w.proposal), json(w.evidence));
+      if (glance) task.append(glance);
       const dossier = this.data.dossiers?.find((d) => d.item === w.id);
       task.append(this.taskDecision(w, dossier, json(w.proposal)));
       task.append(journey(w, dossier, json(w.evidence)));
@@ -424,10 +427,12 @@ export const withTask = (Base) =>
           ),
         );
       }
-      task.append(E("p", ev.summary || p.summary || w.request));
       const detail = E("details");
       detail.dataset.key = w.id;
-      detail.append(E("summary", "Alcance, antes/después y evidencias"));
+      detail.append(E("summary", glance ? "Detalles técnicos: alcance, criterios y evidencias" : "Alcance, antes/después y evidencias"));
+      const longText = E("p", ev.summary || p.summary || w.request);
+      if (glance) detail.append(longText);
+      else task.append(longText);
       if (p.acceptance) detail.append(E("p", p.acceptance));
       if (Array.isArray(p.criteria)) {
         const criteria = E("ul");
@@ -466,46 +471,47 @@ export const withTask = (Base) =>
         }
         detail.append(E("h4", "Fuentes"), list);
       }
-      const comparison = E("div", "", "compare");
+      const arch = E("details");
+      arch.dataset.key = "arch-" + w.id;
       const delivered = ev.sha && ev.sha === w.sha && ev.to_be;
-      for (const [name, key] of [
-        ["As-is · base investigada", "as_is"],
-        [
-          delivered ? "To-be · resultado declarado" : "To-be · propuesto",
-          "to_be",
-        ],
-      ]) {
+      const graphs = { as_is: graphOf(p.as_is_graph), to_be: graphOf(p.to_be_graph) };
+      arch.append(E("summary", "Ver cómo está y cómo quedará (diagrama)"));
+      const comparison = E("div", "", "compare stacked");
+      // A typed "after" is always the proposal's. What the agent says it delivered is its own text,
+      // so it goes apart and stays labelled as declared, not verified.
+      const columns = [
+        ["Antes · base investigada", "as_is"],
+        [graphs.to_be || !delivered ? "Después · propuesto" : "Después · resultado declarado", "to_be"],
+      ];
+      if (graphs.to_be && delivered) columns.push(["Resultado declarado por el agente (texto, sin verificar)", "delivered"]);
+      for (const [name, key] of columns) {
         const col = E("section");
         col.append(E("h3", name));
+        const source = key === "as_is" ? p.as_is : key === "delivered" ? ev.to_be : delivered && !graphs.to_be ? ev.to_be : p.to_be;
+        // Old proposals only carry Mermaid: read it into the same typed picture (and .drawio).
+        const shown = graphs[key] || fromMermaid(source);
+        if (shown) {
+          col.append(this.graphFigure(shown, w.id + "-" + key));
+          comparison.append(col);
+          continue;
+        }
         const diagram = E("div", "", "diagram");
-        const source =
-          key === "as_is" ? p.as_is : delivered ? ev.to_be : p.to_be;
         diagram.append(E("pre", source || "Pendiente de investigación"));
         col.append(diagram);
         comparison.append(col);
         if (source) this.draw(diagram, source);
       }
-      detail.append(comparison);
+      arch.append(comparison);
       if (p.base_sha)
-        detail.append(
-          link(
-            "Commit base: " + p.base_sha.slice(0, 12),
-            base + "/commit/" + p.base_sha,
-          ),
-        );
-      if (p.to_be) {
+        arch.append(link("Commit base: " + p.base_sha.slice(0, 12), base + "/commit/" + p.base_sha));
+      if (p.to_be && !graphs.to_be) {
         const proposed = E("details");
         proposed.dataset.key = "design-" + w.id;
         proposed.append(
-          E(
-            "summary",
-            (w.state === "proposed" ? "Diseño propuesto" : "Diseño aprobado") +
-              " · propuesta v" +
-              w.version,
-          ),
+          E("summary", (w.state === "proposed" ? "Diseño propuesto" : "Diseño aprobado") + " · propuesta v" + w.version),
           E("pre", p.to_be),
         );
-        detail.append(proposed);
+        arch.append(proposed);
       }
       if (p.mcp?.length)
         detail.append(
@@ -572,8 +578,60 @@ export const withTask = (Base) =>
         detail.append(t);
       }
       if (w.sha) detail.append(E("p", "Commit: " + w.sha));
+      if (p.as_is || p.to_be) task.append(arch);
       task.append(detail);
       return task;
+    }
+    // What the agents decided, in a few lines, for someone who does not read the whole proposal.
+    glance(w, p, ev) {
+      const sentence = (t) => {
+        const first = String(t || "").replace(/\s+/g, " ").trim().split(/(?<=[.!?])\s/)[0] || "";
+        return first.length > 200 ? first.slice(0, 199).trim() + "…" : first;
+      };
+      const headline = p.headline || sentence(ev.summary || p.summary);
+      if (!headline) return null;
+      const box = E("section", "", "glance");
+      box.dataset.key = "glance-" + w.id;
+      const who = ["integrated", "review", "integrating"].includes(w.state) || ev.summary ? "Boxer implementó" : "Napoleon investigó";
+      box.append(E("p", who + " y decidió:", "glance-who"), E("p", headline, "glance-headline"));
+      const lists = [
+        ["Qué cambiará", p.will_change, "glance-change"],
+        ["Qué no se tocará", p.will_not_change, "glance-keep"],
+      ];
+      const grid = E("div", "", "glance-grid");
+      for (const [title, items, cls] of lists) {
+        if (!Array.isArray(items) || !items.length) continue;
+        const col = E("section", "", cls);
+        const ul = E("ul");
+        for (const item of items) ul.append(E("li", item));
+        col.append(E("h4", title), ul);
+        grid.append(col);
+      }
+      if (grid.children.length) box.append(grid);
+      else if (!p.headline) box.append(E("p", "Resumen recortado de la propuesta. Los detalles están más abajo.", "note-line"));
+      if (/^Adoptar /.test(w.title))
+        box.append(
+          E("p", "Adoptar un repositorio: los agentes lo leen y te proponen cómo mantenerlo. No cambian tu código sin que lo apruebes.", "note-line"),
+        );
+      return box;
+    }
+    // A typed diagram, with the draw.io file of the same drawing.
+    graphFigure(graph, id) {
+      const figure = E("figure", "", "dgram");
+      figure.append(toDom(document, scene(graph)));
+      const download = button("Descargar .drawio", () => {
+        const file = new Blob([drawio(graph, id)], { type: "application/xml" });
+        const a = E("a");
+        a.href = URL.createObjectURL(file);
+        a.download = id.replace(/[^A-Za-z0-9_-]/g, "-") + ".drawio";
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      });
+      download.classList.add("dgram-download");
+      figure.append(download);
+      return figure;
     }
     // What the person can decide, and what stops them: the first thing the task shows.
     taskDecision(w, dossier, p) {
