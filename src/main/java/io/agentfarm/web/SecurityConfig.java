@@ -166,6 +166,9 @@ public class SecurityConfig {
         .requestCache(r -> r.requestCache(pagesOnly()))
         .formLogin(f -> f.loginPage("/login"))
         .httpBasic(Customizer.withDefaults())
+        // A new machine has no session to carry a form token: the one-use enrolment code in the
+        // body is the credential for this single path.
+        .csrf(c -> c.ignoringRequestMatchers("/executor/redeem"))
         // Everything is served from here. Inline styles remain for the sign-in page and Mermaid's
         // diagrams.
         // GitHub receives one form: the App manifest, when an owner connects it.

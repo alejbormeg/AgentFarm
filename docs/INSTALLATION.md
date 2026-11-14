@@ -120,6 +120,14 @@ del servicio. Las pruebas ya se aíslan en contenedor (ver más abajo), pero el
 sandbox de escritura de Codex sobre el checkout no es una frontera de seguridad. Se necesita una identidad/entorno de trabajador separado y
 credenciales GitHub limitadas antes de afirmar separación completa de privilegios.
 
+### Con un código del panel
+
+En **Agentes → Añadir nodo** el panel registra el nodo y sus dos workers y da un comando como
+`bash agentfarm-install.sh --panel http://… --code afc_…`. El código vale una vez y caduca a los 15
+minutos; el instalador lo canjea por la credencial del nodo (`afn_…`), que queda en
+`~/.local/state/agentfarm/node-token` con permiso 600. El código sí se ve en la lista de procesos
+mientras dura el instalador: por eso caduca y no se puede reutilizar.
+
 ## Perfil de repositorio y diagnóstico
 Copia `examples/agentfarm.yaml` a la raíz del repositorio y adapta repositorio,
 comandos y rutas. Revísalo mediante:
