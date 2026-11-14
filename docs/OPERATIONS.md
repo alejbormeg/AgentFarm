@@ -93,3 +93,12 @@ disponibles como compatibilidad, separados del nuevo flujo de ejecución.
 
 Mermaid 11.12.0 se sirve localmente, con `securityLevel: strict` y licencia MIT. Las propuestas nuevas (`research.v7`) traen sus diagramas como grafos tipados que el panel dibuja con iconos y que se descargan como `.drawio`; Mermaid se conserva para las propuestas anteriores y para el cuerpo de las issues y las PR.
 No se envían los diagramas a un servicio externo. La interfaz son módulos propios servidos por el panel, sin recursos externos.
+
+## Empezar con issues abiertas
+
+Tras adoptar un repositorio, **Traer issues** (barra superior) lista sus issues abiertas. Marca las
+que quieras y pulsa «Empezar con N»: Napoleon investiga cada una y te propone un plan; hasta que lo
+apruebes no se implementa nada. Las que ya tienen tarea salen marcadas y no se pueden repetir; las
+que abre AgentFarm para seguir sus tareas no se ofrecen. El disparador `labeled_issue` (etiqueta
+`agentfarm`) sigue funcionando y comparte la misma clave, así que nunca abre dos tareas por la
+misma issue. Al integrar la PR de una tarea nacida de una issue, esta se cierra con `Closes #N`.

@@ -295,6 +295,15 @@ else
   echo "Browser smoke test skipped: set E2E_CHROME to a Chrome binary"
 fi
 
+# Open issues from GitHub: listed without PRs or AgentFarm's own, started once, never duplicated.
+issues_json="$(curl -fs -u "admin:$password" "$panel/api/repos/e2e/demo/issues")"
+python3 -c 'import json,sys;d=json.loads(sys.argv[1])["issues"];assert [i["number"] for i in d]==[31,32], d;assert d[1]["trusted"] is False and d[0]["trusted"] is True, d' "$issues_json" || fail "the open issues were not listed as expected: $issues_json"
+started="$(owner /repos/e2e/demo/issues/start '{"numbers":[32]}')"
+grep -q '"state":"created"' <<<"$started" || fail "an issue was not started: $started"
+grep -q '"state":"already"' <<<"$(owner /repos/e2e/demo/issues/start '{"numbers":[32]}')" || fail "an issue was started twice"
+if owner /repos/nobody/known/issues/start '{"numbers":[1]}' > /dev/null 2>&1; then fail "issues of an unknown repository were started"; fi
+echo "Open issues listed and started once"
+
 # A credential at the start of a large diff stops the task before anything is pushed: the
 # runtime keeps only the tail of a command's output, so the scan must read Git directly.
 item=e2e-request-leak

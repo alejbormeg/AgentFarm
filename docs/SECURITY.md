@@ -133,3 +133,12 @@ caracteres de control; el frontmatter YAML se lee con tipos seguros y límites, 
 usa el texto plano. Un repositorio cuya descripción dice algo hostil no cambia nada: añadir una
 skill a un repo sigue siendo una decisión del propietario tras ver el texto entero. Los
 repositorios llamados `.` o `..` se rechazan para que no salgan de `/repos/` en la URL.
+
+## Issues que el propietario elige empezar
+
+El panel lee las issues de GitHub y, al empezar una, **la vuelve a leer** y construye la petición
+con el mismo formato del disparador (origen y autor, marcando si no tiene rol en el repositorio);
+nada que envíe el navegador entra en la petición. Una issue de un autor sin rol sigue siendo
+información, no una orden, y solo la ve y la elige el propietario. La PR cierra la issue original
+solo si la primera línea de la petición, escrita por el panel desde la URL de GitHub, apunta a una
+issue del mismo repositorio: el texto de la issue no puede hacer cerrar otra.

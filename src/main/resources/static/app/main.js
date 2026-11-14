@@ -5,6 +5,7 @@ import { withGovernance } from "./governance.js";
 import { withProfile } from "./agentprofile.js";
 import { withNodes } from "./nodes.js";
 import { withProviders } from "./providers.js";
+import { withIssues } from "./issues.js";
 import { withTask } from "./task.js";
 import { withViews } from "./views.js";
 
@@ -17,7 +18,7 @@ const ROUTES = [
 ];
 const THEME_NAMES = { auto: "Tema: como el sistema", light: "Tema: La ventana", dark: "Tema: Atardecer" };
 
-class FarmApp extends withProviders(withNodes(withProfile(withGovernance(withViews(withTask(withForms(HTMLElement))))))) {
+class FarmApp extends withIssues(withProviders(withNodes(withProfile(withGovernance(withViews(withTask(withForms(HTMLElement)))))))) {
   connectedCallback() {
     if (this.content) return;
     this.farm = new FarmMap();
@@ -161,9 +162,10 @@ class FarmApp extends withProviders(withNodes(withProfile(withGovernance(withVie
     this.demoChip = E("span", "", "demo");
     this.demoChip.hidden = true;
     this.adopt = button("Adoptar repositorio", () => this.adoptDrawer.showModal());
+    this.fetchIssues = button("Traer issues", () => this.openIssues());
     this.newTask = button("Nueva tarea", () => this.newDrawer.showModal(), true);
     this.signOut = button("Salir", () => this.logout(), "quiet");
-    top.append(this.search, this.demoChip, E("span", "", "spacer"), this.adopt, this.newTask, this.signOut);
+    top.append(this.search, this.demoChip, E("span", "", "spacer"), this.adopt, this.fetchIssues, this.newTask, this.signOut);
 
     const sheet = E("main", "", "sheet");
     const problem = E("p", "", "error"),
@@ -207,6 +209,9 @@ class FarmApp extends withProviders(withNodes(withProfile(withGovernance(withVie
     const nodes = this.drawer("Añadir un nodo ejecutor");
     this.nodeDrawer = nodes.dialog;
     nodes.body.append(this.nodeForm());
+    const issues = this.drawer("Issues abiertas de GitHub");
+    this.issuesDrawer = issues.dialog;
+    issues.body.append(this.issuesForm());
     const providers = this.drawer("Proveedores de los agentes");
     this.providerDrawer = providers.dialog;
     providers.body.append(this.providerForm());
@@ -243,7 +248,7 @@ class FarmApp extends withProviders(withNodes(withProfile(withGovernance(withVie
     });
     this.fromUrl();
     this.classList.add("app");
-    this.append(side, main, this.newDrawer, this.adoptDrawer, this.secondFactorDrawer, this.nodeDrawer, this.providerDrawer, this.profileDrawer, this.taskDrawer);
+    this.append(side, main, this.newDrawer, this.adoptDrawer, this.secondFactorDrawer, this.nodeDrawer, this.issuesDrawer, this.providerDrawer, this.profileDrawer, this.taskDrawer);
     this.markNav();
   }
   drawer(name) {
@@ -404,6 +409,7 @@ class FarmApp extends withProviders(withNodes(withProfile(withGovernance(withVie
     this.repositorySelect.value = this.selectedRepo;
     this.newTask.hidden = me?.role === "observer";
     this.adopt.hidden = !owner;
+    this.fetchIssues.hidden = !owner;
     this.search.hidden = !["overview", "tasks"].includes(this.view);
     const decisions = allWork.filter(waiting).length;
     this.badge.textContent = decisions;

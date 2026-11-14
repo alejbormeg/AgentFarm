@@ -53,6 +53,19 @@ class Handler(BaseHTTPRequestHandler):
             import base64
             text = "# Casa\nUsa nombres claros en los commits.\n"
             return self.reply(200, {"type": "file", "size": len(text), "encoding": "base64", "sha": "0123456789abcdef", "html_url": "https://github.com/e2e/skills", "content": base64.b64encode(text.encode()).decode()})
+        # Open issues of the demo repository, for the owner to choose from the panel.
+        if path == "/repos/e2e/demo/issues" and "state=open" in self.path:
+            if "page=2" in self.path:
+                return self.reply(200, [])
+            return self.reply(200, [
+                {"number": 31, "title": "Falla el botón", "body": "El botón de guardar no hace nada.", "state": "open", "html_url": "https://github.com/e2e/demo/issues/31", "user": {"login": "ana"}, "author_association": "OWNER", "labels": [{"name": "bug"}], "comments": 1, "created_at": "2026-11-01T10:00:00Z"},
+                {"number": 32, "title": "Idea de alguien", "body": None, "state": "open", "html_url": "https://github.com/e2e/demo/issues/32", "user": {"login": "x"}, "author_association": "NONE", "labels": [], "comments": 0, "created_at": "2026-11-02T10:00:00Z"},
+                {"number": 33, "title": "Una PR", "pull_request": {}, "body": "x", "state": "open", "html_url": "u", "user": {"login": "b"}, "labels": []},
+                {"number": 34, "title": "Adoptar e2e/demo", "body": "<!-- agentfarm:x -->", "state": "open", "html_url": "u", "user": {"login": "bot"}, "labels": []}])
+        if path in ("/repos/e2e/demo/issues/31", "/repos/e2e/demo/issues/32"):
+            n = int(path.rsplit("/", 1)[1])
+            return self.reply(200, {"number": n, "title": "Falla el botón" if n == 31 else "Idea de alguien", "body": "El botón de guardar no hace nada." if n == 31 else None,
+                                    "state": "open", "html_url": f"https://github.com/e2e/demo/issues/{n}", "user": {"login": "ana" if n == 31 else "x"}, "author_association": "OWNER" if n == 31 else "NONE"})
         if path == "/repos/e2e/skills":
             return self.reply(200, {"default_branch": "main", "stargazers_count": 7})
         if path == "/repos/e2e/skills/git/trees/main":
