@@ -108,6 +108,11 @@ owner /executors '{"node":"e2e-node","account":"e2e-sub","api_account":"e2e-api"
   | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])' > "$work/state/node-token"
 chmod 600 "$work/state/node-token"
 # The owner's per-repository instructions must reach every agent of that repository.
+# Skills found online: browse, read whole, search; nothing outside GitHub's text shape gets through.
+curl -fs -u "admin:$password" "$panel/api/skill-sources/browse?repo=e2e/skills&path=skills" | grep -q '"casa"' || fail "the skill catalogue could not be browsed"
+curl -fs -u "admin:$password" "$panel/api/skill-sources/skill?repo=e2e/skills&path=skills/casa/SKILL.md" | grep -q 'nombres claros' || fail "a skill was not fetched whole"
+curl -fs -u "admin:$password" "$panel/api/skill-sources/search?q=skills" | grep -q 'e2e/skills' || fail "the skill search found nothing"
+if curl -fs -o /dev/null -u "admin:$password" "$panel/api/skill-sources/browse?repo=e2e/skills&path=../x"; then fail "a path traversal was accepted"; fi
 # The owner picks a provider per role from the panel; unknown providers are refused.
 owner /executors/e2e-node/providers '{"roles":{"review":"antigravity"}}' | grep -q antigravity || fail "the provider choice was not saved"
 curl -fs -u "admin:$password" "$panel/api/executors/e2e-node/providers" | grep -q '"review":"antigravity"' || fail "the provider choice was not kept"

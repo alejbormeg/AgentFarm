@@ -46,6 +46,14 @@ se escriben en el prompt del turno con la nota de que la petición, el alcance a
 de AgentFarm prevalecen, y la evidencia registra su hash. No conceden permisos. El mismo perfil se
 descarga como `CLAUDE.md`, `AGENTS.md` (ChatGPT/Codex) o `GEMINI.md`.
 
+### Buscar online
+
+En el cajón de agentes de un repositorio, «Buscar skills online» abre los catálogos de Anthropic
+(`anthropics/skills`) y OpenAI (`openai/skills`), cualquier repositorio de GitHub (`propietario/nombre`)
+o una búsqueda de repositorios. Ves el `SKILL.md` entero, con su origen y su hash, y pulsas
+«Añadir»; después, «Guardar». Google no publica un registro oficial: sus skills (Antigravity) usan el
+mismo formato y se encuentran como cualquier repo.
+
 ## Comprobar si ayudan
 
 Usar una skill no garantiza nada: lo que cuenta es el resultado. `tests/eval/run.sh` ejecuta tres

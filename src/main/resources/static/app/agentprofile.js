@@ -90,6 +90,86 @@ export const withProfile = (Base) =>
       const upload = E("label", "Subir una skill (.md)");
       upload.append(file);
       root.append(list, upload);
+      // Skills found online: official catalogues, any GitHub repository, or a search. The panel
+      // fetches them; the text is shown whole and added only when the owner says so.
+      const finder = E("section", "", "skill-finder");
+      finder.append(E("h4", "Buscar skills online"));
+      finder.append(E("p", "Anthropic y OpenAI publican las suyas en GitHub; Google usa el mismo formato SKILL.md, así que se buscan como cualquier repositorio. Nada se añade sin que lo veas entero y lo aceptes.", "muted"));
+      const look = E("div", "", "finder-results");
+      const note = E("p", "", "muted");
+      const show = (...nodes) => look.replaceChildren(...nodes);
+      const failed = (e) => (note.textContent = e.message);
+      const uniqueId = (id) => {
+        let candidate = id,
+          n = 2;
+        while (skills.some((x) => x.id === candidate)) candidate = id.slice(0, 36) + "-" + n++;
+        return candidate;
+      };
+      const preview = async (repoName, path) => {
+        note.textContent = "";
+        try {
+          const found = await api("/skill-sources/skill?repo=" + encodeURIComponent(repoName) + "&path=" + encodeURIComponent(path));
+          const box = E("div", "", "skill-preview");
+          const details = E("details");
+          details.open = true;
+          details.append(E("summary", found.title + " · " + found.bytes + " bytes · " + found.origin), E("pre", found.text));
+          box.append(
+            details,
+            E("p", "Fijada por su hash " + found.hash.slice(0, 12) + ". Es texto: no se ejecuta nada.", "muted"),
+            button(
+              "Añadir a este repositorio",
+              () => {
+                skills.push({ id: uniqueId(found.id), title: found.title, roles: ["research", "implement", "review"], enabled: true, source: found.source, origin: found.origin, text: found.text });
+                paint();
+                show(E("p", "Añadida a la lista de arriba. Pulsa Guardar para que la usen los agentes.", "done"));
+              },
+              true,
+            ),
+          );
+          show(box);
+        } catch (e) {
+          failed(e);
+        }
+      };
+      const browse = async (repoName, path) => {
+        note.textContent = "";
+        try {
+          const entries = await api("/skill-sources/browse?repo=" + encodeURIComponent(repoName) + "&path=" + encodeURIComponent(path));
+          const head = E("p", repoName + (path ? " / " + path : ""), "muted");
+          const rows = [head];
+          if (path)
+            rows.push(button("Subir", () => browse(repoName, path.split("/").slice(0, -1).join("/")), "quiet"));
+          const items = entries.filter((x) => x.type === "dir" || x.name === "SKILL.md");
+          if (!items.length) rows.push(E("p", "Aquí no hay carpetas ni SKILL.md.", "empty"));
+          for (const x of items)
+            rows.push(button(x.type === "dir" ? "📁 " + x.name : "Ver " + x.name, () => (x.type === "dir" ? browse(repoName, x.path) : preview(repoName, x.path)), "quiet"));
+          show(...rows);
+        } catch (e) {
+          failed(e);
+        }
+      };
+      const official = E("div", "", "finder-official");
+      for (const o of [{ name: "Anthropic", repo: "anthropics/skills", path: "skills" }, { name: "OpenAI", repo: "openai/skills", path: "" }])
+        official.append(button(o.name, () => browse(o.repo, o.path)));
+      const query = E("input");
+      query.placeholder = "propietario/repositorio, o palabras para buscar";
+      query.setAttribute("aria-label", "Repositorio o búsqueda de skills");
+      official.append(
+        query,
+        button("Buscar", async () => {
+          note.textContent = "";
+          const text = query.value.trim();
+          if (/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(text)) return browse(text, "");
+          try {
+            const repos = await api("/skill-sources/search?q=" + encodeURIComponent(text));
+            if (!repos.length) return show(E("p", "Sin resultados.", "empty"));
+            show(...repos.map((r) => button(r.repo + " ★" + r.stars + (r.description ? " · " + r.description : ""), () => browse(r.repo, ""), "quiet")));
+          } catch (e) {
+            failed(e);
+          }
+        }),
+      );
+      finder.append(official, note, look);
       const actions = E("div", "", "actions");
       actions.append(
         button(

@@ -137,6 +137,9 @@ public class SecurityConfig {
                     "/api/work/*/actions/cancel",
                     "/api/work/*/actions/retry")
                 .hasAnyRole("OWNER", "REVIEWER")
+                // The panel reaches out to GitHub for skills on the owner's behalf.
+                .requestMatchers("/api/skill-sources/**")
+                .hasRole("OWNER")
                 .requestMatchers("/api/me/2fa/**")
                 .hasAnyRole(people)
                 .requestMatchers(HttpMethod.GET, "/api/**")

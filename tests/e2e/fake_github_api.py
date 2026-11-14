@@ -46,6 +46,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(401, {"message": "Bad credentials"})
         if re.fullmatch(r"/app/installations/\d+", path):
             return self.reply(200, {"id": int(path.rsplit("/", 1)[1])})
+        # Skill catalogues the owner can browse from the panel.
+        if path == "/repos/e2e/skills/contents/skills":
+            return self.reply(200, [{"name": "casa", "type": "dir", "path": "skills/casa"}])
+        if path == "/repos/e2e/skills/contents/skills/casa/SKILL.md":
+            import base64
+            text = "# Casa\nUsa nombres claros en los commits.\n"
+            return self.reply(200, {"type": "file", "size": len(text), "encoding": "base64", "sha": "0123456789abcdef", "html_url": "https://github.com/e2e/skills", "content": base64.b64encode(text.encode()).decode()})
+        if path == "/search/repositories":
+            return self.reply(200, {"items": [{"full_name": "e2e/skills", "description": "Skills de prueba", "stargazers_count": 7}]})
         if path == "/repos/e2e/demo":
             return self.reply(200, {"permissions": {"push": True, "pull": True}})
         if path == "/repos/e2e/demo/pulls":
