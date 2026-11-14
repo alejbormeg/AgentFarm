@@ -170,6 +170,7 @@ export const withProfile = (Base) =>
         }),
       );
       finder.append(official, note, look);
+      root.append(finder);
       const actions = E("div", "", "actions");
       actions.append(
         button(
