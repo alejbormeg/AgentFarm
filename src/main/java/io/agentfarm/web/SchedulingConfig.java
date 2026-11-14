@@ -17,7 +17,7 @@ import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 @Configuration
 public class SchedulingConfig implements SchedulingConfigurer {
   /** The scheduled jobs in the panel, plus one spare. */
-  public static final int POOL = 6;
+  public static final int POOL = 7;
 
   private final ScheduledWork work;
 
