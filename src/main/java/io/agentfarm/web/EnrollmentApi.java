@@ -33,6 +33,8 @@ public class EnrollmentApi {
             + panelUrl
             + "/executor/install.sh && bash agentfarm-install.sh --panel "
             + panelUrl
+            + " --node "
+            + created.get("node")
             + " --code "
             + created.get("code"));
     return out;

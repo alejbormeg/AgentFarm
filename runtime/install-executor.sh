@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 root="$(cd "$(dirname "$0")" && pwd)"
-config="${1:?Usage: ./install-executor.sh /absolute/path/executor.env [slot]}"
+config="${1:?Usage: ./install-executor.sh /absolute/path/executor.env [slot] [name]}"
 slot="${2:-}"
+name="${3:-}"
+[[ -z "$name" || "$name" =~ ^[A-Za-z0-9_-]{1,80}$ ]] || { echo "Name must be letters, digits, - or _" >&2; exit 2; }
 [[ -z "$slot" || "$slot" =~ ^[1-9][0-9]?$ ]] || { echo "Slot must be 1-99" >&2; exit 2; }
-unit="agentfarm-executor${slot:+-s$slot}"
+# A name lets several executors live on one machine, each with its own unit.
+unit="agentfarm-executor${name:+-$name}${slot:+-s$slot}"
 [[ "$config" = /* && -f "$config" ]] || { echo "An existing absolute environment file is required" >&2; exit 2; }
 [[ "$config" != *" "* && "$config" != *$'\t'* ]] || { echo "Environment file path must not contain whitespace" >&2; exit 2; }
 [[ "$root$config" != *$'\n'* && "$root$config" != *%* && "$root$config" != *'"'* ]] || exit 2
