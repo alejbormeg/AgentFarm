@@ -42,6 +42,8 @@ public final class GitHubText {
       JsonNode review,
       JsonNode memoryValidation) {
     var out = new StringBuilder("Closes #" + issue);
+    String source = sourceIssue(item);
+    if (source != null) out.append("\nCloses #").append(source);
     out.append("\n\n## Qué resuelve\n").append(clip(item.path("request").asText(), 400));
     out.append("\n\n## Resultado\n")
         .append(clip(firstParagraph(plain(change.path("summary"))), 700));
@@ -66,6 +68,22 @@ public final class GitHubText {
     out.append(context(item, p));
     out.append("\n</details>\n");
     return cap(out.toString());
+  }
+
+  private static final java.util.regex.Pattern ORIGIN =
+      java.util.regex.Pattern.compile(
+          "\\AOrigen: issue https://github\\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/issues/([0-9]{1,9})(?:\\s|\\z)");
+
+  /**
+   * The GitHub issue a task came from, to close it with the PR. Read from the first line of the
+   * request, which the panel writes from GitHub's own URL (never from the author's text), and only
+   * when it points into this task's repository.
+   */
+  static String sourceIssue(JsonNode item) {
+    var m = ORIGIN.matcher(item.path("request").asText(""));
+    return m.find() && m.group(1).equalsIgnoreCase(item.path("repo").asText(""))
+        ? m.group(2)
+        : null;
   }
 
   private static String decision(JsonNode p) {

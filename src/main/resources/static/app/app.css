@@ -1874,3 +1874,9 @@ ol.commandments {
 .skill-hit p { margin: 0; }
 .source-row { padding-block: 0.35rem; border-bottom: 1px solid var(--line, #8883); }
 .skill-preview pre { max-height: 20rem; overflow: auto; white-space: pre-wrap; }
+
+/* Open issues of a repository */
+.issues .issue-list { display: grid; gap: 0.5rem; margin-block: 0.75rem; }
+.issue-row { border: 1px solid var(--line, #8884); border-radius: 8px; padding: 0.5rem 0.75rem; display: grid; gap: 0.25rem; }
+.issue-row p { margin: 0; }
+.issue-row label { display: flex; gap: 0.5rem; align-items: baseline; }
