@@ -48,6 +48,11 @@ descarga como `CLAUDE.md`, `AGENTS.md` (ChatGPT/Codex) o `GEMINI.md`.
 
 ### Buscar online
 
+Lo más cómodo es el cuadro **«Cuéntanos qué necesitas»** del cajón: escribe lo que buscas en
+español o inglés (o elige un tema) y el panel busca en su catálogo (ver «El catálogo del panel»). Si
+el catálogo está vacío, abre «Fuentes del catálogo» y pulsa «Actualizar catálogo». Debajo queda el
+explorador:
+
 En el cajón de agentes de un repositorio, «Buscar skills online» abre los catálogos de Anthropic
 (`anthropics/skills`) y OpenAI (`openai/skills`), cualquier repositorio de GitHub (`propietario/nombre`)
 o una búsqueda de repositorios. Ves el `SKILL.md` entero, con su origen y su hash, y pulsas

@@ -94,7 +94,7 @@ export const withProfile = (Base) =>
       // fetches them; the text is shown whole and added only when the owner says so.
       const finder = E("section", "", "skill-finder");
       finder.append(E("h4", "Buscar skills online"));
-      finder.append(E("p", "Anthropic y OpenAI publican las suyas en GitHub; Google usa el mismo formato SKILL.md, así que se buscan como cualquier repositorio. Nada se añade sin que lo veas entero y lo aceptes.", "muted"));
+      finder.append(E("p", "El panel guarda un catálogo con las skills de Anthropic, OpenAI y de los repositorios que añadas. Cuéntanos qué necesitas, en español o en inglés. Nada se añade sin que lo veas entero y lo aceptes.", "muted"));
       const look = E("div", "", "finder-results");
       const note = E("p", "", "muted");
       const show = (...nodes) => look.replaceChildren(...nodes);
@@ -148,6 +148,48 @@ export const withProfile = (Base) =>
           failed(e);
         }
       };
+      // Free-text search over the panel's own catalogue.
+      const ask = E("input");
+      ask.placeholder = "Cuéntanos qué necesitas: programar en Python, diseño gráfico, documentos…";
+      ask.maxLength = 200;
+      ask.setAttribute("aria-label", "Qué skills necesitas");
+      const chips = E("div", "", "topic-chips");
+      const ranked = E("div", "", "finder-results");
+      const understood = E("p", "", "muted");
+      const runSearch = async (text) => {
+        note.textContent = "";
+        try {
+          const found = await api("/skill-catalog/search?q=" + encodeURIComponent(text));
+          const rows = [];
+          if (found.size === 0) rows.push(E("p", "El catálogo aún está vacío. Abre «Fuentes del catálogo» y pulsa «Actualizar catálogo»: la primera vez tarda unos minutos.", "empty"));
+          else if (!found.results.length) rows.push(E("p", "No hay nada para eso todavía. Prueba con otras palabras o elige un tema.", "empty"));
+          understood.textContent = found.understood.length ? "Entendí: " + found.understood.map((t) => t.label).join(", ") : "";
+          for (const r of found.results) {
+            const card = E("article", "", "skill-hit");
+            const title = E("strong", r.name);
+            if (r.official) title.append(" ", E("span", "oficial", "pill ok"));
+            card.append(title, E("p", r.description || "Sin descripción.", "muted"), E("small", r.repo + " · ★" + r.stars + " · " + r.path), button("Ver y añadir", () => preview(r.repo, r.path), "quiet"));
+            rows.push(card);
+          }
+          ranked.replaceChildren(...rows);
+        } catch (e) {
+          failed(e);
+        }
+      };
+      api("/skill-catalog/topics")
+        .then((topics) => {
+          for (const t of topics) chips.append(button(t.label, () => ((ask.value = t.label), runSearch(t.label)), "quiet"));
+        })
+        .catch(() => {});
+      ask.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          runSearch(ask.value);
+        }
+      });
+      const searchRow = E("div", "", "finder-official");
+      searchRow.append(ask, button("Buscar skills", () => runSearch(ask.value), true));
+
       const official = E("div", "", "finder-official");
       for (const o of [{ name: "Anthropic", repo: "anthropics/skills", path: "skills" }, { name: "OpenAI", repo: "openai/skills", path: "" }])
         official.append(button(o.name, () => browse(o.repo, o.path)));
@@ -169,7 +211,67 @@ export const withProfile = (Base) =>
           }
         }),
       );
-      finder.append(official, note, look);
+      // The catalogue's own sources: what it follows, when it last synchronised, and more repos.
+      const sources = E("details");
+      sources.dataset.key = "catalog-sources";
+      sources.append(E("summary", "Fuentes del catálogo"));
+      const sourceList = E("div", "", "catalog-sources");
+      const drawSources = async () => {
+        if (!root.isConnected) return;
+        try {
+          const data = await api("/skill-catalog/sources");
+          const rows = [E("p", data.size + " skills en el catálogo." + (data.github_configured ? "" : " Conecta GitHub en Gobierno para sincronizarlo."), "muted")];
+          for (const src of data.sources) {
+            const row = E("div", "", "source-row");
+            const when = src.syncing ? "sincronizando…" : src.last_sync ? "sincronizada " + new Date(src.last_sync * 1000).toLocaleString("es-ES") : "sin sincronizar";
+            row.append(E("strong", src.repo + (src.path ? " / " + src.path : "")), E("span", " " + (src.kind === "official" ? "oficial" : "añadida") + " · " + src.skills + " skills · " + when, "muted"));
+            if (src.last_error) row.append(E("p", src.last_error, "note-line"));
+            if (src.kind !== "official")
+              row.append(button("Quitar", async () => {
+                if (!confirm("¿Quitar " + src.repo + " del catálogo?")) return;
+                await api("/skill-catalog/sources/" + src.id + "/remove", {});
+                await drawSources();
+              }, "quiet"));
+            rows.push(row);
+          }
+          sourceList.replaceChildren(...rows);
+          clearTimeout(this.sourcesTimer);
+          if (data.sources.some((x) => x.syncing)) this.sourcesTimer = setTimeout(drawSources, 2000);
+        } catch (e) {
+          sourceList.replaceChildren(E("p", e.message, "error"));
+        }
+      };
+      const repoField = E("input");
+      repoField.placeholder = "propietario/repositorio";
+      repoField.setAttribute("aria-label", "Repositorio que añadir al catálogo");
+      const pathField = E("input");
+      pathField.placeholder = "carpeta de skills (opcional)";
+      pathField.setAttribute("aria-label", "Carpeta de skills del repositorio");
+      const addRow = E("div", "", "finder-official");
+      addRow.append(
+        repoField,
+        pathField,
+        button("Añadir fuente", async () => {
+          try {
+            await api("/skill-catalog/sources", { repo: repoField.value.trim(), path: pathField.value.trim() });
+            repoField.value = pathField.value = "";
+            await drawSources();
+          } catch (e) {
+            failed(e);
+          }
+        }),
+        button("Actualizar catálogo", async () => {
+          try {
+            await api("/skill-catalog/sync", {});
+            await drawSources();
+          } catch (e) {
+            failed(e);
+          }
+        }, true),
+      );
+      sources.append(sourceList, addRow);
+      sources.addEventListener("toggle", () => sources.open && drawSources());
+      finder.append(searchRow, chips, understood, ranked, E("h4", "Explorar un repositorio"), official, note, look, sources);
       root.append(finder);
       const actions = E("div", "", "actions");
       actions.append(
