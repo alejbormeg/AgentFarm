@@ -118,6 +118,7 @@ public class SkillCatalogSync {
           tree.path("truncated").asBoolean(false)
               ? "El árbol de GitHub vino truncado: puede faltar alguna skill"
               : "";
+      int omitted = 0;
       for (String[] f : found) {
         seen.add(f[0]);
         if (f[1].equals(known.get(f[0]))) continue;
@@ -147,10 +148,18 @@ public class SkillCatalogSync {
                   ((Number) skill.get("bytes")).intValue()));
         } catch (IllegalArgumentException skip) {
           // Too big, not text or an odd path: that one skill is left out, the rest goes on.
+          omitted++;
         }
       }
       // With the call budget spent, what was not read must not be deleted as if it had vanished.
       catalog.apply(id, stars, fresh, seen);
+      if (omitted > 0) {
+        String left =
+            omitted
+                + (omitted == 1 ? " skill no se indexa" : " skills no se indexan")
+                + " (pasan de 32 KiB o no son texto)";
+        note = note.isEmpty() ? left : note + ". " + left;
+      }
       if (!note.isEmpty()) catalog.fail(id, note);
     } catch (Exception e) {
       catalog.fail(id, "No se pudo sincronizar: " + e.getMessage());
