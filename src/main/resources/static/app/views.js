@@ -1,3 +1,4 @@
+import { integration } from "./decide.js";
 import {
   E,
   activity,
@@ -63,7 +64,23 @@ export const withViews = (Base) =>
       text.append(title, meta);
       if (w.state === "blocked") text.append(E("p", w.error || "Necesita que decidas cómo seguir.", "warn-line"));
       for (const other of d?.overlaps || []) text.append(E("p", "Toca un archivo de «" + other.title + "» (PR #" + other.pr + ").", "warn-line"));
-      if (w.state === "review" && d && !d.ready && d.blockers?.[0])
+      const decision = integration({
+        state: w.state,
+        pr: w.pr,
+        sha: w.sha,
+        ready: d?.ready,
+        blockers: d?.blockers,
+        role,
+        githubConfigured: this.data.automation ? this.data.automation.github_configured : undefined,
+        twoFactor: this.data.twoFactor,
+      });
+      if (decision.show && !decision.ok) {
+        for (const reason of decision.reasons) {
+          const line = E("p", "No se puede integrar aún: " + reason.text, "note-line");
+          if (reason.to) line.append(" ", button(reason.label, () => this.go(reason.to), "quiet"));
+          text.append(line);
+        }
+      } else if (w.state === "review" && d && !d.ready && d.blockers?.[0])
         text.append(E("p", "Aún no: " + d.blockers[0].replace(": evidence missing", ": sin evidencia todavía"), "note-line"));
       if (live) text.append(E("p", activity[live.run_state] || names[w.state], "note-line"));
       const actions = E("div", "", "acts");
@@ -73,16 +90,27 @@ export const withViews = (Base) =>
           actions.append(button("Aprobar", () => this.action("/work/" + w.id + "/actions/implement", { version: w.version }), true));
       } else if (w.state === "review") {
         actions.append(button("Ver", () => this.showTask(w.id)));
-        if (role === "owner" && d?.ready)
-          actions.append(
-            button(
-              "Integrar",
-              () =>
-                confirm("¿Integrar la PR #" + w.pr + " con el commit " + w.sha.slice(0, 12) + "?") &&
-                this.action("/work/" + w.id + "/actions/merge", { sha: w.sha }),
-              true,
-            ),
+        if (w.pr) {
+          const pull = link("PR #" + w.pr, "https://github.com/" + w.repo + "/pull/" + w.pr);
+          pull.className = "quiet";
+          actions.append(pull);
+        }
+        if (decision.show) {
+          const integrate = button(
+            "Integrar",
+            () =>
+              confirm("¿Integrar la PR #" + w.pr + " con el commit " + w.sha.slice(0, 12) + "?") &&
+              this.action("/work/" + w.id + "/actions/merge", { sha: w.sha }),
+            true,
           );
+          if (!decision.ok) {
+            integrate.disabled = true;
+            integrate.title = decision.reasons.map((r) => r.text).join(" ");
+          }
+          actions.append(integrate);
+        }
+      } else if (w.state === "blocked" && role === "owner") {
+        actions.append(button("Ver", () => this.showTask(w.id)), button("Reintentar", () => this.action("/work/" + w.id + "/actions/retry", {}), true));
       } else {
         actions.append(button("Ver", () => this.showTask(w.id)));
       }

@@ -139,6 +139,10 @@ const checkNotices = async () => {
     await js(`(()=>{const t=[...document.querySelectorAll('.status-tile')];return t.length===3&&t.every(x=>x.textContent.trim().length>2)&&['grupo-atencion','grupo-proceso','grupo-terminadas'].every(id=>document.getElementById(id))})()`),
     "the inbox has three groups, waiting, in progress and finished, each with its count",
   );
+  check(
+    await js(`(()=>{const b=[...document.querySelectorAll('#grupo-atencion .row button')].filter(x=>x.textContent.trim()==='Integrar');return b.length>0&&b.every(x=>{const row=x.closest('.row');return x.disabled?row.textContent.includes('No se puede integrar aún'):true})})()`),
+    "a PR waiting for review always offers Integrar, and says why when it can't",
+  );
   await go("/overview?tarea=e2e-request-0001");
   check(await until(() => visible("Falta un saludo en el repositorio")), "a task opens with what the agents decided");
   check(await until(() => visible("Qué cambiará")), "the glance says what will change");

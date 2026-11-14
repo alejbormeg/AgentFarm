@@ -306,7 +306,8 @@ class FarmApp extends withProfile(withGovernance(withViews(withTask(withForms(HT
       const costs = usesTasks ? await api("/work/costs").catch(() => ({})) : {};
       const metrics = ["overview", "agents", "budgets"].includes(route) ? await api("/work/metrics").catch(() => null) : null;
       const digest = route === "overview" ? await api("/work/digest").catch(() => null) : null;
-      const automation = ["overview", "governance"].includes(route) ? await api("/automation").catch(() => null) : null;
+      const automation = ["overview", "tasks", "governance"].includes(route) ? await api("/automation").catch(() => null) : null;
+      const twoFactor = ["overview", "tasks"].includes(route) && this.me.role === "owner" ? await api("/me/2fa").catch(() => null) : null;
       const extra = route === "governance" ? await api("/audit") : null;
       const githubApp = route === "governance" && this.me.role === "owner" ? await api("/github-app").catch(() => null) : null;
       const requesters = route === "governance" && this.me.role === "owner" ? await api("/requesters").catch(() => null) : null;
@@ -325,7 +326,7 @@ class FarmApp extends withProfile(withGovernance(withViews(withTask(withForms(HT
           })),
         );
       }
-      this.data = { runtime, overview, work, extra, dossiers, initiatives, automation, metrics, digest, costs, githubApp, requesters, providers, budgets, me: this.me };
+      this.data = { runtime, overview, work, extra, dossiers, initiatives, automation, twoFactor, metrics, digest, costs, githubApp, requesters, providers, budgets, me: this.me };
       this.notifyAttention(work);
       try {
         this.render();
