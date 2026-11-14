@@ -224,8 +224,8 @@ public class SkillIndex {
                       || name.contains(t) && t.length() >= 5);
       long inDescription =
           terms.stream().filter(t -> (" " + hay + " ").contains(" " + t + " ")).count();
-      if (inName) score -= 3;
-      score -= Math.min(2.0, 0.5 * inDescription);
+      if (inName) score -= 6;
+      score -= Math.min(1.5, 0.5 * inDescription);
       if (tokens.stream().anyMatch(t -> (" " + name + " " + hay + " ").contains(" " + t + " ")))
         score -= 1;
       boolean official = "official".equals(r.get("kind"));

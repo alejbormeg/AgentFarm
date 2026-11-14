@@ -100,7 +100,7 @@ class SkillIndexTest {
                 "o/r",
                 "skills/gh-address-comments/SKILL.md",
                 "gh-address-comments",
-                "Address review comments and keep authentication tokens out of the diff"),
+                "Help address review comments on the PR; verify gh auth first and prompt the user to authenticate if not logged in"),
             entry(
                 "o/r",
                 "skills/security-threat-model/SKILL.md",

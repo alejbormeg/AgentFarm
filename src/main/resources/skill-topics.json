@@ -288,7 +288,6 @@
     "vulnerabilidad",
     "vulnerabilidades",
     "criptografia",
-    "autenticacion",
     "auditoria de seguridad"
    ],
    "en": [
@@ -297,8 +296,6 @@
     "vulnerability",
     "vulnerabilities",
     "crypto",
-    "authentication",
-    "auth",
     "pentest",
     "owasp"
    ]
