@@ -703,7 +703,7 @@ export const withViews = (Base) =>
         for (const repo of repos) profiles.append(button("Configurar " + repo, () => this.openProfile(repo)));
       else profiles.append(E("p", "Solo el propietario puede configurarlo.", "empty"));
       if (!repos.length) profiles.append(E("p", "Adopta un repositorio para configurarlo.", "empty"));
-      if (this.data.me?.role === "owner") head.append(button("Añadir nodo", () => this.openNodes(), true));
+      if (this.data.me?.role === "owner") head.append(button("Añadir nodo", () => this.openNodes(), true), button("Proveedores", () => this.openProviders()));
       this.live.append(head, up, profiles, this.agentSection("Nodos dirigentes", o.nodes, "node", r), this.agentSection("Trabajadores Boxer", o.workers, "worker", r));
       if (this.data.me?.role === "owner")
         for (const kind of ["nodes", "workers"]) {

@@ -6,6 +6,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 ## Sin publicar — camino a la versión 1.0
 
+- **Agentes → Proveedores**: eliges qué proveedor usa Napoleon, Boxer y Benjamin en cada nodo (Codex, Claude Code o Antigravity) y ves si está listo en ese equipo, con los pasos para conectar cada cuenta. Las claves y los inicios de sesión siguen en el equipo del nodo: el panel nunca los ve. Antigravity (`agy`) entra como proveedor de ejecución, con el gasto limitado por una cuenta Clover `api` estimada por tokens.
 - **Agentes → Añadir nodo** genera un comando de una línea con un código de un solo uso (caduca en 15 minutos) que el equipo nuevo canjea por su credencial: el token largo ya no viaja en la línea de comandos. El mismo cajón lista las credenciales y permite revocarlas. `install.sh` acepta `--code`.
 - La tarjeta de una PR en revisión siempre ofrece «Integrar»: si no se puede, sale desactivado y dice por qué (GitHub sin conectar, segundo factor, criterios sin cubrir) con un enlace para resolverlo. Las tareas bloqueadas ofrecen «Reintentar» y las revisadas enlazan a su PR.
 - Cada repositorio puede tener sus propias instrucciones para Napoleon, Boxer y Benjamin (system message por rol, con uno por defecto) y skills subidas por el propietario, guardadas en el panel y descargables como `CLAUDE.md`, `AGENTS.md` y `GEMINI.md`. No amplían permisos: manda el alcance aprobado.

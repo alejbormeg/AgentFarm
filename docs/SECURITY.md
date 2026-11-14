@@ -107,3 +107,10 @@ Linux.
 2. Revoca el token del nodo, la credencial de GitHub del panel, y las sesiones de `gh` y de Codex.
 3. Cambia la contraseña del panel y restablece el segundo factor con `./agentfarm 2fa-reset <usuario>`.
 4. Revisa la auditoría del panel y lo publicado en GitHub.
+
+
+## Antigravity y la elección de proveedor desde el panel
+
+- **Antigravity (`agy`)** inicia sesión con la cuenta de Google del equipo del nodo; AgentFarm no guarda ninguna clave. Corre en modo no interactivo: lo que pide aprobación (órdenes de shell, ediciones fuera del modo del rol) se rechaza sin persona; solo Boxer recibe `--mode accept-edits`. No hay aislamiento del sistema ni rutas ocultas, como en Claude Code, y el panel lo avisa (`isolation_notice`).
+- Su gasto se cuenta contra una cuenta Clover `api` a partir de los tokens y de los precios que fija el operador (`AGENTFARM_ANTIGRAVITY_INPUT_USD` y `…_OUTPUT_USD`): es un tope, no la factura; la cuota real del plan de Google no es observable.
+- **Elegir proveedor por rol** es una decisión del propietario guardada en el panel. El ejecutor solo la aplica si ese proveedor está configurado en su equipo (cuenta Clover y clave presentes); a Codex solo se cambia si el ejecutor arrancó con algún rol Codex, para no saltarse la comprobación del sandbox. Ningún secreto pasa por el panel.

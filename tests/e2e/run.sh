@@ -98,14 +98,20 @@ jar="$work/cookies"
 csrf=$(curl -fs -u "admin:$password" -c "$jar" -b "$jar" "$panel/api/csrf" | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])')
 owner() { curl -fsS -u "admin:$password" -c "$jar" -b "$jar" -H "X-CSRF-TOKEN: $csrf" -H 'Content-Type: application/json' -X POST "$panel/api$1" -d "$2"; }
 owner /budget/configure '{"account":"e2e-sub","mode":"subscription","shares":{"weekly":10000}}' > /dev/null
+owner /budget/configure '{"account":"e2e-api","mode":"api","shares":{"weekly":10000}}' > /dev/null
+owner /budget/open-window "{\"account\":\"e2e-api\",\"period\":\"weekly\",\"start\":$(($(date +%s) - 3600)),\"end\":$(($(date +%s) + 7 * 86400)),\"total\":50000000,\"used\":0,\"observed_at\":$(($(date +%s) - 60)),\"max_age\":86400}" > /dev/null
 owner /nodes '{"id":"e2e-node","role":"napoleon"}' > /dev/null
 owner /workers '{"id":"e2e-node-boxer","node":"e2e-node"}' > /dev/null
 owner /workers '{"id":"e2e-node-reviewer","node":"e2e-node"}' > /dev/null
 mkdir -p "$work/state"
-owner /executors '{"node":"e2e-node","account":"e2e-sub"}' \
+owner /executors '{"node":"e2e-node","account":"e2e-sub","api_account":"e2e-api"}' \
   | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])' > "$work/state/node-token"
 chmod 600 "$work/state/node-token"
 # The owner's per-repository instructions must reach every agent of that repository.
+# The owner picks a provider per role from the panel; unknown providers are refused.
+owner /executors/e2e-node/providers '{"roles":{"review":"antigravity"}}' | grep -q antigravity || fail "the provider choice was not saved"
+curl -fs -u "admin:$password" "$panel/api/executors/e2e-node/providers" | grep -q '"review":"antigravity"' || fail "the provider choice was not kept"
+if owner /executors/e2e-node/providers '{"roles":{"review":"skynet"}}' > /dev/null 2>&1; then fail "an unknown provider was accepted"; fi
 # A node added from the panel: the one-use code is exchanged for a credential once, with no session.
 enroll_code=$(owner /executors/enroll '{"node":"e2e-extra"}' | python3 -c 'import json,sys;d=json.load(sys.stdin);assert d["command"].endswith("--code "+d["code"]),d;print(d["code"])') || fail "the panel did not give an enrolment code"
 extra_token=$(curl -fsS -H 'Content-Type: application/json' -X POST "$panel/executor/redeem" -d "{\"code\":\"$enroll_code\"}" | python3 -c 'import json,sys;print(json.load(sys.stdin)["token"])') || fail "the enrolment code was not accepted"
@@ -125,6 +131,7 @@ start_executor() {
     -Dagentfarm.url="$panel" -Dagentfarm.state="$work/state" \
     -Dagentfarm.node=e2e-node -Dagentfarm.account=e2e-sub \
     -Dagentfarm.codex="$e2e/fake-codex" -Dagentfarm.gh="$e2e/fake_gh.py" \
+    -Dagentfarm.provider.review=antigravity -Dagentfarm.antigravity="$e2e/fake-codex" -Dagentfarm.antigravity-account=e2e-api \
     -Dagentfarm.sandbox="$sandbox" -Dagentfarm.sandbox-image=bash:5.2 \
     FarmDaemon > "$work/executor.log" 2>&1 &
   executor=$!
@@ -203,6 +210,8 @@ assert evidence["passed"] is True, evidence
 assert evidence["unit"]["status"] == "passed" and evidence["integration"]["status"] == "passed", evidence
 assert evidence["review"]["passed"] is True
 assert evidence["prompts"]["review"]["id"] == "review.v3"
+spent = json.loads(urllib.request.urlopen(urllib.request.Request(panel + "/api/budget/e2e-api", headers=req.headers)).read())
+assert any(w["used"] > 0 for w in spent["windows"]), ("the Antigravity review was not charged to Clover", spent)
 proposal = json.loads(item["proposal"])
 assert proposal["headline"].startswith("Falta un saludo"), proposal
 assert [n["type"] for n in proposal["to_be_graph"]["nodes"]] == ["file", "file"], proposal

@@ -121,7 +121,7 @@ export const withProfile = (Base) =>
       );
       const exports = E("p", "", "exports");
       exports.append(E("small", "Descarga el mismo perfil para usarlo fuera de AgentFarm: "));
-      for (const [format, label] of [["claude", "Claude (CLAUDE.md)"], ["codex", "ChatGPT/Codex (AGENTS.md)"], ["gemini", "Gemini (GEMINI.md)"]]) {
+      for (const [format, label] of [["claude", "Claude (CLAUDE.md)"], ["codex", "ChatGPT/Codex (AGENTS.md)"], ["gemini", "Gemini / Antigravity (GEMINI.md)"]]) {
         const a = E("a", label);
         a.href = "/api/repos/" + repo + "/agents/export?format=" + format;
         a.download = "";

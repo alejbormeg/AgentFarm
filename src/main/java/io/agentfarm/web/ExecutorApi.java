@@ -9,9 +9,22 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/executors")
 public class ExecutorApi {
   private final NodeCredentials credentials;
+  private final io.agentfarm.adapters.NodeProviders providers;
 
-  public ExecutorApi(NodeCredentials credentials) {
+  public ExecutorApi(NodeCredentials credentials, io.agentfarm.adapters.NodeProviders providers) {
     this.credentials = credentials;
+    this.providers = providers;
+  }
+
+  /** Which provider each role uses on a node: the owner's choice, empty when none. */
+  @GetMapping("/{node}/providers")
+  public Object roles(@PathVariable String node) {
+    return java.util.Map.of("roles", providers.roles(node));
+  }
+
+  @PostMapping("/{node}/providers")
+  public Object chooseRoles(@PathVariable String node, @RequestBody JsonNode n, Principal p) {
+    return java.util.Map.of("roles", providers.save(node, n, p.getName()));
   }
 
   @GetMapping

@@ -15,6 +15,11 @@ exec java "-Dagentfarm.url=${AGENTFARM_URL:-http://localhost:8080}" \
   "-Dagentfarm.provider.review=${AGENTFARM_PROVIDER_REVIEW:-codex}" \
   "-Dagentfarm.claude-account=${AGENTFARM_CLAUDE_ACCOUNT:-}" \
   "-Dagentfarm.claude-model=${AGENTFARM_CLAUDE_MODEL:-}" \
+  "-Dagentfarm.antigravity=${AGENTFARM_ANTIGRAVITY:-agy}" \
+  "-Dagentfarm.antigravity-account=${AGENTFARM_ANTIGRAVITY_ACCOUNT:-}" \
+  "-Dagentfarm.antigravity-model=${AGENTFARM_ANTIGRAVITY_MODEL:-}" \
+  "-Dagentfarm.antigravity-input-usd-per-mtok=${AGENTFARM_ANTIGRAVITY_INPUT_USD:-1.25}" \
+  "-Dagentfarm.antigravity-output-usd-per-mtok=${AGENTFARM_ANTIGRAVITY_OUTPUT_USD:-10.00}" \
   "-Dagentfarm.implementer=${AGENTFARM_IMPLEMENTER:-$AGENTFARM_NODE-boxer}" \
   "-Dagentfarm.reviewer=${AGENTFARM_REVIEWER:-$AGENTFARM_NODE-reviewer}" \
   "-Dagentfarm.codex=${AGENTFARM_CODEX:-codex}" "-Dagentfarm.gh=${AGENTFARM_GH:-gh}" \

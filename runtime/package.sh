@@ -17,6 +17,9 @@ jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/
 jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/ProposalGraph.class
 jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/GitHubText.class
 jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/ProfilePrompt.class
+jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/AntigravityAdapter.class
+jar --update --file "$out/executor.jar" -C target/classes 'io/agentfarm/adapters/AntigravityAdapter$Result.class'
+jar --update --file "$out/executor.jar" -C target/classes 'io/agentfarm/adapters/AntigravityAdapter$Failed.class'
 jar --update --file "$out/executor.jar" -C target/classes 'io/agentfarm/adapters/ProfilePrompt$Section.class'
 # The image build has no .git: it passes the commit it was built from.
 if [[ -n "${AGENTFARM_COMMIT:-}" ]]; then printf '%s\n' "$AGENTFARM_COMMIT" > "$stage/build-commit.txt"
