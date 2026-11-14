@@ -31,14 +31,17 @@ need curl "sudo apt install curl"
 need tar "sudo apt install tar"
 need sha256sum "sudo apt install coreutils"
 need gh "instala GitHub CLI: https://cli.github.com"
-need codex "instala Codex CLI y entra con: codex login"
+command -v codex >/dev/null || command -v agy >/dev/null || command -v claude >/dev/null ||
+  { echo "  Falta un agente: instala Codex (codex login), Antigravity (agy) o Claude Code (claude)." >&2; missing=1; }
 need docker "las pruebas de cada tarea corren en contenedores; en WSL activa la integración de Docker Desktop"
 ((missing == 0)) || die "Instala lo que falta y vuelve a ejecutar este instalador."
 java_major="$(java -XshowSettings:properties -version 2>&1 | sed -n 's/^ *java.specification.version = //p')"
 [[ "${java_major%%.*}" =~ ^[0-9]+$ && "${java_major%%.*}" -ge 21 ]] ||
   die "Hace falta Java 21 o posterior (este equipo tiene ${java_major:-una versión desconocida})."
 docker info >/dev/null 2>&1 || die "Docker no responde. En WSL, abre Docker Desktop y activa la integración con esta distribución."
-codex login status >/dev/null 2>&1 || die "Codex no tiene sesión. Entra con: codex login"
+if command -v codex >/dev/null; then
+  codex login status >/dev/null 2>&1 || die "Codex no tiene sesión. Entra con: codex login"
+fi
 systemd=1
 systemctl --user show-environment >/dev/null 2>&1 || systemd=0
 

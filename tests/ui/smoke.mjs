@@ -276,6 +276,10 @@ try {
     await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Generar comando').click()`);
     check(await until(() => js(`${all}.some(e=>e.tagName==='PRE'&&e.textContent.includes('--code afc_'))`)), "the drawer gives a one-use install command");
     await js(`document.querySelector('dialog[open] .drawer-head button').click()`);
+    check(await visible("Proveedores"), "an owner can choose the providers of the agents");
+    await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Proveedores').click()`);
+    check(await until(() => visible("Cómo conectar una cuenta")), "the providers drawer explains how to connect each account");
+    await js(`document.querySelector('dialog[open] .drawer-head button').click()`);
     await go("/governance");
     check(await until(() => visible("Conectar GitHub")), "an owner can connect GitHub");
 

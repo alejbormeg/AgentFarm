@@ -326,9 +326,50 @@ public class FarmDaemon extends CodexRunner {
       CLAUDE_MODEL = System.getProperty("agentfarm.claude-model", "");
   static final long CLAUDE_TURN_MICROS = Long.getLong("agentfarm.claude-turn-micros", 3_000_000L);
 
+  // Antigravity CLI (agy) signs in with the Google account of this machine. It is metered like
+  // Claude Code, in USD against a Clover API account, but from token counts at prices the operator
+  // sets (per million tokens): a spending guard, never below the real use, not the real bill.
+  static final String ANTIGRAVITY = System.getProperty("agentfarm.antigravity", "agy"),
+      ANTIGRAVITY_ACCOUNT = System.getProperty("agentfarm.antigravity-account", ""),
+      ANTIGRAVITY_MODEL = System.getProperty("agentfarm.antigravity-model", "");
+  static final long ANTIGRAVITY_TURN_MICROS =
+      Long.getLong("agentfarm.antigravity-turn-micros", 3_000_000L);
+  static final double
+      ANTIGRAVITY_INPUT_USD =
+          Double.parseDouble(
+              System.getProperty("agentfarm.antigravity-input-usd-per-mtok", "1.25")),
+      ANTIGRAVITY_OUTPUT_USD =
+          Double.parseDouble(
+              System.getProperty("agentfarm.antigravity-output-usd-per-mtok", "10.00"));
+
+  /** Roles the owner chose in the panel for this node; empty when nothing was chosen. */
+  static volatile JsonNode ownerRoles = JSON.createObjectNode();
+
+  static boolean startedWithCodex() {
+    return List.of("research", "implement", "review").stream()
+        .anyMatch(r -> System.getProperty("agentfarm.provider." + r, "codex").equals("codex"));
+  }
+
+  /**
+   * Whether a provider can run here: its account is configured on this executor (credentials live
+   * here, never in the panel). Codex also needs the sandbox check, which only runs if the executor
+   * started with a Codex role, so the panel cannot switch a role to it otherwise.
+   */
+  static boolean providerReady(String provider) {
+    return switch (provider) {
+      case "codex" -> startedWithCodex();
+      case "claude-code" ->
+          !CLAUDE_ACCOUNT.isBlank() && Files.isReadable(STATE.resolve("anthropic-api-key"));
+      case "antigravity" -> !ANTIGRAVITY_ACCOUNT.isBlank();
+      default -> false;
+    };
+  }
+
   static String providerFor(String role) {
     String p = System.getProperty("agentfarm.provider." + role, "codex");
-    if (!Set.of("codex", "claude-code").contains(p))
+    String chosen = ownerRoles.path(role).asText("");
+    if (!chosen.isEmpty() && providerReady(chosen)) p = chosen;
+    if (!Set.of("codex", "claude-code", "antigravity").contains(p))
       throw new IllegalArgumentException("Unknown provider for " + role + ": " + p);
     return p;
   }
@@ -348,7 +389,11 @@ public class FarmDaemon extends CodexRunner {
     task.provider = providerFor(role);
     task.mcpTurn = !role.equals("implement") && !task.mcpServers.isEmpty();
     try {
-      return task.provider.equals("claude-code") ? claudeTurn(role, prompt) : turn(prompt, role);
+      return switch (task.provider) {
+        case "claude-code" -> claudeTurn(role, prompt);
+        case "antigravity" -> antigravityTurn(role, prompt);
+        default -> turn(prompt, role);
+      };
     } finally {
       task.provider = "codex";
     }
@@ -463,6 +508,114 @@ public class FarmDaemon extends CodexRunner {
         post("/budget/settle", obj("account", CLAUDE_ACCOUNT, "run_id", run, "actual", actual));
       } catch (Exception e) {
         failure = "Liquidación Claude Code pendiente: " + clean(e.getMessage());
+      }
+    }
+  }
+
+  static String antigravityTurn(String role, String prompt) throws Exception {
+    if (ANTIGRAVITY_ACCOUNT.isBlank())
+      throw new IOException(
+          "Antigravity requiere -Dagentfarm.antigravity-account con una cuenta Clover api");
+    if (task.mcpTurn)
+      throw new IOException("Antigravity no admite herramientas MCP en este ejecutor");
+    var status = get("/budget/" + ANTIGRAVITY_ACCOUNT);
+    if (!status.path("mode").asText().equals("api"))
+      throw new IOException("La cuenta Antigravity debe ser de modo api (USD)");
+    var amounts = new LinkedHashMap<String, Object>();
+    for (var w : status.path("windows"))
+      amounts.put(w.path("period").asText(), ANTIGRAVITY_TURN_MICROS);
+    String run =
+        "antigravity-"
+            + task.commandId
+            + "-"
+            + role
+            + "-"
+            + UUID.randomUUID().toString().substring(0, 8);
+    var reserved =
+        post(
+            "/budget/reserve",
+            obj("account", ANTIGRAVITY_ACCOUNT, "run_id", run, "amounts", amounts));
+    if (!reserved.path("state").asText().equals("reserved"))
+      throw new IOException("Clover rechazó la reserva Antigravity: " + reserved.path("reasons"));
+    event(
+        "lifecycle",
+        "Antigravity · "
+            + role
+            + " · reserva "
+            + ANTIGRAVITY_TURN_MICROS / 1e6
+            + " USD (estimación por tokens)");
+    Object actual = null;
+    try {
+      var b =
+          new ProcessBuilder(
+                  io.agentfarm.adapters.AntigravityAdapter.command(
+                      ANTIGRAVITY, role, ANTIGRAVITY_MODEL))
+              .directory(task.checkout.toFile())
+              .redirectErrorStream(false);
+      for (String k :
+          List.of(
+              "OPENAI_API_KEY",
+              "CODEX_API_KEY",
+              "ANTHROPIC_API_KEY",
+              "GEMINI_API_KEY",
+              "GOOGLE_API_KEY",
+              "GH_TOKEN",
+              "GITHUB_TOKEN")) b.environment().remove(k);
+      b.redirectError(STATE.resolve("antigravity-stderr" + SUFFIX + ".log").toFile());
+      Path out = Files.createTempFile(STATE, "antigravity-", ".ndjson");
+      b.redirectOutput(out.toFile());
+      var p = b.start();
+      try {
+        try (var in = p.getOutputStream()) {
+          in.write(
+              (io.agentfarm.adapters.AntigravityAdapter.userEvent(prompt) + "\n")
+                  .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        long deadline = System.currentTimeMillis() + 2_700_000;
+        while (!p.waitFor(1, TimeUnit.SECONDS)) {
+          if (cancelled() || System.currentTimeMillis() > deadline) {
+            p.descendants().forEach(ProcessHandle::destroyForcibly);
+            p.destroyForcibly();
+            throw new IOException(cancelled() ? "Operación cancelada" : "Turno supera 45 minutos");
+          }
+        }
+        io.agentfarm.adapters.AntigravityAdapter.Result result;
+        try {
+          result =
+              io.agentfarm.adapters.AntigravityAdapter.parse(
+                  Files.readString(out), ANTIGRAVITY_INPUT_USD, ANTIGRAVITY_OUTPUT_USD);
+        } catch (io.agentfarm.adapters.AntigravityAdapter.Failed e) {
+          if (e.costMicros != null) {
+            var cost = new LinkedHashMap<String, Object>();
+            for (var period : amounts.keySet()) cost.put(period, e.costMicros);
+            actual = cost;
+            event(
+                "lifecycle",
+                "Antigravity · coste estimado " + e.costMicros / 1e6 + " USD (turno fallido)");
+          }
+          throw new IOException(e.getMessage());
+        }
+        session = result.conversation();
+        var cost = new LinkedHashMap<String, Object>();
+        for (var period : amounts.keySet()) cost.put(period, result.costMicros());
+        actual = cost;
+        event("message", result.text());
+        if (!result.denied().isEmpty())
+          event(
+              "lifecycle",
+              "Antigravity rechazó acciones sin permiso: "
+                  + clean(String.join("; ", result.denied())));
+        event("lifecycle", "Antigravity · coste estimado " + result.costMicros() / 1e6 + " USD");
+        return result.text();
+      } finally {
+        Files.deleteIfExists(out);
+      }
+    } finally {
+      try {
+        post(
+            "/budget/settle", obj("account", ANTIGRAVITY_ACCOUNT, "run_id", run, "actual", actual));
+      } catch (Exception e) {
+        failure = "Liquidación Antigravity pendiente: " + clean(e.getMessage());
       }
     }
   }
@@ -741,7 +894,20 @@ public class FarmDaemon extends CodexRunner {
           List.of("research", "implement", "review").stream()
                   .anyMatch(r -> providerFor(r).equals("claude-code"))
               ? "Claude Code solo tiene reglas de bloqueo, sin aislamiento del sistema."
-              : "";
+              : List.of("research", "implement", "review").stream()
+                      .anyMatch(r -> providerFor(r).equals("antigravity"))
+                  ? "Antigravity no tiene aislamiento del sistema: no ejecuta órdenes sin permiso, pero no oculta rutas."
+                  : "";
+
+  /** Whether a command resolves on this machine, by name or path; runs nothing. */
+  static boolean onPath(String binary) {
+    if (binary.contains("/")) return Files.isExecutable(Path.of(binary));
+    String path = System.getenv("PATH");
+    if (path == null) return false;
+    for (String dir : path.split(java.io.File.pathSeparator))
+      if (!dir.isBlank() && Files.isExecutable(Path.of(dir, binary))) return true;
+    return false;
+  }
 
   static volatile String sandboxFailure = "";
   static long sandboxCheckedAt;
@@ -1443,6 +1609,7 @@ public class FarmDaemon extends CodexRunner {
     task = new Task(claim);
     var item = claim.path("item");
     ownerProfile = item.path("agent_profile");
+    ownerRoles = item.path("node_providers");
     var cmd = claim.path("command");
     String kind = cmd.path("kind").asText();
     boolean reserved = false;
@@ -1559,6 +1726,18 @@ public class FarmDaemon extends CodexRunner {
             sandboxFailure,
             "isolation_notice",
             CLAUDE_NOTICE.get(),
+            "roles",
+            obj(
+                "research", providerFor("research"),
+                "implement", providerFor("implement"),
+                "review", providerFor("review")),
+            "providers",
+            obj(
+                "codex", obj("ready", providerReady("codex"), "installed", onPath("codex")),
+                "claude-code",
+                    obj("ready", providerReady("claude-code"), "installed", onPath(CLAUDE)),
+                "antigravity",
+                    obj("ready", providerReady("antigravity"), "installed", onPath(ANTIGRAVITY))),
             "supervisor_pid",
             ProcessHandle.current().pid(),
             "executor_available",

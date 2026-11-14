@@ -17,6 +17,7 @@ public class WorkflowApi {
   private final io.agentfarm.core.TwoFactor twoFactor;
   private final io.agentfarm.core.GitHubCredentials credentials;
   private final io.agentfarm.adapters.AgentProfiles profiles;
+  private final io.agentfarm.adapters.NodeProviders nodeProviders;
 
   public WorkflowApi(
       WorkflowService work,
@@ -26,7 +27,9 @@ public class WorkflowApi {
       DigestService digest,
       io.agentfarm.core.TwoFactor twoFactor,
       io.agentfarm.core.GitHubCredentials credentials,
-      io.agentfarm.adapters.AgentProfiles profiles) {
+      io.agentfarm.adapters.AgentProfiles profiles,
+      io.agentfarm.adapters.NodeProviders nodeProviders) {
+    this.nodeProviders = nodeProviders;
     this.profiles = profiles;
     this.twoFactor = twoFactor;
     this.credentials = credentials;
@@ -143,6 +146,12 @@ public class WorkflowApi {
       } catch (IllegalArgumentException e) {
         // An old row with an odd repository name simply has no profile.
       }
+      if (p.getName().startsWith("node:"))
+        try {
+          copy.put("node_providers", nodeProviders.roles(p.getName().substring(5)));
+        } catch (IllegalArgumentException e) {
+          // A node name the panel does not accept has no choice recorded.
+        }
       withProfile.put("item", copy);
       return withProfile;
     }

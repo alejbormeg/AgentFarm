@@ -173,6 +173,24 @@ def answer(thread, prompt):
     return PROPOSAL
 
 
+# `agy --input-format stream-json --output-format stream-json`: one user event in, NDJSON out.
+if "--input-format" in sys.argv:
+    assert "-p" not in sys.argv and "--dangerously-skip-permissions" not in sys.argv, sys.argv
+    if "--mode" in sys.argv:
+        assert sys.argv[sys.argv.index("--mode") + 1] == "accept-edits", sys.argv
+    assert not any(k in os.environ for k in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "GH_TOKEN")), "no foreign keys reach the CLI"
+    event = json.loads(sys.stdin.readline())
+    assert event["event"] == "user", event
+    prompt = event["message"]["content"]
+    reply = json.dumps(answer({"sandbox": "read-only", "cwd": os.getcwd()}, prompt), ensure_ascii=False)
+    usage = {"input_tokens": 2000, "output_tokens": 300, "thinking_tokens": 100, "cache_read_tokens": 0, "total_tokens": 2300}
+    for line in (
+        {"event": "init", "conversation_id": "e2e-agy", "init": {"cwd": os.getcwd(), "permission_mode": "request-review"}},
+        {"event": "result", "result": {"conversation_id": "e2e-agy", "status": "SUCCESS", "response": reply, "duration_seconds": 1, "num_turns": 1, "usage": usage}},
+    ):
+        print(json.dumps(line))
+    sys.exit(0)
+
 for line in sys.stdin:
     msg = json.loads(line)
     method, mid, params = msg.get("method"), msg.get("id"), msg.get("params") or {}
