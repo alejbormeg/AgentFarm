@@ -1,4 +1,5 @@
 import { E, activity, api, button, confirmButton, expectedCost, json, link, names, pill, rawRecord, running, testEvidence, testStatus, whyYou, wall, journey } from "./lib.js";
+import { integration } from "./decide.js";
 import { drawio, fromMermaid, graphOf, scene, toDom } from "./diagram.js";
 
 export const withTask = (Base) =>
@@ -652,7 +653,17 @@ export const withTask = (Base) =>
           ),
         );
       if (w.state === "review" && this.data.me?.role === "owner") {
-        if (dossier?.ready)
+        const decision = integration({
+          state: w.state,
+          pr: w.pr,
+          sha: w.sha,
+          ready: dossier?.ready,
+          blockers: dossier?.blockers,
+          role: this.data.me?.role,
+          githubConfigured: this.data.automation ? this.data.automation.github_configured : undefined,
+          twoFactor: this.data.twoFactor,
+        });
+        if (decision.ok)
           actions.append(
             E("p", "Se fusionará la PR #" + w.pr + " con el commit " + w.sha + ". GitHub y las pruebas deben confirmarlo."),
             button(
@@ -666,8 +677,11 @@ export const withTask = (Base) =>
         else {
           actions.append(E("h4", "Aún no se puede integrar"));
           const missing = E("ul", "", "blockers");
-          for (const blocker of dossier?.blockers || ["Faltan criterios o mandamientos por cubrir."])
-            missing.append(E("li", blocker.replace(": evidence missing", ": sin evidencia todavía")));
+          for (const reason of decision.reasons) {
+            const item = E("li", reason.text);
+            if (reason.to) item.append(" ", button(reason.label, () => (this.taskDrawer.close(), this.go(reason.to)), "quiet"));
+            missing.append(item);
+          }
           actions.append(missing);
         }
       }
