@@ -88,7 +88,8 @@ public class NotificationService {
     // A webhook that hangs can't hold the cycle: what is left goes on the next one.
     var budget = new ScheduledWork.Budget(java.time.Clock.systemUTC(), CYCLE_MS);
     for (var n : pending) {
-      if (budget.spent()) break;
+      // At least one per cycle, so a slow machine still makes progress.
+      if (n != pending.get(0) && budget.spent()) break;
       String message = text(n.get("state").toString(), n.get("title").toString());
       String link = panel + "/tasks";
       int status;

@@ -6,6 +6,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 ## Sin publicar — camino a la versión 1.0
 
+- Con la máquina cargada, el verificador de evidencias y el envío de avisos ya no se saltan un ciclo entero: cada ciclo atiende al menos una tarea (#237). Era la causa de un fallo intermitente de `ScheduledWorkTest`.
 - **Traer issues** (botón de la barra superior, solo propietario): lista las issues abiertas de un repositorio adoptado (sin PR ni las que abre AgentFarm), con su autor y avisando si no tiene rol en el repo, y deja elegir con cuáles empiezan los agentes (hasta 10 cada vez). Cada una entra como tarea de investigación, sin duplicarse con el disparador `labeled_issue`, y la PR que la resuelva cierra también la issue original.
 - Búsqueda de skills más certera (comprobada contra el GitHub real): un nombre que dice el tema (p. ej. `security-…`) va por delante de una skill que solo lo menciona, «diseño gráfico» ya no activa «Datos y análisis», y el catálogo avisa de las skills que no indexa (más de 32 KiB).
 - **Buscar skills por texto libre**: en el cajón de agentes de un repositorio, «Cuéntanos qué necesitas» (por ejemplo «programar en Python» o «diseño gráfico») busca en el catálogo del panel, con temas sugeridos, y dice qué entendió. «Fuentes del catálogo» deja añadir repos, quitarlos y actualizar el catálogo. El explorador carpeta a carpeta sigue debajo.

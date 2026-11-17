@@ -65,7 +65,9 @@ public class EvidenceVerifier {
                 c,
                 "SELECT id FROM work_items WHERE state='review' AND sha IS NOT NULL ORDER BY id"));
     var budget = new ScheduledWork.Budget(clock, budgetMs);
-    for (int done = 0; done < items.size() && !budget.spent(); done++) {
+    // At least one per cycle: a budget spent before the first task (a slow start, a pause of the
+    // machine) would otherwise skip the whole cycle, and a busy machine could starve every task.
+    for (int done = 0; done < items.size() && (done == 0 || !budget.spent()); done++) {
       next = next % items.size();
       String id = items.get(next++).get("id").toString();
       verify(id);
