@@ -153,6 +153,9 @@ public final class ExecutorWork {
   /**
    * The workflow for a repository without CI: the approved commands, in the local sandbox's image.
    */
+  /** Repository variable naming a self-hosted runner label; unset means GitHub's runners. */
+  public static final String RUNNER_VARIABLE = "AGENTFARM_RUNNER";
+
   public static Map<String, Object> verificationWorkflow(JsonNode p, String defaultImage)
       throws java.io.IOException {
     var jobs = new LinkedHashMap<String, Object>();
@@ -171,11 +174,18 @@ public final class ExecutorWork {
               command.startsWith("N/A:") ? "printf '%s\\n' " + shellQuote(command) : command));
       var job = new LinkedHashMap<String, Object>();
       job.put("name", "AgentFarm " + kind);
-      job.put("runs-on", "ubuntu-24.04");
+      // A repository variable picks the owner's own runner, for accounts without Actions minutes.
+      job.put("runs-on", "${{ vars." + RUNNER_VARIABLE + " || 'ubuntu-24.04' }}");
       // Same image as the local sandbox: setup runs as root there, as in the container.
+      // An own runner has no Docker to give, so there the job runs on the runner itself.
       if (!p.path("sandbox").path("mode").asText("container").equals("host"))
         job.put(
-            "container", Json.obj("image", p.path("sandbox").path("image").asText(defaultImage)));
+            "container",
+            "${{ !vars."
+                + RUNNER_VARIABLE
+                + " && '"
+                + p.path("sandbox").path("image").asText(defaultImage).replace("'", "''")
+                + "' || '' }}");
       job.put("timeout-minutes", 15);
       job.put("steps", steps);
       jobs.put(kind, job);

@@ -236,7 +236,11 @@ class ExecutorWorkTest {
     assertEquals("read", encoded.path("permissions").path("contents").asText());
     var unit = encoded.path("jobs").path("unit");
     assertEquals("AgentFarm unit", unit.path("name").asText(), "evidence binds to this check name");
-    assertEquals("python:3", unit.path("container").path("image").asText());
+    assertEquals(
+        "${{ !vars.AGENTFARM_RUNNER && 'python:3' || '' }}",
+        unit.path("container").asText(),
+        "GitHub's runners use the sandbox image; an own runner runs the job itself");
+    assertEquals("${{ vars.AGENTFARM_RUNNER || 'ubuntu-24.04' }}", unit.path("runs-on").asText());
     assertFalse(unit.path("steps").get(0).path("with").path("persist-credentials").asBoolean(true));
     assertEquals("pip i", unit.path("steps").get(1).path("run").asText());
     assertEquals("pytest", unit.path("steps").get(2).path("run").asText());
@@ -257,17 +261,27 @@ class ExecutorWorkTest {
     assertEquals(2, hostJobs.path("unit").path("steps").size(), "no setup step when there is none");
     var none = Json.parse("{\"unit_test\":\"a\",\"integration_test\":\"b\"}");
     assertEquals(
-        "por-defecto",
+        "${{ !vars.AGENTFARM_RUNNER && 'por-defecto' || '' }}",
         Json.parse(Json.encode(ExecutorWork.verificationWorkflow(none, "por-defecto")))
             .path("jobs")
             .path("unit")
             .path("container")
-            .path("image")
             .asText(),
         "a proposal from before sandboxing gets the executor's image");
     assertThrows(
         java.io.IOException.class,
         () -> ExecutorWork.verificationWorkflow(Json.parse("{\"unit_test\":\"a\"}"), "x"));
+    var quoted =
+        Json.parse(
+            "{\"unit_test\":\"a\",\"integration_test\":\"b\",\"sandbox\":{\"image\":\"x'y\"}}");
+    assertEquals(
+        "${{ !vars.AGENTFARM_RUNNER && 'x''y' || '' }}",
+        Json.parse(Json.encode(ExecutorWork.verificationWorkflow(quoted, "z")))
+            .path("jobs")
+            .path("unit")
+            .path("container")
+            .asText(),
+        "a quote in the image cannot end the expression's string");
   }
 
   @Test
