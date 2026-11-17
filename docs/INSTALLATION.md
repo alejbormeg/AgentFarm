@@ -261,6 +261,15 @@ modifica los workflows propios del proyecto queda como PR en borrador
 (`workflow_changes` en la evidencia): ese cambio debe revisarlo una persona,
 porque podría debilitar la misma comprobación que lo valida.
 
+### Cuando GitHub no ejecuta la CI: CI local
+Si GitHub no crea ejecuciones (por falta de minutos, un pago fallido o un límite de gasto), ni un
+runner propio sirve. El propietario puede elegir **CI local** para un repositorio
+(`POST /api/repos/{owner}/{repo}/ci` con `{"local": true}`; hace falta la GitHub App). Entonces
+el panel exige, en vez de la CI de GitHub, sus propios checks `AgentFarm local · unit` y
+`AgentFarm local · integration`, publicados por su App para ese mismo commit. Un check con el
+mismo nombre de otro emisor, o de otro commit, no cuenta. La verificación la ejecuta un nodo de
+la granja, así que no es una CI independiente. Nunca se activa sola.
+
 ### Sin minutos de Actions: un runner propio
 El workflow que añade AgentFarm corre en los runners de GitHub, salvo que el
 repositorio defina la variable `AGENTFARM_RUNNER` (Settings → Secrets and

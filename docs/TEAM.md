@@ -65,8 +65,13 @@ contra GitHub real**, solo contra un doble.
 (`AGENTFARM_GITHUB_TOKEN_FILE`), con permisos de repositorio:
 
 - Contents: read & write (integración), Pull requests: read & write,
-  Issues: read & write, Workflows: read & write, Actions: read, Checks: read,
+  Issues: read & write, Workflows: read & write, Actions: read, Checks: read & write,
   Commit statuses: read, Dependabot alerts: read.
+
+Checks es de escritura para la CI local: el panel publica con su App el resultado de la
+verificación que ordenó. El token de cada orden del ejecutor no lleva ese permiso. Una App creada
+antes de este cambio tiene Checks en solo lectura: amplía el permiso en GitHub (Settings →
+Developer settings → GitHub Apps → la App → Permissions) y acepta el cambio en la instalación.
 
 Con la App, el ejecutor no necesita `gh auth login`: el panel le da por cada orden un token de una
 hora limitado a ese repositorio. Solo se ha probado con dobles.

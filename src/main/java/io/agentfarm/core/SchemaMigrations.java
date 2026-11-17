@@ -47,7 +47,14 @@ public class SchemaMigrations {
                   "CREATE TABLE user_totp(username TEXT PRIMARY KEY,secret TEXT NOT NULL,confirmed"
                       + " INTEGER NOT NULL DEFAULT 0,last_step INTEGER NOT NULL DEFAULT 0,failures"
                       + " INTEGER NOT NULL DEFAULT 0,locked_until INTEGER NOT NULL DEFAULT 0)",
-                  "ALTER TABLE governance ADD COLUMN require_2fa_merge INTEGER NOT NULL DEFAULT 0")));
+                  "ALTER TABLE governance ADD COLUMN require_2fa_merge INTEGER NOT NULL DEFAULT 0")),
+          // A row means the owner chose it; no row is the default, GitHub's own CI (#241).
+          new Migration(
+              6,
+              "repositories whose CI the panel runs locally",
+              List.of(
+                  "CREATE TABLE repo_ci_modes(repo TEXT PRIMARY KEY,actor TEXT NOT NULL,at INTEGER"
+                      + " NOT NULL)")));
 
   // Services create their baseline tables in their constructors; depending on them orders this.
   public SchemaMigrations(

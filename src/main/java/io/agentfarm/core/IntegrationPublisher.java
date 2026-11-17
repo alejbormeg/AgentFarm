@@ -34,6 +34,17 @@ public class IntegrationPublisher {
     this.http = http;
   }
 
+  // Which repositories use the panel's local CI, and the panel's own App: set at startup by
+  // io.agentfarm.adapters.CiModes. Until then nothing is local and no check is the panel's.
+  private volatile java.util.function.Predicate<String> localCi = repo -> false;
+  private volatile java.util.function.Supplier<String> panelApp = () -> "";
+
+  public void useCiPolicy(
+      java.util.function.Predicate<String> localCi, java.util.function.Supplier<String> panelApp) {
+    this.localCi = localCi;
+    this.panelApp = panelApp;
+  }
+
   public boolean configured() {
     return credentials.configured();
   }
@@ -73,10 +84,15 @@ public class IntegrationPublisher {
         throw new IllegalArgumentException("PR head changed; approve the current commit");
       if (!remote.path("merged").asBoolean()) {
         work.requireAcceptance(item.path("id").asText());
+        boolean local = localCi.test(repo);
         validate(
             remote,
-            parse(item.path("evidence").asText()),
-            github(repo, "/commits/" + sha + "/check-runs?per_page=100", null),
+            io.agentfarm.adapters.CiPolicy.evidence(parse(item.path("evidence").asText()), local),
+            io.agentfarm.adapters.CiPolicy.checks(
+                github(repo, "/commits/" + sha + "/check-runs?per_page=100", null),
+                sha,
+                panelApp.get(),
+                local),
             github(repo, "/commits/" + sha + "/status", null),
             github(repo, pr + "/reviews?per_page=100", null),
             sha);

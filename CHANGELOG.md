@@ -6,6 +6,10 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 ## Sin publicar — camino a la versión 1.0
 
+- **CI local, primera parte** (#241, parte de #157):
+  - Cada check cuenta solo para su commit y de su emisor: los de la plantilla, de GitHub Actions; los locales, de la App del panel; la CI propia, de cualquiera menos AgentFarm. Un check con un nombre prestado ya no puede aprobar ni tumbar un candidato.
+  - El propietario puede elegir CI local por repositorio (`/api/repos/{o}/{n}/ci`, auditado, migración 6). Entonces los checks requeridos los decide el panel y no el ejecutor, así que un lint en verde no basta.
+  - El manifiesto de la App pide `checks: write`. La orden que ejecuta la verificación llega en la segunda parte.
 - Con la máquina cargada, el verificador de evidencias y el envío de avisos ya no se saltan un ciclo entero: cada ciclo atiende al menos una tarea (#237). Era la causa de un fallo intermitente de `ScheduledWorkTest`.
 - **Runner propio para quien no tiene minutos de Actions** (#234): el workflow que AgentFarm añade a un repositorio sin CI usa la etiqueta de la variable `AGENTFARM_RUNNER` si existe, y entonces corre sin el contenedor del sandbox. Sin la variable, todo sigue igual.
 - **Proveedores por nodo** (#235): el panel guarda qué ejecuta cada rol y qué le falta a cada proveedor (antes los descartaba, y todo salía «falta configurar»). Los pasos para conectar una cuenta nombran los ficheros y el servicio reales de cada nodo. Si eliges un proveedor que el nodo no tiene listo, se avisa en vez de seguir con Codex en silencio. El instalador por código ya no remite a «Conectar ejecutor» y avisa si falta Codex.

@@ -135,6 +135,11 @@ extra_token=$(curl -fsS -H 'Content-Type: application/json' -X POST "$panel/exec
 curl -fs -H "Authorization: Bearer $extra_token" "$panel/api/executors/me" | grep -q e2e-extra || fail "the enrolled credential does not identify its node"
 if curl -fs -o /dev/null -H 'Content-Type: application/json' -X POST "$panel/executor/redeem" -d "{\"code\":\"$enroll_code\"}"; then fail "an enrolment code worked twice"; fi
 echo "Node enrolled with a one-use code"
+# Local CI is the owner's choice per repository, never the default; switching it off is audited.
+curl -fs -u "admin:$password" "$panel/api/repos/e2e/demo/ci" | grep -q '"local":false' || fail "a repository starts with local CI"
+owner /repos/e2e/demo/ci '{"local":false}' | grep -q '"local":false' || fail "local CI could not be kept off"
+if owner /repos/e2e/demo/ci '{"local":"yes"}' > /dev/null 2>&1; then fail "a malformed CI mode was accepted"; fi
+echo "CI mode per repository: GitHub's by default"
 owner /repos/e2e/demo/agents '{"roles":{"research":{"system":"MARCA-NAPOLEON"},"implement":{"system":"MARCA-BOXER"},"review":{"system":"MARCA-BENJAMIN"}},"skills":[{"id":"casa-e2e","title":"Casa","roles":["implement"],"text":"MARCA-SKILL"}]}' \
   | python3 -c 'import json,sys;d=json.load(sys.stdin);assert d["roles"]["research"]["custom"] and d["skills"][0]["id"]=="casa-e2e", d' || fail "the agent profile was not saved"
 curl -fs -u "admin:$password" "$panel/api/repos/e2e/demo/agents/export?format=gemini" | grep -q "MARCA-SKILL" || fail "the Gemini export lacks the skill"

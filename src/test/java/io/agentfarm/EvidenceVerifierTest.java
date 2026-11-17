@@ -33,7 +33,19 @@ class EvidenceVerifierTest {
           "total_count",
           1,
           "check_runs",
-          List.of(obj("name", "AgentFarm unit", "status", status, "conclusion", conclusion)));
+          // As GitHub reports it: for this commit, run by GitHub Actions.
+          List.of(
+              obj(
+                  "name",
+                  "AgentFarm unit",
+                  "status",
+                  status,
+                  "conclusion",
+                  conclusion,
+                  "head_sha",
+                  sha,
+                  "app",
+                  obj("id", 15368, "slug", "github-actions"))));
     if (path.contains("/status")) return n("total_count", 0, "state", "pending");
     if (path.startsWith("/pulls/")) return pull;
     if (path.contains("/compare/")) {

@@ -25,7 +25,7 @@ def merged_tree(sha):
 
 
 # What the App was created with (GitHubAppSetup.PERMISSIONS).
-APP_PERMISSIONS = {"metadata": "read", "checks": "read", "vulnerability_alerts": "read", "statuses": "read",
+APP_PERMISSIONS = {"metadata": "read", "checks": "write", "vulnerability_alerts": "read", "statuses": "read",
                    "contents": "write", "pull_requests": "write", "actions": "read", "issues": "write", "workflows": "write"}
 
 class Handler(BaseHTTPRequestHandler):
@@ -91,8 +91,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, [])
         if re.fullmatch(r"/repos/e2e/demo/commits/\w+/check-runs", path) and os.path.exists(state + ".no-ci"):
             return self.reply(200, {"total_count": 0, "check_runs": []})
-        if re.fullmatch(r"/repos/e2e/demo/commits/\w+/check-runs", path):
-            runs = [{"name": "AgentFarm " + k, "status": "completed", "conclusion": "success"} for k in ("unit", "integration")]
+        if m := re.fullmatch(r"/repos/e2e/demo/commits/(\w+)/check-runs", path):
+            # Like GitHub: for the commit asked about, run by GitHub Actions.
+            runs = [{"name": "AgentFarm " + k, "status": "completed", "conclusion": "success", "head_sha": m.group(1),
+                     "app": {"id": 15368, "slug": "github-actions"}} for k in ("unit", "integration")]
             return self.reply(200, {"total_count": len(runs), "check_runs": runs})
         if re.fullmatch(r"/repos/e2e/demo/commits/\w+/status", path):
             return self.reply(200, {"total_count": 0, "state": "pending"})

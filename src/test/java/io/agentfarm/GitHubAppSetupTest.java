@@ -105,7 +105,10 @@ class GitHubAppSetupTest {
         "GitHub rejects a hook URL it cannot reach, and a local panel needs no webhook");
     assertEquals(false, started.get("webhook"));
     assertEquals("write", manifest.path("default_permissions").path("contents").asText());
-    assertEquals("read", manifest.path("default_permissions").path("checks").asText());
+    assertEquals(
+        "write",
+        manifest.path("default_permissions").path("checks").asText(),
+        "local CI publishes the verification the panel ordered");
     assertEquals(
         "write",
         manifest.path("default_permissions").path("issues").asText(),
