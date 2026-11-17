@@ -68,6 +68,7 @@ if [[ -n "$code" ]]; then
   redeemed="$(printf '{"code":"%s"}' "$code" | curl -fsS --max-time 15 -H 'Content-Type: application/json' -d @- "$panel/executor/redeem")" ||
     die "El panel no aceptó el código: caduca a los 15 minutos y solo vale una vez. Genera otro en Agentes → Añadir nodo."
   token="$(grep -oE '"token" *: *"afn_[A-Za-z0-9_-]{43}"' <<<"$redeemed" | head -1 | sed -E 's/.*"(afn_[^"]*)"$/\1/')"
+  via_code=1
   unset redeemed code
 elif [[ -n "$token_file" ]]; then
   [[ -r "$token_file" ]] || die "No se puede leer $token_file."
@@ -135,7 +136,7 @@ TEXT
 fi
 "$root/install-executor.sh" "$env_file" "" "$name"
 echo "Servicio en marcha: systemctl --user status $unit_name"
-if [[ -n "$code" ]]; then
+if [[ -n "${via_code:-}" ]]; then
   echo "Vuelve al panel: en Agentes, el nodo $node aparecerá con señal en menos de un minuto."
 else
   echo "Vuelve al panel y pulsa Comprobar conexión en Conectar ejecutor."

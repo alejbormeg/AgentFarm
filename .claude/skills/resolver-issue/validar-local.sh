@@ -63,6 +63,7 @@ step java -jar target/agentfarm.jar memory --file examples/project-memory.json -
 step java -jar target/agentfarm.jar memory --file agentfarm-memory.json --repository alejbormeg/AgentFarm >/dev/null
 step bash runtime/verify.sh
 step bash runtime/package.sh
+step bash tests/executor_install.sh
 step bash tests/security_scan.sh
 step bash tests/vendor_inventory.sh
 
