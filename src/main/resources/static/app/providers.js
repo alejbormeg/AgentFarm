@@ -1,21 +1,7 @@
 import { E, api, button } from "./lib.js";
+import { NAMES, fallbacks, nodeFiles, steps } from "./provider-steps.js";
 
-const NAMES = { codex: "Codex (ChatGPT)", "claude-code": "Claude Code", antigravity: "Antigravity (Gemini)" };
 const ROLES = { research: "Napoleon · investiga", implement: "Boxer · implementa", review: "Benjamin · revisa" };
-// What the owner does on the node's machine: credentials never pass through the panel.
-const STEPS = {
-  codex: ["En el equipo del nodo: codex login (sesión de tu suscripción).", "Comprueba con: codex login status."],
-  "claude-code": [
-    "En Presupuesto crea una cuenta de cuota de modo api (USD): es el tope de gasto de Claude.",
-    "En el equipo del nodo guarda tu clave de Anthropic en ~/.local/state/agentfarm/anthropic-api-key (chmod 600).",
-    "Añade AGENTFARM_CLAUDE_ACCOUNT=<tu cuenta> a ~/.config/agentfarm/executor.env y reinicia: systemctl --user restart agentfarm-executor.",
-  ],
-  antigravity: [
-    "En el equipo del nodo ejecuta agy una vez e inicia sesión con tu cuenta de Google.",
-    "En Presupuesto crea una cuenta de cuota de modo api (USD): es el tope de gasto, estimado por tokens; la cuota real de tu plan de Google no se puede leer.",
-    "Añade AGENTFARM_ANTIGRAVITY_ACCOUNT=<tu cuenta> a ~/.config/agentfarm/executor.env y reinicia: systemctl --user restart agentfarm-executor.",
-  ],
-};
 
 // Which provider each role uses on each node. A drawer built once, refilled on open, so the poll
 // never erases a choice being made.
@@ -58,6 +44,8 @@ export const withProviders = (Base) =>
         } catch (e) {
           problem.textContent = e.message;
         }
+        for (const f of fallbacks(chosen, seen?.roles))
+          box.append(E("p", ROLES[f.role].split(" · ")[0] + ": elegiste " + NAMES[f.chosen] + ", pero no está listo en este nodo, así que sigue con " + (NAMES[f.running] || f.running) + ". Conéctalo abajo.", "note-line"));
         const selects = {};
         for (const role of Object.keys(ROLES)) {
           const select = E("select");
@@ -97,11 +85,12 @@ export const withProviders = (Base) =>
         const guide = E("details");
         guide.dataset.key = "providers-guide-" + node.id;
         guide.append(E("summary", "Cómo conectar una cuenta"));
-        for (const [provider, steps] of Object.entries(STEPS)) {
+        const files = nodeFiles(seen?.state_dir);
+        for (const provider of Object.keys(NAMES)) {
           const info = seen?.providers?.[provider];
           guide.append(E("h4", NAMES[provider] + (seen ? (info?.ready ? " · listo" : info?.installed ? " · instalado, falta configurar" : " · no instalado") : "")));
           const list = E("ol");
-          for (const step of steps) list.append(E("li", step));
+          for (const step of steps(provider, files)) list.append(E("li", step));
           guide.append(list);
         }
         box.append(guide);

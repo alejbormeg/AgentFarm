@@ -54,6 +54,9 @@ java_major="$(java -XshowSettings:properties -version 2>&1 | sed -n 's/^ *java.s
 docker info >/dev/null 2>&1 || die "Docker no responde. En WSL, abre Docker Desktop y activa la integración con esta distribución."
 if command -v codex >/dev/null; then
   codex login status >/dev/null 2>&1 || die "Codex no tiene sesión. Entra con: codex login"
+else
+  # Every role starts on Codex; another provider is only used once it is set up and chosen.
+  echo "Aviso: sin Codex, este nodo no trabajará hasta que conectes otro proveedor y lo elijas para cada rol en Agentes → Proveedores." >&2
 fi
 systemd=1
 systemctl --user show-environment >/dev/null 2>&1 || systemd=0
@@ -132,4 +135,8 @@ TEXT
 fi
 "$root/install-executor.sh" "$env_file" "" "$name"
 echo "Servicio en marcha: systemctl --user status $unit_name"
-echo "Vuelve al panel y pulsa Comprobar conexión en Conectar ejecutor."
+if [[ -n "$code" ]]; then
+  echo "Vuelve al panel: en Agentes, el nodo $node aparecerá con señal en menos de un minuto."
+else
+  echo "Vuelve al panel y pulsa Comprobar conexión en Conectar ejecutor."
+fi
