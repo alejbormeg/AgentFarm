@@ -253,7 +253,9 @@ for name, job in jobs.items():
     if mode == "host":
         assert "container" not in job, job
     else:
-        assert job["container"]["image"] == "bash:5.2", job
+        # The sandbox image on GitHub runners; none on an own runner named by AGENTFARM_RUNNER.
+        assert job["container"] == "${{ !vars.AGENTFARM_RUNNER && %sbash:5.2%s || %s%s }}" % ((chr(39),) * 4), job
+    assert job["runs-on"] == "${{ vars.AGENTFARM_RUNNER || %subuntu-24.04%s }}" % ((chr(39),) * 2), job
 print("CI template runs in the sandbox image:", mode != "host")
 ' "$sandbox"
 

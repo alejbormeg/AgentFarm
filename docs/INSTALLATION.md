@@ -261,6 +261,17 @@ modifica los workflows propios del proyecto queda como PR en borrador
 (`workflow_changes` en la evidencia): ese cambio debe revisarlo una persona,
 porque podría debilitar la misma comprobación que lo valida.
 
+### Sin minutos de Actions: un runner propio
+El workflow que añade AgentFarm corre en los runners de GitHub, salvo que el
+repositorio defina la variable `AGENTFARM_RUNNER` (Settings → Secrets and
+variables → Actions → Variables) con la etiqueta de un runner autoalojado. Con
+ella, los trabajos van a ese runner y se ejecutan en él directamente, sin el
+contenedor del sandbox: el runner necesita lo que pida el `setup` del perfil (por
+ejemplo, `apt-get` como root). Usa un runner efímero, aislado y solo para ese
+repositorio privado: ejecuta el código de las PR. Si borras la variable, vuelven
+los runners de GitHub. Un repositorio con CI propia elige su runner en sus
+propios workflows.
+
 ## Prompts versionados
 Las instrucciones de investigación, implementación y revisión viven en
 `src/main/resources/prompts/*.vN.md`. La propuesta y la evidencia guardan el id
