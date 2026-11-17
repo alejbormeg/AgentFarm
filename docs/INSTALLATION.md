@@ -270,6 +270,19 @@ el panel exige, en vez de la CI de GitHub, sus propios checks `AgentFarm local �
 mismo nombre de otro emisor, o de otro commit, no cuenta. La verificación la ejecuta un nodo de
 la granja, así que no es una CI independiente. Nunca se activa sola.
 
+Se elige en el cajón **Agentes** del repositorio, en «Dónde corre la CI». Para cada candidato en
+revisión, el panel:
+1. Ordena una verificación del commit exacto, una sola vez por commit.
+2. Un ejecutor clona el repositorio en una carpeta nueva y se coloca en ese commit. Ejecuta en su
+   sandbox los comandos de la propuesta **aprobada**, nunca los que traiga el candidato, y devuelve
+   el resultado.
+3. El panel publica `AgentFarm local · unit` e `integration` con su App. El token del ejecutor no
+   puede escribir checks.
+
+Si la orden no llega a ejecutarse, se repite a los 10 minutos. Si GitHub rechaza el check, se
+reintenta en el siguiente ciclo. `GET /api/work/{id}/verifications` muestra en qué punto está cada
+commit.
+
 ### Sin minutos de Actions: un runner propio
 El workflow que añade AgentFarm corre en los runners de GitHub, salvo que el
 repositorio defina la variable `AGENTFARM_RUNNER` (Settings → Secrets and

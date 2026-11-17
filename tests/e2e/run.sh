@@ -517,3 +517,30 @@ wait_for proposed 60
 grep -qx ghs_e2e_repo_demo "$work/gh.json.tokens" || fail "the executor did not use a token limited to the repository"
 if grep -qx ghs_e2e "$work/gh.json.tokens"; then fail "the executor used a token for every repository"; fi
 echo "The executor used a short-lived token for one repository"
+
+# Local CI (#241): the owner chooses it for a repository; the panel orders a verification of the
+# candidate, an executor runs the approved commands on that commit, and the panel publishes the
+# checks with its App. Only then does the evidence count the local checks.
+owner /repos/e2e/demo/ci '{"local":true}' | grep -q '"local":true' || fail "local CI could not be chosen with the App"
+item=e2e-request-local
+owner /work '{"request_id":"e2e-request-local","repository":"e2e/demo","title":"Nota","request":"Añade una nota de prueba en tests/."}' > /dev/null
+wait_for proposed 60
+owner /work/e2e-request-local/actions/implement '{"version":1}' > /dev/null
+wait_for review 150
+app_sha=$(curl -fs -u "admin:$password" "$panel/api/work/e2e-request-local" | python3 -c 'import json,sys;print(json.load(sys.stdin)["sha"])')
+for _ in $(seq 1 90); do
+  [[ -f "$work/gh.json.checks" ]] && grep -q "$app_sha" "$work/gh.json.checks" && break
+  sleep 2
+done
+python3 - "$work/gh.json.checks" "$app_sha" <<'PY' || fail "the panel did not publish the local checks: $(cat "$work/gh.json.checks" 2>/dev/null)"
+import json, sys
+runs = [r for r in json.load(open(sys.argv[1])) if r["head_sha"] == sys.argv[2]]
+names = sorted(r["name"] for r in runs)
+assert names == ["AgentFarm local · integration", "AgentFarm local · unit"], names
+for r in runs:
+    assert r["conclusion"] == "success", r
+    assert "no es una CI independiente" in r["output"]["summary"], r
+PY
+curl -fs -u "admin:$password" "$panel/api/work/e2e-request-local/verifications" | grep -q '"state":"published"' \
+  || fail "the task does not show its local verification as published"
+echo "Local CI: the panel ordered, an executor ran and the panel published the checks for $app_sha"

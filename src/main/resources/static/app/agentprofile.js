@@ -1,4 +1,5 @@
 import { E, api, button } from "./lib.js";
+import { ciSection } from "./cimode.js";
 
 const ROLE_NAMES = { research: "Napoleon · investiga", implement: "Boxer · implementa", review: "Benjamin · revisa" };
 const SOURCES = { upload: "Subida por ti", github: "GitHub", anthropic: "Anthropic", openai: "OpenAI", gemini: "Google Gemini" };
@@ -33,6 +34,7 @@ export const withProfile = (Base) =>
       root.replaceChildren(
         E("h3", repo),
         E("p", "Lo que escribas aquí se añade a las instrucciones de cada agente en este repositorio. No amplía permisos: manda siempre el alcance que aprobaste.", "muted"),
+        ciSection(repo),
       );
       for (const role of ["research", "implement", "review"]) {
         const r = profile.roles[role];

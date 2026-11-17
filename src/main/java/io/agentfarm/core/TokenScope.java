@@ -20,6 +20,8 @@ public final class TokenScope {
     p.put("issues", "read");
     switch (kind) {
       case "review_existing" -> {}
+      // Local CI (#241): it only clones the candidate to run the approved tests on it.
+      case "verify" -> {}
       // Every order opens by making sure the task has its issue (FarmDaemon.ensureIssue), and the
       // first one, the research, is the one that creates it. Writing issues is all it adds.
       case "research" -> p.put("issues", "write");

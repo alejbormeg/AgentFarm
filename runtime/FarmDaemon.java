@@ -1617,6 +1617,48 @@ public class FarmDaemon extends CodexRunner {
     Files.delete(JOURNAL);
   }
 
+  /**
+   * Local CI (#241): runs the commands the panel sends, which come from the approved proposal, on a
+   * fresh checkout of exactly the ordered commit, in the sandbox. No agent turn, no quota. Whatever
+   * goes wrong is reported as an error, so the panel orders it again instead of blocking the task.
+   */
+  static void verifyCandidate(JsonNode item, JsonNode order) throws Exception {
+    String sha = order.path("sha").asText();
+    Path checkout = WORK.resolve("verify-" + task.commandId);
+    var answer = obj("agent", CLAIMANT, "sha", sha);
+    try {
+      if (!sha.matches("[a-f0-9]{40}") || !sha.equals(item.path("sha").asText()))
+        throw new IOException("La orden no trae el SHA del candidato");
+      githubAccess();
+      Files.createDirectories(WORK);
+      deleteTree(checkout);
+      task.checkout = checkout;
+      process(STATE, 120, GH, "repo", "clone", task.repo, checkout.toString());
+      gitAt("fetch", "origin", order.path("branch").asText());
+      gitAt("checkout", "--detach", sha);
+      if (!gitAt("rev-parse", "HEAD").trim().equals(sha))
+        throw new IOException("El checkout no está en el commit ordenado");
+      event("command", "CI local de " + sha.substring(0, 12));
+      answer.put("results", runTests(order, sha));
+    } catch (Exception e) {
+      event("error", "CI local: " + e.getMessage());
+      answer.put("error", clean(String.valueOf(e.getMessage())));
+    } finally {
+      try {
+        deleteTree(checkout);
+      } catch (IOException ignored) {
+      }
+    }
+    post("/work/agent/commands/" + task.commandId + "/verification", answer);
+  }
+
+  static void deleteTree(Path root) throws IOException {
+    if (!Files.exists(root)) return;
+    try (var paths = Files.walk(root)) {
+      for (var path : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path);
+    }
+  }
+
   static void work(JsonNode claim) throws Exception {
     task = new Task(claim);
     var item = claim.path("item");
@@ -1627,6 +1669,14 @@ public class FarmDaemon extends CodexRunner {
     boolean reserved = false;
     int initial = 0;
     String reservation = "work-" + task.commandId;
+    if (kind.equals("verify")) {
+      try {
+        verifyCandidate(item, JSON.readTree(cmd.path("payload").asText()));
+      } finally {
+        task = null;
+      }
+      return;
+    }
     try {
       githubAccess();
       int issue = ensureIssue(item);
