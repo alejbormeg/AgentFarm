@@ -222,6 +222,18 @@ public class FarmDaemon extends CodexRunner {
     }
   }
 
+  /** How far apart two readings of one weekly reset may be and still be the same window. */
+  static final long RESET_DRIFT_SECONDS = 120;
+
+  /** The end of the panel's weekly window this reset belongs to, or 0 if none is that close. */
+  static long sameWindow(JsonNode windows, long reset) {
+    for (var w : windows)
+      if (w.path("period").asText().equals("weekly")
+          && Math.abs(w.path("end").asLong() - reset) <= RESET_DRIFT_SECONDS)
+        return w.path("end").asLong();
+    return 0;
+  }
+
   static synchronized void refreshQuota() throws Exception {
     subscriptionIdentity();
     var r = rpc("account/rateLimits/read", null);
@@ -233,10 +245,15 @@ public class FarmDaemon extends CodexRunner {
     Files.writeString(STATE.resolve("quota.json"), quota.toString());
     try {
       var status = get("/budget/" + ACCOUNT);
-      boolean matching = false;
-      for (var w : status.path("windows"))
-        if (w.path("period").asText().equals("weekly") && w.path("end").asLong() == reset)
-          matching = true;
+      long known = sameWindow(status.path("windows"), reset);
+      boolean matching = known != 0;
+      if (matching && known != reset) {
+        // Codex's reset time moves by a second or so between readings: it is the same window, and
+        // the panel must see the end it already knows, or every later reading looks like a new one.
+        reset = known;
+        ((com.fasterxml.jackson.databind.node.ObjectNode) quota).put("resets_at", reset);
+        Files.writeString(STATE.resolve("quota.json"), quota.toString());
+      }
       if (!matching && task == null)
         post(
             "/budget/rollover",
