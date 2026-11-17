@@ -58,6 +58,16 @@ public class RuntimeChecks {
         new String(process.getInputStream().readAllBytes()).equals(value)
             && process.waitFor() == 0);
     check(!FarmDaemon.clean(null).isBlank());
+    // Codex's weekly reset drifts by a second between readings; the panel's window is kept.
+    var windows = CodexRunner.JSON.readTree("[{\"period\":\"weekly\",\"end\":1795332359}]");
+    check(FarmDaemon.sameWindow(windows, 1795332360) == 1795332359);
+    check(FarmDaemon.sameWindow(windows, 1795332359) == 1795332359);
+    check(FarmDaemon.sameWindow(windows, 1795332359 + 604800) == 0);
+    check(
+        FarmDaemon.sameWindow(
+                CodexRunner.JSON.readTree("[{\"period\":\"daily\",\"end\":1795332359}]"),
+                1795332359)
+            == 0);
     // A GitHub answer longer than what is kept for display, with a warning on stderr, still parses.
     String big =
         FarmDaemon.processWhole(

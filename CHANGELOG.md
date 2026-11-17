@@ -7,6 +7,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 ## Sin publicar — camino a la versión 1.0
 
 - El instalador por código ya no acaba con «code: unbound variable». Su prueba, `tests/executor_install.sh`, pasa a ejecutarse en `validar-local.sh` y en la CI (#245).
+- La hora de renovación semanal de Codex varía un segundo entre lecturas. El ejecutor ya la reconoce como la misma ventana y no deja el presupuesto en pausa ni bloquea la admisión (#246).
 - **CI local, segunda parte** (#241): con CI local elegida para un repositorio, el panel ordena una verificación de cada candidato en revisión. Un ejecutor ejecuta en su sandbox los comandos aprobados sobre un clon nuevo de ese commit, y el panel publica `AgentFarm local · unit`/`integration` con su App, rotulados «no es una CI independiente». Así se puede integrar aunque GitHub no ejecute Actions. El interruptor está en el cajón de agentes del repositorio.
 - **CI local, primera parte** (#241, parte de #157):
   - Cada check cuenta solo para su commit y de su emisor: los de la plantilla, de GitHub Actions; los locales, de la App del panel; la CI propia, de cualquiera menos AgentFarm. Un check con un nombre prestado ya no puede aprobar ni tumbar un candidato.
