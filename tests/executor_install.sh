@@ -88,6 +88,8 @@ grep -qx "AGENTFARM_NODE=install-node-2" "$env2" || fail "the second executor.en
 grep -qx "AGENTFARM_STATE=$HOME/.local/state/agentfarm-install-node-2" "$env2" || fail "the second executor shares a state directory"
 [[ -f "$HOME/.config/systemd/user/agentfarm-executor-install-node-2.service" ]] || fail "the second executor has no unit of its own"
 grep -q 'restart agentfarm-executor-install-node-2.service' "$work/systemctl.log" || fail "the second service was not started"
+grep -q 'el nodo install-node-2 aparecerá con señal' <<<"$out" || fail "a code install points to Conectar ejecutor: $out"
+grep -q 'Conectar ejecutor' <<<"$out" && fail "a code install points to Conectar ejecutor: $out"
 [[ "$(cat "$env_file")" == "$before" ]] || fail "installing a second executor changed the first"
 # A refusal because it is already installed must not spend a fresh code.
 fresh="$(owner /executors/enroll '{"node":"install-node-2","account":"install-account"}')"

@@ -63,6 +63,10 @@ public class TelemetryService {
             "build",
             "sandbox_failure",
             "isolation_notice",
+            // The provider drawer reads these: what each role runs and what each provider lacks.
+            "roles",
+            "providers",
+            "state_dir",
             "model",
             "session",
             "observed_at",

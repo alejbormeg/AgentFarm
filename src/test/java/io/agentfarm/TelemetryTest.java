@@ -57,6 +57,30 @@ class TelemetryTest {
   }
 
   @Test
+  void keepsWhatTheProviderDrawerNeeds() {
+    var t = new TelemetryService(new Store(dir.resolve("db").toString()), clock);
+    t.ingest(
+        MAPPER.valueToTree(
+            obj(
+                "snapshot",
+                obj(
+                    "node",
+                    "n",
+                    "roles",
+                    obj("implement", "claude-code"),
+                    "providers",
+                    obj("antigravity", obj("ready", false, "installed", true)),
+                    "state_dir",
+                    "~/.local/state/agentfarm-n"),
+                "events",
+                List.of())));
+    String seen = encode(t.snapshot());
+    assertTrue(seen.contains("claude-code"), "the role the node really runs: " + seen);
+    assertTrue(seen.contains("\"installed\":true"), "what each provider lacks: " + seen);
+    assertTrue(seen.contains("agentfarm-n"), "where the node keeps its files: " + seen);
+  }
+
+  @Test
   void staleQuotaCannotBecomeFreshByRepostingSnapshot() {
     var store = new Store(dir.resolve("db").toString());
     var service = new TelemetryService(store, clock);

@@ -365,10 +365,22 @@ public class FarmDaemon extends CodexRunner {
     };
   }
 
+  static final Set<String> UNREADY_WARNED = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
   static String providerFor(String role) {
     String p = System.getProperty("agentfarm.provider." + role, "codex");
     String chosen = ownerRoles.path(role).asText("");
     if (!chosen.isEmpty() && providerReady(chosen)) p = chosen;
+    else if (!chosen.isEmpty() && UNREADY_WARNED.add(role + "=" + chosen))
+      // Said once per choice: the panel shows it beside the choice, this is for the node's own log.
+      System.err.println(
+          "Provider "
+              + chosen
+              + " chosen for "
+              + role
+              + " is not ready on this node; using "
+              + p
+              + ". See Agentes → Proveedores.");
     if (!Set.of("codex", "claude-code", "antigravity").contains(p))
       throw new IllegalArgumentException("Unknown provider for " + role + ": " + p);
     return p;
@@ -1726,6 +1738,12 @@ public class FarmDaemon extends CodexRunner {
             sandboxFailure,
             "isolation_notice",
             CLAUDE_NOTICE.get(),
+            // Where this node keeps its files, so the panel's provider steps name the real ones.
+            "state_dir",
+            STATE
+                .toString()
+                .replaceFirst(
+                    "^" + java.util.regex.Pattern.quote(System.getProperty("user.home")), "~"),
             "roles",
             obj(
                 "research", providerFor("research"),
