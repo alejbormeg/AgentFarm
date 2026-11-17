@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class GitHubAppSetup {
-  /** What docs/TEAM.md lists: only what integration and the triggers read or write. */
+  /** What docs/TEAM.md lists: only what integration, local CI and the triggers read or write. */
   static final Map<String, String> PERMISSIONS =
       // Issues and workflows are for the executor: it opens the issue and may add the CI template.
       Map.of(
@@ -31,7 +31,8 @@ public class GitHubAppSetup {
           "issues", "write",
           "workflows", "write",
           "actions", "read",
-          "checks", "read",
+          // Write: with local CI (#241) the panel publishes the verification it ordered.
+          "checks", "write",
           "statuses", "read",
           "vulnerability_alerts", "read",
           "metadata", "read");

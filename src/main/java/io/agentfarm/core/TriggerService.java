@@ -26,6 +26,14 @@ public class TriggerService {
   private final GitHubReader github;
   private final SentryReader sentry;
 
+  // The panel's own App, set at startup by io.agentfarm.adapters.CiModes: a failed local check is
+  // the panel's own verdict on the candidate, not review feedback to act on.
+  private volatile java.util.function.Supplier<String> panelApp = () -> "";
+
+  public void usePanelApp(java.util.function.Supplier<String> panelApp) {
+    this.panelApp = panelApp;
+  }
+
   public TriggerService(Store db, Clock clock, WorkflowService work, GitHubReader github) {
     this(db, clock, work, github, new SentryReader("", "https://sentry.io"));
   }
@@ -357,7 +365,8 @@ public class TriggerService {
         }
       for (var check :
           gh.get(repo, "/commits/" + sha + "/check-runs?per_page=100").path("check_runs"))
-        if (Set.of("failure", "timed_out").contains(check.path("conclusion").asText())) {
+        if (!io.agentfarm.adapters.CiPolicy.ours(check, panelApp.get())
+            && Set.of("failure", "timed_out").contains(check.path("conclusion").asText())) {
           keys.add("check:" + repo + ":" + check.path("id").asLong());
           notes.add(
               "Check "

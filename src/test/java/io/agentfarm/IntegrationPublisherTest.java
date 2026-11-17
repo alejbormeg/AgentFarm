@@ -104,7 +104,18 @@ class IntegrationPublisherTest {
                         "total_count",
                         1,
                         "check_runs",
-                        List.of(obj("name", "unit", "status", "completed", "conclusion", ci))));
+                        List.of(
+                            obj(
+                                "name",
+                                "unit",
+                                "status",
+                                "completed",
+                                "conclusion",
+                                ci,
+                                "head_sha",
+                                sha,
+                                "app",
+                                obj("id", 15368, "slug", "github-actions")))));
           else if (request.uri().getPath().endsWith("/status")) body = "{\"total_count\":0}";
           else if (request.uri().getPath().endsWith("/reviews")) body = "[]";
           else

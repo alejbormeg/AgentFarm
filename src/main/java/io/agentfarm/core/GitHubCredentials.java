@@ -121,6 +121,12 @@ public class GitHubCredentials {
     }
   }
 
+  /** The connected App's id, which GitHub reports as {@code app.id} on its checks; or "". */
+  public String appId() {
+    var app = app();
+    return app == null ? "" : app.id();
+  }
+
   public String mode() {
     return app() != null ? "github-app" : configured() ? "token-file" : "none";
   }

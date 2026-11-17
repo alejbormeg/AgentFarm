@@ -41,6 +41,17 @@ public class EvidenceVerifier {
     this.ciPatienceSeconds = ciPatienceSeconds;
   }
 
+  // Which repositories use the panel's local CI, and the panel's own App: set at startup by
+  // io.agentfarm.adapters.CiModes. Until then nothing is local and no check is the panel's.
+  private volatile java.util.function.Predicate<String> localCi = repo -> false;
+  private volatile java.util.function.Supplier<String> panelApp = () -> "";
+
+  public void useCiPolicy(
+      java.util.function.Predicate<String> localCi, java.util.function.Supplier<String> panelApp) {
+    this.localCi = localCi;
+    this.panelApp = panelApp;
+  }
+
   public record Assessment(String state, String reason, Map<String, Object> detail) {}
 
   /** Time one cycle may spend on GitHub; what is left waits for the next one. */
@@ -139,10 +150,16 @@ public class EvidenceVerifier {
             : 0;
     Assessment result;
     try {
+      boolean local = localCi.test(repo);
       result =
           assess(
-              parse(item.get("evidence").toString()),
-              github.get(repo, "/commits/" + sha + "/check-runs?per_page=100"),
+              io.agentfarm.adapters.CiPolicy.evidence(
+                  parse(item.get("evidence").toString()), local),
+              io.agentfarm.adapters.CiPolicy.checks(
+                  github.get(repo, "/commits/" + sha + "/check-runs?per_page=100"),
+                  sha,
+                  panelApp.get(),
+                  local),
               github.get(repo, "/commits/" + sha + "/status"),
               github.get(repo, "/compare/" + scope.get("base_sha") + "..." + sha));
       result = explainDelay(result, waited > ciPatienceSeconds ? waited : 0);
