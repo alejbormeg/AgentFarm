@@ -131,5 +131,7 @@ class ScheduledWorkTest {
     assertEquals(List.of("/pulls/1", "/pulls/2", "/pulls/3", "/pulls/4"), asked);
     verifier.tick(1);
     assertEquals("/pulls/1", asked.get(4), "wraps around");
+    verifier.tick(0);
+    assertEquals("/pulls/2", asked.get(5), "a budget spent before the first task still checks one");
   }
 }
