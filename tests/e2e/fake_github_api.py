@@ -95,6 +95,9 @@ class Handler(BaseHTTPRequestHandler):
             # Like GitHub: for the commit asked about, run by GitHub Actions.
             runs = [{"name": "AgentFarm " + k, "status": "completed", "conclusion": "success", "head_sha": m.group(1),
                      "app": {"id": 15368, "slug": "github-actions"}} for k in ("unit", "integration")]
+            # And whatever the panel published for that commit with its App (local CI).
+            if os.path.exists(state + ".checks"):
+                runs += [r for r in json.load(open(state + ".checks")) if r["head_sha"] == m.group(1)]
             return self.reply(200, {"total_count": len(runs), "check_runs": runs})
         if re.fullmatch(r"/repos/e2e/demo/commits/\w+/status", path):
             return self.reply(200, {"total_count": 0, "state": "pending"})
@@ -119,6 +122,14 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(201, {"id": 4242, "slug": "agentfarm-e2e", "pem": open(os.environ["E2E_APP_PEM"]).read()})
         if not self.headers.get("Authorization", "").startswith("Bearer "):
             return self.reply(401, {"message": "Bad credentials"})
+        if self.path == "/repos/e2e/demo/check-runs":
+            # Only the panel's own installation token may publish: never an executor's.
+            if self.headers["Authorization"] != "Bearer ghs_e2e":
+                return self.reply(403, {"message": "Resource not accessible by integration"})
+            runs = json.load(open(state + ".checks")) if os.path.exists(state + ".checks") else []
+            runs.append({**body, "app": {"id": 4242, "slug": "agentfarm-e2e"}})
+            json.dump(runs, open(state + ".checks", "w"))
+            return self.reply(201, runs[-1])
         if re.fullmatch(r"/app/installations/\d+/access_tokens", self.path):
             if body.get("repositories"):
                 # Like GitHub: the token carries the permissions asked for, or all of the App's.

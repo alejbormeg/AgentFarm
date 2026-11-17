@@ -149,6 +149,12 @@ def answer(thread, prompt):
         with open(os.path.join(thread["cwd"], "tests", "fixture.txt"), "w") as f:
             f.write("token=ghp_" + "E2E" * 12 + "\n" + "inofensivo\n" * 40000)
         return {"summary": "Añadido un fixture", "as_is": V6["as_is"], "to_be": V6["to_be"], "limitations": "Ninguna"}
+    if "nota de prueba" in prompt and thread["sandbox"] == "workspace-write":
+        # Inside the adopted profile's allowed paths, for a task after the adoption (local CI).
+        os.makedirs(os.path.join(thread["cwd"], "tests"), exist_ok=True)
+        with open(os.path.join(thread["cwd"], "tests", "nota.txt"), "w") as f:
+            f.write("nota\n")
+        return {"summary": "Añadida una nota", "as_is": V6["as_is"], "to_be": V6["to_be"], "limitations": "Ninguna"}
     if "Corrige el saludo" in prompt and thread["sandbox"] == "workspace-write":
         os.makedirs(os.path.join(thread["cwd"], "tests"), exist_ok=True)
         with open(os.path.join(thread["cwd"], "fixed.txt"), "w") as f:

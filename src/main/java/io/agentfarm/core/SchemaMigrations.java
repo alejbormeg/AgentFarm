@@ -54,7 +54,16 @@ public class SchemaMigrations {
               "repositories whose CI the panel runs locally",
               List.of(
                   "CREATE TABLE repo_ci_modes(repo TEXT PRIMARY KEY,actor TEXT NOT NULL,at INTEGER"
-                      + " NOT NULL)")));
+                      + " NOT NULL)")),
+          // One row per verification order; a commit that failed to run gets a new one (#241).
+          new Migration(
+              7,
+              "local CI verifications ordered by the panel",
+              List.of(
+                  "CREATE TABLE local_verifications(command TEXT PRIMARY KEY,item TEXT NOT NULL"
+                      + " REFERENCES work_items(id),sha TEXT NOT NULL,state TEXT NOT NULL,reason"
+                      + " TEXT NOT NULL,results TEXT NOT NULL,at INTEGER NOT NULL)",
+                  "CREATE INDEX local_verifications_item ON local_verifications(item,sha)")));
 
   // Services create their baseline tables in their constructors; depending on them orders this.
   public SchemaMigrations(
