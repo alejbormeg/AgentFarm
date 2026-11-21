@@ -327,6 +327,7 @@ class FarmApp extends withGroups(withIssues(withProviders(withNodes(withProfile(
       const twoFactor = ["overview", "tasks"].includes(route) && this.me.role === "owner" ? await api("/me/2fa").catch(() => null) : null;
       const autopilot = usesTasks ? await api("/autopilot/tasks").catch(() => null) : null;
       const autopilotRepos = route === "governance" ? await api("/autopilot/repos").catch(() => []) : [];
+      const parts = usesTasks ? await api("/parts").then((r) => r.parts).catch(() => []) : [];
       const repoGroups = route === "governance" ? await api("/repo-groups").then((r) => r.groups).catch(() => []) : [];
       const extra = route === "governance" ? await api("/audit") : null;
       const githubApp = route === "governance" && this.me.role === "owner" ? await api("/github-app").catch(() => null) : null;
@@ -346,7 +347,7 @@ class FarmApp extends withGroups(withIssues(withProviders(withNodes(withProfile(
           })),
         );
       }
-      this.data = { runtime, overview, work, extra, dossiers, initiatives, automation, twoFactor, autopilot, autopilotRepos, repoGroups, metrics, digest, costs, githubApp, requesters, providers, budgets, me: this.me };
+      this.data = { runtime, overview, work, extra, dossiers, initiatives, automation, twoFactor, autopilot, autopilotRepos, repoGroups, parts, metrics, digest, costs, githubApp, requesters, providers, budgets, me: this.me };
       this.notifyAttention(work);
       try {
         this.render();

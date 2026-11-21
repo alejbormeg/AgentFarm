@@ -19,6 +19,7 @@ public class WorkflowApi {
   private final io.agentfarm.adapters.AgentProfiles profiles;
   private final io.agentfarm.adapters.NodeProviders nodeProviders;
   private final io.agentfarm.adapters.Autopilot autopilot;
+  private final io.agentfarm.adapters.RepoGroups groups;
 
   public WorkflowApi(
       WorkflowService work,
@@ -30,7 +31,9 @@ public class WorkflowApi {
       io.agentfarm.core.GitHubCredentials credentials,
       io.agentfarm.adapters.AgentProfiles profiles,
       io.agentfarm.adapters.NodeProviders nodeProviders,
-      io.agentfarm.adapters.Autopilot autopilot) {
+      io.agentfarm.adapters.Autopilot autopilot,
+      io.agentfarm.adapters.RepoGroups groups) {
+    this.groups = groups;
     this.autopilot = autopilot;
     this.nodeProviders = nodeProviders;
     this.profiles = profiles;
@@ -154,6 +157,14 @@ public class WorkflowApi {
         copy.put("agent_profile", profiles.stored(String.valueOf(item.get("repo"))));
       } catch (IllegalArgumentException e) {
         // An old row with an odd repository name simply has no profile.
+      }
+      // The repositories this one integrates, as the owner declared them: Napoleon may split the
+      // change among them, but nothing reads or writes them from this task.
+      try {
+        var group = groups.get(String.valueOf(item.get("repo")));
+        if (group != null) copy.put("repo_group", group);
+      } catch (IllegalArgumentException e) {
+        // An old row with an odd repository name has no group.
       }
       if (p.getName().startsWith("node:"))
         try {

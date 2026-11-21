@@ -341,6 +341,7 @@ public class WorkflowService {
             clock.instant().getEpochSecond(),
             id);
         exec(c, "UPDATE work_items SET state='cancelled' WHERE id=? AND state=?", id, state);
+        if (parts != null && state.equals("coordinating")) parts.cancelChildren(c, id);
         audit(c, actor, "work.cancel", id + " desde " + state);
       } else {
         if (one(
@@ -352,9 +353,13 @@ public class WorkflowService {
           case "implement" -> {
             if (rule.version() && number(n, "version") != num(w, "version"))
               throw new IllegalArgumentException("Approve the current proposal version");
-            EvidenceService.capture(c, w);
-            command(c, id, "implement", obj("version", num(w, "version")));
-            exec(c, "UPDATE work_items SET state='approved',error=NULL WHERE id=?", id);
+            // A plan that splits the change opens one task per repository and only coordinates.
+            if (parts == null
+                || !parts.split(c, w, actor, request -> create(c, parse(request), actor))) {
+              EvidenceService.capture(c, w);
+              command(c, id, "implement", obj("version", num(w, "version")));
+              exec(c, "UPDATE work_items SET state='approved',error=NULL WHERE id=?", id);
+            }
           }
           case "merge" -> {
             if (w.get("pr") == null || !text(n, "sha").equals(w.get("sha")))
@@ -437,6 +442,32 @@ public class WorkflowService {
     this.autopilot = policy;
   }
 
+  /** Opens one task, inside the transaction that is approving the plan that asked for it. */
+  public interface Spawn {
+    void create(String requestJson) throws Exception;
+  }
+
+  /** A change that affects several repositories, split into one task per repository. */
+  public interface Parts {
+    /** The proposal with only the parts the owner's group for {@code repo} allows. */
+    String shape(Object tx, String item, String repo, String proposalJson);
+
+    boolean hasParts(String proposalJson);
+
+    /** True if it opened the tasks of the parts: the task then only coordinates them. */
+    boolean split(Object tx, Map<String, Object> item, String actor, Spawn spawn) throws Exception;
+
+    void childIntegrated(Object tx, String child) throws Exception;
+
+    void cancelChildren(Object tx, String parent) throws Exception;
+  }
+
+  private volatile Parts parts;
+
+  public void parts(Parts parts) {
+    this.parts = parts;
+  }
+
   public List<Map<String, Object>> autonomy() {
     return db.tx(c -> rows(c, "SELECT * FROM autonomy_policies ORDER BY recipe"));
   }
@@ -475,6 +506,8 @@ public class WorkflowService {
    */
   private void autoApprove(java.sql.Connection c, String id) throws Exception {
     var w = withRecipe(c, one(c, "SELECT * FROM work_items WHERE id=?", id));
+    // Fanning a change out to other repositories spends their quota: a person approves that.
+    if (parts != null && parts.hasParts(w.get("proposal").toString())) return;
     var recipe = MAPPER.valueToTree(w).path("recipe");
     String recipeId = recipe.path("id").asText();
     boolean viaAutopilot =
@@ -685,6 +718,14 @@ public class WorkflowService {
                     .toString());
         ApprovedCriteria.apply(c, id, previous, (com.fasterxml.jackson.databind.node.ObjectNode) p);
         io.agentfarm.adapters.ProposalGraph.apply(p);
+        if (parts != null)
+          p =
+              parse(
+                  parts.shape(
+                      c,
+                      id,
+                      one(c, "SELECT repo FROM work_items WHERE id=?", id).get("repo").toString(),
+                      encode(p)));
         EvidenceService.criteria(p);
         for (String key :
             List.of("summary", "acceptance", "as_is", "to_be", "unit_test", "integration_test"))
@@ -721,6 +762,7 @@ public class WorkflowService {
           id);
       exec(c, "UPDATE work_commands SET state='done' WHERE id=?", command);
       audit(c, agent, "work." + phase, id);
+      if (parts != null && phase.equals("integrated")) parts.childIntegrated(c, id);
       if (phase.equals("proposed")) autoApprove(c, id);
       if (phase.equals("review") && autopilot != null) {
         // One automatic correction for a task the owner chose to run on its own.

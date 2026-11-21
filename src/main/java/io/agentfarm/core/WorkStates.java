@@ -22,7 +22,7 @@ public final class WorkStates {
           "retry", new Rule(Set.of("blocked"), "queued", false),
           "cancel",
               new Rule(
-                  Set.of("queued", "approved", "proposed", "review", "blocked"),
+                  Set.of("queued", "approved", "proposed", "review", "blocked", "coordinating"),
                   "cancelled",
                   false),
           // Integrated stays integrated: a revert is a new task, linked to it, through every gate.

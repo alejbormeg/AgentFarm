@@ -44,6 +44,14 @@ public final class GitHubText {
     var out = new StringBuilder("Closes #" + issue);
     String source = sourceIssue(item);
     if (source != null) out.append("\nCloses #").append(source);
+    // A part of a change among repositories points at the integrator's issue; only the part the
+    // panel marked as the last one may close it, and only from the integrator's own repository.
+    var whole = ORIGIN_PART.matcher(item.path("request").asText(""));
+    if (whole.find()) {
+      boolean same = whole.group(1).equalsIgnoreCase(item.path("repo").asText(""));
+      if (same && whole.group(3) != null) out.append("\nCloses #").append(whole.group(2));
+      else out.append("\nParte de ").append(whole.group(1)).append('#').append(whole.group(2));
+    }
     out.append("\n\n## Qué resuelve\n").append(clip(item.path("request").asText(), 400));
     out.append("\n\n## Resultado\n")
         .append(clip(firstParagraph(plain(change.path("summary"))), 700));
@@ -74,6 +82,10 @@ public final class GitHubText {
       java.util.regex.Pattern.compile(
           "\\AOrigen: issue https://github\\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/issues/([0-9]{1,9})(?:\\s|\\z)");
 
+  private static final java.util.regex.Pattern ORIGIN_PART =
+      java.util.regex.Pattern.compile(
+          "\\AParte de: https://github\\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)/issues/([0-9]{1,9})( · cierra)?(?:\\s|\\z)");
+
   /**
    * The GitHub issue a task came from, to close it with the PR. Read from the first line of the
    * request, which the panel writes from GitHub's own URL (never from the author's text), and only
@@ -92,6 +104,15 @@ public final class GitHubText {
     var out = new StringBuilder(head.isEmpty() ? "Sin resumen." : "**" + clip(head, 200) + "**");
     list(out, "Cambiará", p.path("will_change"));
     list(out, "No se tocará", p.path("will_not_change"));
+    var parts = p.path("parts");
+    if (parts.isArray() && !parts.isEmpty()) {
+      out.append("\n\nSe reparte en una tarea por repositorio:");
+      for (var part : parts)
+        out.append("\n- `")
+            .append(clip(part.path("repo").asText(), 100))
+            .append("`: ")
+            .append(clip(part.path("title").asText(), 160));
+    }
     return out.toString();
   }
 

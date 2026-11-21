@@ -952,7 +952,9 @@ public class FarmDaemon extends CodexRunner {
                 "feedback",
                 payload.path("feedback").asText(),
                 "recipe",
-                io.agentfarm.core.ExecutorWork.recipeContext(item)));
+                io.agentfarm.core.ExecutorWork.recipeContext(item),
+                "group",
+                io.agentfarm.adapters.GroupPrompt.context(item)));
     var skills = skills("research", profile == null ? List.of() : profile.skills());
     String prompt =
         rendered.text() + io.agentfarm.core.ExecutorWork.adoptionContract(item) + skills.text();

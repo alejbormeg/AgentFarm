@@ -276,6 +276,8 @@ export const withTask = (Base) =>
       if (["proposed", "review"].includes(w.state)) task.append(E("p", whyYou(w)));
       const glance = this.glance(w, json(w.proposal), json(w.evidence));
       if (glance) task.append(glance);
+      const parts = this.partsBlock(w, json(w.proposal));
+      if (parts) task.append(parts);
       const dossier = this.data.dossiers?.find((d) => d.item === w.id);
       task.append(this.taskDecision(w, dossier, json(w.proposal)));
       task.append(journey(w, dossier, json(w.evidence)));
@@ -619,6 +621,45 @@ export const withTask = (Base) =>
         );
       return box;
     }
+    // A change among repositories: the plan lists its parts, the coordinating task follows them and
+    // each part says which change it belongs to.
+    partsBlock(w, p) {
+      const all = this.data.parts || [];
+      const mine = all.filter((x) => x.parent === w.id);
+      const up = all.find((x) => x.child === w.id);
+      if (!mine.length && !up && !p.parts?.length && !p.parts_problem) return null;
+      const box = E("section", "", "parts-block");
+      box.dataset.key = "parts-" + w.id;
+      if (p.parts_problem)
+        box.append(E("p", "Napoleon propuso repartir el cambio, pero no se puede: " + p.parts_problem + " Se aprobará como un cambio normal de este repositorio, o devuélvelo con una corrección.", "notice warn"));
+      if (up) {
+        const parent = (this.data.work || []).find((x) => x.id === up.parent);
+        const line = E("p", "Es la parte " + (up.idx + 1) + " de un cambio que afecta a varios repositorios" + (parent ? ": «" + parent.title + "» (" + parent.repo + ")." : "."));
+        box.append(line);
+        if (parent) box.append(button("Ver el cambio completo", () => this.showTask(parent.id), "quiet"));
+      }
+      if (mine.length) {
+        const done = mine.filter((x) => x.child_state === "integrated").length;
+        box.append(E("h4", "Partes: " + done + " de " + mine.length + " integradas"));
+        const ul = E("ul");
+        for (const x of mine) {
+          const li = E("li", x.repo + " — " + x.title + " · " + (names[x.child_state] || x.child_state) + " ");
+          li.append(button("Ver tarea", () => this.showTask(x.child), "quiet"));
+          ul.append(li);
+        }
+        box.append(ul);
+        box.append(E("p", "Cada parte investiga, se aprueba y se integra en su repositorio. Una parte espera a que se integren las que necesita. Cuando se integren todas, este cambio se da por terminado.", "muted"));
+      } else if (p.parts?.length) {
+        box.append(E("h4", "Se reparte en una tarea por repositorio"));
+        const ul = E("ul");
+        p.parts.forEach((x, i) =>
+          ul.append(E("li", (i + 1) + ". " + x.repo + " — " + x.title + (x.depends_on?.length ? " (después de " + x.depends_on.map((d) => d + 1).join(", ") + ")" : "") + (x.closes_parent ? " · cierra la issue de este cambio" : ""))),
+        );
+        box.append(ul);
+        box.append(E("p", "Al aprobar se crea una tarea por parte, cada una en su repositorio y con su propio perfil. Tendrás que aprobar el plan de cada una. Investigar y aprobar gasta cuota en cada repositorio.", "muted"));
+      }
+      return box;
+    }
     // A typed diagram, with the draw.io file of the same drawing.
     graphFigure(graph, id) {
       const figure = E("figure", "", "dgram");
@@ -647,7 +688,7 @@ export const withTask = (Base) =>
       if (w.state === "proposed" && this.data.me?.role !== "observer")
         actions.append(
           button(
-            "Implementar propuesta v" + w.version,
+            p.parts?.length ? "Aprobar y repartir en " + p.parts.length + " tareas (v" + w.version + ")" : "Implementar propuesta v" + w.version,
             () =>
               this.action("/work/" + w.id + "/actions/implement", {
                 version: w.version,
@@ -746,6 +787,15 @@ export const withTask = (Base) =>
               : "El agente la deja al terminar su paso actual. Lo que ya esté publicado (una rama o una PR en GitHub) sigue allí: ciérralo tú si no lo quieres. No se puede deshacer; para retomarla tendrás que pedirla de nuevo.",
             "Sí, cancelar la tarea",
             () => this.action("/work/" + w.id + "/actions/cancel", { version: w.version }, "Tarea cancelada."),
+          ),
+        );
+      if (canAct && w.state === "coordinating")
+        actions.append(
+          confirmButton(
+            "Cancelar el cambio completo",
+            "Se cancelan las partes que aún no se han integrado. Las que ya están integradas en su repositorio se quedan como están: para deshacerlas hay que revertirlas una a una. Las PR ya publicadas siguen en GitHub: ciérralas tú si no las quieres.",
+            "Sí, cancelar el cambio",
+            () => this.action("/work/" + w.id + "/actions/cancel", { version: w.version }, "Cambio cancelado."),
           ),
         );
       return actions;
