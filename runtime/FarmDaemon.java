@@ -383,8 +383,11 @@ public class FarmDaemon extends CodexRunner {
     if (System.currentTimeMillis() - modelsAt < 600_000) return;
     modelsAt = System.currentTimeMillis();
     var out = JSON.createObjectNode();
+    // What was known stays if a provider cannot be asked right now.
+    availableModels.properties().forEach(e -> out.set(e.getKey(), e.getValue()));
+    boolean failed = false;
     try {
-      var list = out.putArray("codex");
+      var list = JSON.createArrayNode();
       for (var m : rpc("model/list", obj("limit", 100)).path("data")) {
         if (m.path("hidden").asBoolean(false)
             || !m.path("model").asText("").matches("[A-Za-z0-9._:-]{1,64}")) continue;
@@ -398,8 +401,13 @@ public class FarmDaemon extends CodexRunner {
                     "default",
                     m.path("isDefault").asBoolean(false))));
       }
+      out.set("codex", list);
     } catch (Exception e) {
-      out.remove("codex");
+      failed = true;
+      System.err.println(
+          "Modelos de Codex: no se pudo leer la lista ("
+              + clean(String.valueOf(e.getMessage()))
+              + ")");
     }
     if (onPath(ANTIGRAVITY))
       try {
@@ -408,7 +416,7 @@ public class FarmDaemon extends CodexRunner {
         String text =
             new String(p.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
         if (!p.waitFor(15, TimeUnit.SECONDS)) p.destroyForcibly();
-        var list = out.putArray("antigravity");
+        var list = JSON.createArrayNode();
         for (String line : text.split("\\R")) {
           var parts = line.strip().split("\\s{2,}", 2);
           if (parts.length > 0 && parts[0].matches("[a-z0-9.-]{1,64}"))
@@ -416,10 +424,17 @@ public class FarmDaemon extends CodexRunner {
                 JSON.valueToTree(
                     obj("id", parts[0], "name", parts.length > 1 ? parts[1].strip() : parts[0])));
         }
+        out.set("antigravity", list);
       } catch (Exception e) {
-        out.remove("antigravity");
+        failed = true;
+        System.err.println(
+            "Modelos de Antigravity: no se pudo leer la lista ("
+                + clean(String.valueOf(e.getMessage()))
+                + ")");
       }
     availableModels = out;
+    // A failed read is tried again in a minute, not in ten.
+    if (failed) modelsAt = System.currentTimeMillis() - 540_000;
   }
 
   static boolean startedWithCodex() {
