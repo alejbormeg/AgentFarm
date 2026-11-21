@@ -170,6 +170,12 @@ def answer(thread, prompt):
         return {"summary": "Añadido greeting.txt", "as_is": V6["as_is"], "to_be": V6["to_be"], "limitations": "Ninguna"}
     if prompt.startswith("Revisión independiente"):
         return {"passed": True, "findings": "Cumple los criterios; sin hallazgos bloqueantes."}
+    # A change among repositories: the prompt carries the group, so the plan names its parts.
+    if "Repositorios que integra este repositorio" in prompt and "Reparte el cambio" in prompt and not prompt.startswith("Revisión independiente"):
+        return dict(PROPOSAL, parts=[
+            {"repo": "e2e/demo", "title": "Contrato del saludo", "request": "Define el saludo en greeting.txt", "depends_on": []},
+            {"repo": "e2e/demo", "title": "Cierre del saludo", "request": "Documenta el saludo", "depends_on": [0]},
+        ])
     if "otro saludo" in prompt:
         doubtful = {"id": "AC-3", "description": "El proceso corre como root", "method": "test", "checks": ["unit"]}
         return dict(PROPOSAL, criteria=PROPOSAL["criteria"] + [doubtful])

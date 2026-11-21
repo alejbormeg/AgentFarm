@@ -17,6 +17,7 @@ jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/
 jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/ProposalGraph.class
 jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/GitHubText.class
 jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/ProfilePrompt.class
+jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/GroupPrompt.class
 jar --update --file "$out/executor.jar" -C target/classes io/agentfarm/adapters/AntigravityAdapter.class
 jar --update --file "$out/executor.jar" -C target/classes 'io/agentfarm/adapters/AntigravityAdapter$Result.class'
 jar --update --file "$out/executor.jar" -C target/classes 'io/agentfarm/adapters/AntigravityAdapter$Failed.class'

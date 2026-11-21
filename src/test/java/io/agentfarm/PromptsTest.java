@@ -23,9 +23,11 @@ class PromptsTest {
                 "feedback",
                 "",
                 "recipe",
+                "",
+                "group",
                 ""));
-    assertEquals("research.v7", research.id());
-    assertEquals(Json.sha256(Prompts.template("research.v7")), research.hash());
+    assertEquals("research.v8", research.id());
+    assertEquals(Json.sha256(Prompts.template("research.v8")), research.hash());
     assertTrue(research.text().contains("Arregla {{repo}}"), "values are not re-expanded");
     assertFalse(research.text().contains("{{sandbox}}"));
     assertDoesNotThrow(() ->
@@ -67,7 +69,9 @@ class PromptsTest {
                     "feedback",
                     "",
                     "recipe",
-                    "\n## Receta bugfix"))
+                    "\n## Receta bugfix",
+                    "group",
+                    ""))
             .text();
     var fence = java.util.regex.Pattern.compile("«datos ([0-9a-f]{16})»\n").matcher(text);
     assertTrue(fence.find(), text);

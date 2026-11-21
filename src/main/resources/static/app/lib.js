@@ -7,6 +7,7 @@ export const names = {
   blocked: "Bloqueada",
   cancelled: "Cancelada",
   integrating: "Integrando",
+  coordinating: "Coordinando las partes",
 };
 export const E = (tag, text, cls) => {
   const e = document.createElement(tag);
@@ -27,7 +28,7 @@ export const pill = (text, cls = "") => E("span", text, "pill " + cls);
 export const columns = [
   { title: "Investigación", states: ["queued"] },
   { title: "Espera tu aprobación", states: ["proposed"], you: true },
-  { title: "Implementación", states: ["approved"] },
+  { title: "Implementación", states: ["approved", "coordinating"] },
   { title: "Espera tu revisión", states: ["review", "integrating"], you: true },
   { title: "Bloqueadas", states: ["blocked"], stop: true },
   { title: "Cerradas", states: ["integrated", "cancelled"] },
@@ -86,6 +87,7 @@ export const attention = {
   review: 0,
   blocked: 1,
   integrating: 2,
+  coordinating: 2,
   approved: 2,
   queued: 3,
   integrated: 4,

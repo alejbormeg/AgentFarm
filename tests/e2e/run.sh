@@ -335,6 +335,31 @@ owner /repo-groups/e2e/demo/delete '{}' > /dev/null
 curl -fs -u "admin:$password" "$panel/api/repo-groups" | grep -q '"groups":\[\]' || fail "the repository group was not removed"
 echo "Repository group saved, validated and removed"
 
+# A change among repositories: the integrator's plan names its parts, approving it opens one task per
+# part, a part waits for the one it depends on, and cancelling the change cancels what is left.
+owner /repo-groups/e2e/demo '{"members":[{"repo":"e2e/skills","role":"Habilidades"}]}' > /dev/null
+owner /work '{"request_id":"e2e-request-parts","repository":"e2e/demo","title":"Saludo en dos partes","request":"Reparte el cambio del saludo en dos partes."}' > /dev/null
+item=e2e-request-parts
+wait_for proposed 240
+parts_state() { curl -fs -u "admin:$password" "$panel/api/work/e2e-request-parts" | python3 -c 'import json,sys;w=json.load(sys.stdin);p=json.loads(w["proposal"]) if isinstance(w["proposal"],str) else w["proposal"];assert len(p["parts"])==2 and p["parts"][1]["closes_parent"] is True and "parts_problem" not in p, p;print(w["version"])'; }
+version="$(parts_state)" || fail "the plan did not carry its parts"
+if [[ -n "${E2E_CHROME:-}" ]]; then
+  SMOKE_PARTS=e2e-request-parts CHROME="$E2E_CHROME" node "$root/tests/ui/smoke.mjs" "$panel" "$password" || fail "browser smoke test of the parts"
+else
+  owner /work/e2e-request-parts/actions/implement "{\"version\":$version}" > /dev/null
+fi
+curl -fs -u "admin:$password" "$panel/api/parts" | python3 -c 'import json,sys;p=json.load(sys.stdin)["parts"];assert [x["idx"] for x in p]==[0,1] and all(x["parent"]=="e2e-request-parts" for x in p), p' || fail "the parts were not opened as tasks"
+curl -fs -u "admin:$password" "$panel/api/work/e2e-request-parts" | grep -q '"state":"coordinating"' || fail "the split task is not coordinating"
+first=$(curl -fs -u "admin:$password" "$panel/api/parts" | python3 -c 'import json,sys;print(json.load(sys.stdin)["parts"][0]["child"])')
+second=$(curl -fs -u "admin:$password" "$panel/api/parts" | python3 -c 'import json,sys;print(json.load(sys.stdin)["parts"][1]["child"])')
+for i in $(seq 1 120); do curl -fs -u "admin:$password" "$panel/api/work/$first" | grep -q '"state":"proposed"' && break; sleep 1; done
+curl -fs -u "admin:$password" "$panel/api/work/$first" | grep -q '"state":"proposed"' || fail "the first part did not reach its plan"
+curl -fs -u "admin:$password" "$panel/api/work/$second" | grep -q '"state":"queued"' || fail "the dependent part did not wait for the first"
+owner /work/e2e-request-parts/actions/cancel '{}' > /dev/null
+for t in e2e-request-parts "$first" "$second"; do curl -fs -u "admin:$password" "$panel/api/work/$t" | grep -q '"state":"cancelled"' || fail "cancelling the change left $t running"; done
+owner /repo-groups/e2e/demo/delete '{}' > /dev/null
+echo "A change was split into parts, the dependent one waited and cancelling stopped them all"
+
 # A credential at the start of a large diff stops the task before anything is pushed: the
 # runtime keeps only the tail of a command's output, so the scan must read Git directly.
 item=e2e-request-leak

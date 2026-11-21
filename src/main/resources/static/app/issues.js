@@ -1,6 +1,6 @@
 import { E, api, button, link } from "./lib.js";
 
-const STATE_NAMES = { queued: "en cola", proposed: "esperando tu aprobación", approved: "lista para implementar", review: "resultado disponible", integrated: "integrada", blocked: "bloqueada", cancelled: "cancelada", integrating: "integrando" };
+const STATE_NAMES = { queued: "en cola", proposed: "esperando tu aprobación", approved: "lista para implementar", review: "resultado disponible", integrated: "integrada", blocked: "bloqueada", cancelled: "cancelada", integrating: "integrando", coordinating: "coordinando las partes" };
 
 // The open issues of an adopted repository, for the owner to choose which ones the agents start on.
 // A drawer built once and refilled on open, so the 2 s poll never erases what is ticked.

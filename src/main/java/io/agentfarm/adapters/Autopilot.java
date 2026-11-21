@@ -154,6 +154,37 @@ public final class Autopilot implements WorkflowService.Autopilot {
     });
   }
 
+  /**
+   * Same as {@link #mark} for a task created inside a transaction already open, as the owner's
+   * choice for that repository (the part of a change a repository takes runs as that repository is
+   * set).
+   */
+  public boolean markIn(Object tx, String item, String repoName, String actor) {
+    try {
+      var c = (Connection) tx;
+      if (actor.startsWith("node:")
+          || actor.startsWith("requester:")
+          || actor.startsWith("trigger:")) return false;
+      if (num(
+              one(
+                  c,
+                  "SELECT COALESCE((SELECT enabled FROM repo_autopilot WHERE repo=?),0) enabled",
+                  repo(repoName)),
+              "enabled")
+          != 1) return false;
+      exec(
+          c,
+          "INSERT OR IGNORE INTO work_autopilot(item,created,actor) VALUES(?,?,?)",
+          item,
+          clock.instant().getEpochSecond(),
+          actor);
+      audit(c, actor, "autopilot.mark", item);
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
   /** Tasks running on their own, with the correction rounds each has used. */
   public Map<String, Integer> marked() {
     return db.tx(c -> {

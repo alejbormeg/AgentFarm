@@ -175,6 +175,19 @@ class RepoIssuesTest {
     assertEquals("Closes #3\n", pr("o/r", "Arregla algo").substring(0, 10));
   }
 
+  @Test
+  void aPartOfAChangePointsAtTheParentAndOnlyTheLastOneCloses() {
+    String header = "Parte de: https://github.com/o/forja/issues/9";
+    assertTrue(pr("o/api", header + "\nresto").contains("\nParte de o/forja#9"));
+    assertFalse(pr("o/api", header + "\nresto").contains("Closes #9"), "a member never closes it");
+    assertFalse(pr("o/api", header + " · cierra\nresto").contains("Closes #9"));
+    assertTrue(pr("o/forja", header + " · cierra\nresto").contains("\nCloses #9"));
+    assertFalse(pr("o/forja", header + "\nresto").contains("Closes #9"), "not marked as the last");
+    assertFalse(
+        pr("o/api", "texto\n" + header + " · cierra").contains("Parte de o/forja"),
+        "only the first line counts");
+  }
+
   static String pr(String repo, String request) {
     var item = parse(encode(Map.of("repo", repo, "request", request)));
     var ok = parse("{\"status\":\"passed\"}");

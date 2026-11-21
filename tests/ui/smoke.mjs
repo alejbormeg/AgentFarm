@@ -196,8 +196,25 @@ const checkNotices = async () => {
   check(exceptions.length === 0, `the notices throw nothing ${exceptions.slice(0, 2).join(" | ")}`);
 };
 
+// A plan that splits the change among repositories: shown to the owner, approved with one click.
+const checkParts = async () => {
+  await login("admin", password);
+  await go("/tasks?tarea=" + process.env.SMOKE_PARTS);
+  check(await until(() => visible("Se reparte en una tarea por repositorio")), "a plan with parts shows how it splits");
+  check(await visible("Contrato del saludo") && (await visible("Cierre del saludo")), "the parts are listed by title");
+  check(await visible("cierra la issue de este cambio"), "the part that closes the parent's issue is marked");
+  check(await js(`${all}.some(e=>e.tagName==='BUTTON'&&e.textContent.trim().startsWith('Aprobar y repartir en 2 tareas'))`), "approving says it splits into tasks");
+  await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim().startsWith('Aprobar y repartir en 2 tareas')).click()`);
+  check(await until(() => visible("Partes: 0 de 2 integradas")), "the coordinating task follows its parts");
+  check(await visible("Contrato del saludo") && (await visible("Cierre del saludo")), "the coordinating task lists its parts");
+  check(await visible("Cancelar el cambio completo"), "the whole change can be cancelled");
+  check(exceptions.length === 0, `the parts view throws nothing ${exceptions.slice(0, 2).join(" | ")}`);
+};
+
 try {
-  if (process.env.SMOKE_NOTICES) {
+  if (process.env.SMOKE_PARTS) {
+    await checkParts();
+  } else if (process.env.SMOKE_NOTICES) {
     await checkNotices();
   } else {
     await send("Network.clearBrowserCookies");

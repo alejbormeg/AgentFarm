@@ -1882,3 +1882,5 @@ ol.commandments {
 .issue-row label { display: flex; gap: 0.5rem; align-items: baseline; }
 .groups .group, .groups .group-form { border: 1px solid var(--line, #8884); border-radius: 8px; padding: 0.5rem 0.75rem; margin-block: 0.5rem; display: grid; gap: 0.35rem; }
 .groups textarea, .groups input { width: 100%; }
+.parts-block { border: 1px solid var(--line, #8884); border-radius: 8px; padding: 0.5rem 0.75rem; margin-block: 0.75rem; display: grid; gap: 0.35rem; }
+.parts-block h4, .parts-block p, .parts-block ul { margin: 0; }

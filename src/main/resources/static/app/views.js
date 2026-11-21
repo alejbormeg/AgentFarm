@@ -298,7 +298,7 @@ export const withViews = (Base) =>
       if (first) this.live.append(first);
       this.live.append(up);
 
-      const moving = work.filter((w) => ["queued", "approved", "integrating"].includes(w.state)).sort(byAttention);
+      const moving = work.filter((w) => ["queued", "approved", "integrating", "coordinating"].includes(w.state)).sort(byAttention);
       const finished = work.filter((w) => ["integrated", "cancelled"].includes(w.state)).sort(byRecentlyClosed);
       this.live.append(this.statusStrip(yours.length, moving.length || (busy ? 1 : 0), finished.length));
 

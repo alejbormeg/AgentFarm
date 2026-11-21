@@ -91,6 +91,15 @@ public final class RepoGroups {
     return out;
   }
 
+  /** Same as {@link #members(String)} inside a transaction that is already open. */
+  static Set<String> membersIn(java.sql.Connection c, String integrator) throws Exception {
+    var out = new LinkedHashSet<String>();
+    for (var m :
+        rows(c, "SELECT repo FROM repo_group_members WHERE integrator=? ORDER BY repo", integrator))
+      out.add(m.get("repo").toString());
+    return out;
+  }
+
   /** Every group a repository belongs to, as a member or as integrator. */
   public List<Map<String, Object>> of(String repoName) {
     String repo = repo(repoName);
