@@ -5,6 +5,7 @@ import { withGovernance } from "./governance.js";
 import { withProfile } from "./agentprofile.js";
 import { withNodes } from "./nodes.js";
 import { withProviders } from "./providers.js";
+import { withGroups } from "./groups.js";
 import { withIssues } from "./issues.js";
 import { withTask } from "./task.js";
 import { withViews } from "./views.js";
@@ -18,7 +19,7 @@ const ROUTES = [
 ];
 const THEME_NAMES = { auto: "Tema: como el sistema", light: "Tema: La ventana", dark: "Tema: Atardecer" };
 
-class FarmApp extends withIssues(withProviders(withNodes(withProfile(withGovernance(withViews(withTask(withForms(HTMLElement)))))))) {
+class FarmApp extends withGroups(withIssues(withProviders(withNodes(withProfile(withGovernance(withViews(withTask(withForms(HTMLElement))))))))) {
   connectedCallback() {
     if (this.content) return;
     this.farm = new FarmMap();
@@ -212,6 +213,9 @@ class FarmApp extends withIssues(withProviders(withNodes(withProfile(withGoverna
     const issues = this.drawer("Issues abiertas de GitHub");
     this.issuesDrawer = issues.dialog;
     issues.body.append(this.issuesForm());
+    const groups = this.drawer("Repositorios relacionados");
+    this.groupsDrawer = groups.dialog;
+    groups.body.append(this.groupsForm());
     const providers = this.drawer("Proveedores de los agentes");
     this.providerDrawer = providers.dialog;
     providers.body.append(this.providerForm());
@@ -248,7 +252,7 @@ class FarmApp extends withIssues(withProviders(withNodes(withProfile(withGoverna
     });
     this.fromUrl();
     this.classList.add("app");
-    this.append(side, main, this.newDrawer, this.adoptDrawer, this.secondFactorDrawer, this.nodeDrawer, this.issuesDrawer, this.providerDrawer, this.profileDrawer, this.taskDrawer);
+    this.append(side, main, this.newDrawer, this.adoptDrawer, this.secondFactorDrawer, this.nodeDrawer, this.issuesDrawer, this.groupsDrawer, this.providerDrawer, this.profileDrawer, this.taskDrawer);
     this.markNav();
   }
   drawer(name) {
@@ -323,6 +327,7 @@ class FarmApp extends withIssues(withProviders(withNodes(withProfile(withGoverna
       const twoFactor = ["overview", "tasks"].includes(route) && this.me.role === "owner" ? await api("/me/2fa").catch(() => null) : null;
       const autopilot = usesTasks ? await api("/autopilot/tasks").catch(() => null) : null;
       const autopilotRepos = route === "governance" ? await api("/autopilot/repos").catch(() => []) : [];
+      const repoGroups = route === "governance" ? await api("/repo-groups").then((r) => r.groups).catch(() => []) : [];
       const extra = route === "governance" ? await api("/audit") : null;
       const githubApp = route === "governance" && this.me.role === "owner" ? await api("/github-app").catch(() => null) : null;
       const requesters = route === "governance" && this.me.role === "owner" ? await api("/requesters").catch(() => null) : null;
@@ -341,7 +346,7 @@ class FarmApp extends withIssues(withProviders(withNodes(withProfile(withGoverna
           })),
         );
       }
-      this.data = { runtime, overview, work, extra, dossiers, initiatives, automation, twoFactor, autopilot, autopilotRepos, metrics, digest, costs, githubApp, requesters, providers, budgets, me: this.me };
+      this.data = { runtime, overview, work, extra, dossiers, initiatives, automation, twoFactor, autopilot, autopilotRepos, repoGroups, metrics, digest, costs, githubApp, requesters, providers, budgets, me: this.me };
       this.notifyAttention(work);
       try {
         this.render();
