@@ -59,6 +59,17 @@ public class NodeProviders {
         throw new IllegalArgumentException("Proveedor desconocido para " + role + ": " + provider);
       clean.put(role, provider);
     }
+    // The model per role, within the subscription: a slug the provider's own CLI accepts.
+    var models = clean.putObject("models");
+    for (String role : ROLES) {
+      String model = input.path("models").path(role).asText("");
+      if (model.isEmpty()) continue;
+      if (!model.matches("[a-z0-9.-]{1,64}"))
+        throw new IllegalArgumentException(
+            "Modelo no válido para " + role + ": solo minúsculas, números, puntos y guiones");
+      models.put(role, model);
+    }
+    if (models.isEmpty()) clean.remove("models");
     db.tx(c -> {
       if (one(c, "SELECT 1 FROM farm_nodes WHERE id=?", node) == null)
         throw new IllegalArgumentException("Nodo desconocido");

@@ -29,7 +29,7 @@ export const withProviders = (Base) =>
         return;
       }
       root.replaceChildren(
-        E("p", "Las claves y los inicios de sesión viven en el equipo de cada nodo: el panel nunca los ve. Aquí eliges qué proveedor usa cada agente y ves si está listo.", "muted"),
+        E("p", "Las claves y los inicios de sesión viven en el equipo de cada nodo: el panel nunca los ve. Aquí eliges qué proveedor y qué modelo usa cada agente (dentro de tu suscripción) y ves si está listo. Si dejas el modelo vacío se usa el del proveedor.", "muted"),
       );
       if (!nodes.length) root.append(E("p", "Añade un nodo primero.", "empty"));
       for (const node of nodes) {
@@ -47,6 +47,7 @@ export const withProviders = (Base) =>
         for (const f of fallbacks(chosen, seen?.roles))
           box.append(E("p", ROLES[f.role].split(" · ")[0] + ": elegiste " + NAMES[f.chosen] + ", pero no está listo en este nodo, así que sigue con " + (NAMES[f.running] || f.running) + ". Conéctalo abajo.", "note-line"));
         const selects = {};
+        const models = {};
         for (const role of Object.keys(ROLES)) {
           const select = E("select");
           select.setAttribute("aria-label", ROLES[role] + " en " + node.id);
@@ -64,6 +65,26 @@ export const withProviders = (Base) =>
           const label = E("label", ROLES[role]);
           label.append(select);
           box.append(label);
+          // The model of this role, from what the provider offers on that machine (or any id typed).
+          const model = E("input");
+          model.placeholder = "Modelo por defecto del proveedor";
+          model.setAttribute("aria-label", "Modelo de " + ROLES[role].split(" · ")[0] + " en " + node.id);
+          model.maxLength = 64;
+          model.value = chosen.models?.[role] || "";
+          const list = E("datalist");
+          list.id = "models-" + node.id + "-" + role;
+          model.setAttribute("list", list.id);
+          const offer = () => {
+            const provider = select.value || seen?.roles?.[role] || "codex";
+            const options = provider === "claude-code" ? CLAUDE_SUGGESTED : seen?.models?.[provider] || [];
+            list.replaceChildren(...options.map((o) => Object.assign(E("option", o.name || o.id), { value: o.id })));
+          };
+          select.addEventListener("change", offer);
+          offer();
+          models[role] = model;
+          const modelLabel = E("label", "Modelo de " + ROLES[role].split(" · ")[0]);
+          modelLabel.append(model, list);
+          box.append(modelLabel);
         }
         box.append(
           button(
@@ -72,8 +93,12 @@ export const withProviders = (Base) =>
               problem.textContent = "";
               try {
                 const roles = {};
-                for (const role of Object.keys(selects)) roles[role] = selects[role].value;
-                await api("/executors/" + encodeURIComponent(node.id) + "/providers", { roles });
+                const chosenModels = {};
+                for (const role of Object.keys(selects)) {
+                  roles[role] = selects[role].value;
+                  chosenModels[role] = models[role].value.trim();
+                }
+                await api("/executors/" + encodeURIComponent(node.id) + "/providers", { roles, models: chosenModels });
                 box.append(E("p", "Guardado. Se aplica a la próxima tarea que coja este nodo.", "done"));
               } catch (e) {
                 problem.textContent = e.message;

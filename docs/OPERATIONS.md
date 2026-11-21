@@ -120,3 +120,13 @@ o activa la autonomía de un repositorio en **Gobierno → Autonomía hasta la P
 Elegir una issue de una persona sin rol en el repositorio es tu decisión: su texto guiará al agente,
 y por eso la confirmación lo avisa. Cada aprobación automática queda en la auditoría como
 `policy:autopilot`.
+
+## Modelos por agente
+
+En **Agentes → Proveedores**, cada rol (Napoleon, Boxer, Benjamin) de cada nodo tiene un campo
+«Modelo». Se sugieren los que el ejecutor ve en su suscripción (Codex los pide a su app-server; con
+Antigravity, `agy models`; Claude no puede listarlos y se sugieren los actuales); también puedes
+escribir otro identificador (minúsculas, números, puntos y guiones). Se guarda en el panel, viaja con
+la orden y se aplica en el siguiente turno; vacío es el modelo por defecto del proveedor. El
+modelo que se usó queda en la evidencia de la tarea. Elegir un modelo no cambia lo que cuesta
+la suscripción: un modelo más potente consume más cuota.

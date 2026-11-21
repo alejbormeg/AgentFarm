@@ -66,6 +66,9 @@ public class TelemetryService {
             // The provider drawer reads these: what each role runs and what each provider lacks.
             "roles",
             "providers",
+            // The models each provider offers on that machine, and the owner's choice per role.
+            "models",
+            "model_choice",
             "state_dir",
             "model",
             "session",

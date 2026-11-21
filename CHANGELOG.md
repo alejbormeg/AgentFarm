@@ -6,6 +6,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 ## Sin publicar — camino a la versión 1.0
 
+- **Elegir el modelo de Napoleon, Boxer y Benjamin** desde Agentes → Proveedores, por nodo y por rol. El ejecutor informa de los modelos de tu suscripción (Codex: `model/list`; Antigravity: `agy models`; para Claude se sugieren los actuales y se puede escribir otro) y el elegido se aplica en el siguiente turno (`model` en el hilo de Codex, `--model` en Claude y Antigravity). Vacío significa el modelo por defecto del proveedor.
 - **Autonomía hasta la PR**: las tareas que eliges (casilla al traer issues o al crear una tarea, o un ajuste por repositorio en Gobierno → Autonomía hasta la PR) aprueban solas el plan de Napoleon, Boxer las implementa y tú solo aceptas la PR. Solo con las pruebas en contenedor, con el panel sin pausar y con un tope diario por repositorio; nunca en las adopciones, y el alcance sigue siendo el del perfil aprobado. Si el resultado falla, hacen una ronda de corrección y paran para que decidas. Las tareas autónomas llevan una etiqueta «Autónoma».
 - El instalador por código ya no acaba con «code: unbound variable». Su prueba, `tests/executor_install.sh`, pasa a ejecutarse en `validar-local.sh` y en la CI (#245).
 - La hora de renovación semanal de Codex varía un segundo entre lecturas. El ejecutor ya la reconoce como la misma ventana y no deja el presupuesto en pausa ni bloquea la admisión (#246).
