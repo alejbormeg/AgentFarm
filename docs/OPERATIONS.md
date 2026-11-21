@@ -102,3 +102,21 @@ apruebes no se implementa nada. Las que ya tienen tarea salen marcadas y no se p
 que abre AgentFarm para seguir sus tareas no se ofrecen. El disparador `labeled_issue` (etiqueta
 `agentfarm`) sigue funcionando y comparte la misma clave, así que nunca abre dos tareas por la
 misma issue. Al integrar la PR de una tarea nacida de una issue, esta se cierra con `Closes #N`.
+
+## Autonomía hasta la PR
+
+Por defecto el plan de Napoleon espera tu aprobación. Para que una tarea trabaje sola hasta la PR
+márcala al crearla («Que trabajen de forma autónoma hasta la PR» en Nueva tarea o en Traer issues)
+o activa la autonomía de un repositorio en **Gobierno → Autonomía hasta la PR**. Entonces:
+
+- El plan se aprueba solo si las pruebas corren en el contenedor, el plan trae criterios, el panel
+  no está pausado y no se ha llegado al tope diario del repositorio (10 por defecto). Los criterios
+  manuales se te enseñan en la PR.
+- El alcance es el del perfil aprobado del repositorio (`allowed_paths`): la autonomía no lo amplía.
+- Si el resultado no pasa (pruebas, revisión de Benjamin o mandamientos), se hace **una** ronda de
+  corrección con lo que falló y, si sigue mal, la tarea espera en «Resultado disponible».
+- **Integrar sigue siendo tuyo.** Nunca se autoaprueba una adopción ni la memoria del proyecto.
+
+Elegir una issue de una persona sin rol en el repositorio es tu decisión: su texto guiará al agente,
+y por eso la confirmación lo avisa. Cada aprobación automática queda en la auditoría como
+`policy:autopilot`.

@@ -3,6 +3,7 @@ package io.agentfarm;
 import static io.agentfarm.core.Json.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.agentfarm.adapters.Autopilot;
 import io.agentfarm.adapters.RepoIssues;
 import io.agentfarm.core.*;
 import java.nio.file.Path;
@@ -61,7 +62,8 @@ class RepoIssuesTest {
         parse(
             "{\"request_id\":\"adopt-0001\",\"repository\":\"o/r\",\"title\":\"Adoptar o/r\",\"request\":\"Adopta\"}"),
         "owner");
-    return new RepoIssues(store, work, Clock.systemUTC(), github());
+    return new RepoIssues(
+        store, work, Clock.systemUTC(), github(), new Autopilot(store, Clock.systemUTC(), work));
   }
 
   @Test

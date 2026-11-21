@@ -321,6 +321,8 @@ class FarmApp extends withIssues(withProviders(withNodes(withProfile(withGoverna
       const digest = route === "overview" ? await api("/work/digest").catch(() => null) : null;
       const automation = ["overview", "tasks", "governance"].includes(route) ? await api("/automation").catch(() => null) : null;
       const twoFactor = ["overview", "tasks"].includes(route) && this.me.role === "owner" ? await api("/me/2fa").catch(() => null) : null;
+      const autopilot = usesTasks ? await api("/autopilot/tasks").catch(() => null) : null;
+      const autopilotRepos = route === "governance" ? await api("/autopilot/repos").catch(() => []) : [];
       const extra = route === "governance" ? await api("/audit") : null;
       const githubApp = route === "governance" && this.me.role === "owner" ? await api("/github-app").catch(() => null) : null;
       const requesters = route === "governance" && this.me.role === "owner" ? await api("/requesters").catch(() => null) : null;
@@ -339,7 +341,7 @@ class FarmApp extends withIssues(withProviders(withNodes(withProfile(withGoverna
           })),
         );
       }
-      this.data = { runtime, overview, work, extra, dossiers, initiatives, automation, twoFactor, metrics, digest, costs, githubApp, requesters, providers, budgets, me: this.me };
+      this.data = { runtime, overview, work, extra, dossiers, initiatives, automation, twoFactor, autopilot, autopilotRepos, metrics, digest, costs, githubApp, requesters, providers, budgets, me: this.me };
       this.notifyAttention(work);
       try {
         this.render();

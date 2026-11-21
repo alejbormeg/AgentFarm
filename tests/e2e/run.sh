@@ -311,6 +311,14 @@ grep -q '"state":"already"' <<<"$(owner /repos/e2e/demo/issues/start '{"numbers"
 if owner /repos/nobody/known/issues/start '{"numbers":[1]}' > /dev/null 2>&1; then fail "issues of an unknown repository were started"; fi
 echo "Open issues listed and started once"
 
+# Autonomy until the PR: a task the owner marks approves its own plan and reaches the PR on its own.
+owner /work '{"request_id":"e2e-request-auto","repository":"e2e/demo","title":"Saludo autónomo","request":"Crea greeting.txt con un saludo automático.","autopilot":true}' > /dev/null
+curl -fs -u "admin:$password" "$panel/api/autopilot/tasks" | grep -q '"e2e-request-auto"' || fail "the task was not marked to run on its own"
+item=e2e-request-auto
+wait_for review 240
+curl -fs -u "admin:$password" "$panel/api/audit" | python3 -c 'import json,sys;rows=json.load(sys.stdin);assert any(r["actor"]=="policy:autopilot" and r["action"]=="work.implement" and r["subject"].startswith("e2e-request-auto") for r in rows), "no autopilot approval in the audit"' || fail "the plan was not approved by the autopilot"
+echo "Autonomous task reached the PR by itself"
+
 # A credential at the start of a large diff stops the task before anything is pushed: the
 # runtime keeps only the tail of a command's output, so the scan must read Git directly.
 item=e2e-request-leak
@@ -480,7 +488,8 @@ owner "/work/$item/actions/merge" "{\"sha\":\"$sha\"}" > /dev/null
 wait_for integrated 30
 git -C "$work/remote.git" show main:agentfarm.yaml > /dev/null || fail "integration did not reach main"
 git -C "$work/remote.git" show main:adopted.txt > /dev/null || fail "integration did not reach main"
-python3 -c 'import json,sys;assert json.load(open(sys.argv[1]))["pulls"]["3"]["merged"] is True' "$work/gh.json" || fail "PR not merged"
+adopt_pr=$(curl -fs -u "admin:$password" "$panel/api/work/e2e-request-adopt" | python3 -c 'import json,sys;print(json.load(sys.stdin)["pr"])')
+python3 -c 'import json,sys;assert json.load(open(sys.argv[1]))["pulls"][sys.argv[2]]["merged"] is True' "$work/gh.json" "$adopt_pr" || fail "PR not merged"
 echo "Integrated from the panel by SHA: $sha"
 
 # Connecting GitHub from the panel: the manifest flow, then a real credential check with what it stored.

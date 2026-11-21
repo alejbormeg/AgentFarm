@@ -191,6 +191,19 @@ export const withGovernance = (Base) =>
         ),
       );
       section.append(memoryRow);
+      // Autonomy until the PR, per repository: the tasks the owner creates run on their own.
+      const repos = this.data.autopilotRepos || [];
+      if (repos.length) section.append(E("h3", "Autonomía hasta la PR"), E("p", "En un repositorio con esta autonomía, las tareas que tú creas (y las issues que eliges) aprueban solas el plan de Napoleon: tú solo aceptas la PR. Si el resultado falla, hacen una ronda de corrección y paran. Tope diario por repositorio; nunca en las adopciones, y la integración sigue siendo tuya.", "muted"));
+      for (const s of repos) {
+        const row = E("div", "", "setting");
+        row.append(E("span", s.repo + " · " + (s.enabled ? "autónomo hasta la PR (" + s.used_today + " hoy de " + s.daily_cap + ")" : "requiere aprobar el plan")));
+        if (owner)
+          row.append(button(s.enabled ? "Volver a manual" : "Activar autonomía", () => {
+            if (!s.enabled && !confirm(s.repo + ": las tareas que crees aquí aprobarán solas el plan de Napoleon y llegarán hasta la PR. Integrar seguirá exigiendo tu aprobación. ¿Activarlo?")) return;
+            return this.action("/autopilot/repos/" + s.repo, { enabled: !s.enabled, max_rounds: s.max_rounds, daily_cap: s.daily_cap });
+          }));
+        section.append(row);
+      }
       section.append(E("h3", "Disparadores por repositorio"));
       if (!a.github_configured)
         section.append(
