@@ -1,6 +1,7 @@
 package io.agentfarm.web;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.agentfarm.adapters.RepoCandidates;
 import io.agentfarm.adapters.RepoGroups;
 import java.security.Principal;
 import java.util.Map;
@@ -11,9 +12,18 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/repo-groups")
 public class RepoGroupApi {
   private final RepoGroups groups;
+  private final RepoCandidates candidates;
 
-  public RepoGroupApi(RepoGroups groups) {
+  public RepoGroupApi(RepoGroups groups, RepoCandidates candidates) {
     this.groups = groups;
+    this.candidates = candidates;
+  }
+
+  /** Suggestions read from GitHub (SecurityConfig: owner only); the owner chooses. */
+  @GetMapping("/{owner}/{name}/candidates")
+  public Object candidates(@PathVariable String owner, @PathVariable String name) {
+    return Map.of(
+        "candidates", candidates.find(owner + "/" + name, groups.members(owner + "/" + name)));
   }
 
   @GetMapping
