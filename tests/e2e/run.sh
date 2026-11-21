@@ -325,6 +325,15 @@ wait_for review 240
 curl -fs -u "admin:$password" "$panel/api/audit" | python3 -c 'import json,sys;rows=json.load(sys.stdin);assert any(r["actor"]=="policy:autopilot" and r["action"]=="work.implement" and r["subject"].startswith("e2e-request-auto") for r in rows), "no autopilot approval in the audit"' || fail "the plan was not approved by the autopilot"
 echo "Autonomous task reached the PR by itself"
 
+# Groups of repositories: only the owner declares them; what is not a repository is refused.
+owner /repo-groups/e2e/demo '{"members":[{"repo":"e2e/skills","role":"Habilidades"}]}' > /dev/null
+curl -fs -u "admin:$password" "$panel/api/repo-groups" | python3 -c 'import json,sys;g=json.load(sys.stdin)["groups"];assert [x["integrator"] for x in g]==["e2e/demo"] and g[0]["members"][0]["repo"]=="e2e/skills", g' || fail "the repository group was not saved"
+if owner /repo-groups/e2e/demo '{"members":[{"repo":"e2e/demo"}]}' > /dev/null 2>&1; then fail "an integrator was accepted as its own member"; fi
+if owner /repo-groups/e2e/demo '{"members":[{"repo":"../x"}]}' > /dev/null 2>&1; then fail "a malformed repository was accepted in a group"; fi
+owner /repo-groups/e2e/demo/delete '{}' > /dev/null
+curl -fs -u "admin:$password" "$panel/api/repo-groups" | grep -q '"groups":\[\]' || fail "the repository group was not removed"
+echo "Repository group saved, validated and removed"
+
 # A credential at the start of a large diff stops the task before anything is pushed: the
 # runtime keeps only the tail of a command's output, so the scan must read Git directly.
 item=e2e-request-leak

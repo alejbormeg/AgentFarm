@@ -320,6 +320,18 @@ try {
     check(await until(() => visible("Conectar GitHub")), "an owner can connect GitHub");
     check(await until(() => visible("Autonomía hasta la PR")), "governance offers autonomy until the PR per repository");
     check(await js(`${all}.some(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Activar autonomía')`), "a repository can be set to run on its own");
+    check(await until(() => visible("Repositorios relacionados")), "governance offers groups of related repositories");
+    await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Crear un grupo').click()`);
+    await until(() => js(`!!document.querySelector('dialog[open] input[aria-label="Repositorio integrador"]')`));
+    await js(`(()=>{const d=document.querySelector('dialog[open]');const i=d.querySelector('input[aria-label="Repositorio integrador"]');i.value='e2e/demo';const t=d.querySelector('textarea[aria-label="Repositorios miembros"]');t.value='e2e/skills — habilidades';return true})()`);
+    await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Guardar grupo').click()`);
+    check(await until(() => visible("Grupo guardado")), "a group of repositories is saved from the panel");
+    check(await visible("e2e/skills — habilidades"), "the group lists its members with their role");
+    check(await visible("sin adoptar en el panel") || (await visible("e2e/skills")), "a member says whether the panel knows it");
+    await js(`window.confirm=()=>true`);
+    await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Quitar grupo').click()`);
+    check(await until(() => visible("Todavía no hay grupos")), "a group can be removed");
+    await js(`document.querySelector('dialog[open] .drawer-head button').click()`);
 
     // A change on the server re-renders the view: what the owner was typing, ticking and selecting stays.
     const pause = (on) =>

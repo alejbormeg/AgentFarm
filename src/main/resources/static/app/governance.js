@@ -204,6 +204,12 @@ export const withGovernance = (Base) =>
           }));
         section.append(row);
       }
+      // Repositories that take part in one change: an integrator and the ones it integrates.
+      section.append(E("h3", "Repositorios relacionados"));
+      const groups = this.data.repoGroups || [];
+      section.append(E("p", groups.length ? "Un cambio que afecta a varios repositorios se reparte en una tarea por repositorio, solo dentro de estos grupos." : "Si un repositorio integra otros (por ejemplo forja), agrúpalos para que un cambio pueda repartirse entre ellos.", "muted"));
+      for (const g of groups) section.append(E("p", g.integrator + " integra " + g.members.map((m) => m.repo).join(", ")));
+      if (owner) section.append(button(groups.length ? "Gestionar grupos" : "Crear un grupo", () => this.openGroups()));
       section.append(E("h3", "Disparadores por repositorio"));
       if (!a.github_configured)
         section.append(
