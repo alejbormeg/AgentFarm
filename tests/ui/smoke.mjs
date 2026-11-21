@@ -312,6 +312,10 @@ try {
     await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Proveedores').click()`);
     check(await until(() => visible("Cómo conectar una cuenta")), "the providers drawer explains how to connect each account");
     await js(`document.querySelector('dialog[open] .drawer-head button').click()`);
+    await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Proveedores').click()`);
+    check(await until(() => visible("Modelo de Napoleon")), "the providers drawer lets each agent have its own model");
+    check(await js(`!!document.querySelector('dialog[open] input[aria-label^="Modelo de Boxer"]')`), "every role has a model field");
+    await js(`document.querySelector('dialog[open] .drawer-head button').click()`);
     await go("/governance");
     check(await until(() => visible("Conectar GitHub")), "an owner can connect GitHub");
     check(await until(() => visible("Autonomía hasta la PR")), "governance offers autonomy until the PR per repository");

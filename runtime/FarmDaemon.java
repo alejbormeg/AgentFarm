@@ -236,6 +236,7 @@ public class FarmDaemon extends CodexRunner {
 
   static synchronized void refreshQuota() throws Exception {
     subscriptionIdentity();
+    refreshModels();
     var r = rpc("account/rateLimits/read", null);
     quota = quotaObservation(r, Instant.now());
     double percent = quota.path("weekly_used_percent").asDouble();
@@ -362,6 +363,65 @@ public class FarmDaemon extends CodexRunner {
   /** Roles the owner chose in the panel for this node; empty when nothing was chosen. */
   static volatile JsonNode ownerRoles = JSON.createObjectNode();
 
+  /** The model the owner chose for a role in the panel, or "" for the provider's own default. */
+  static String modelFor(String role) {
+    String m = ownerRoles.path("models").path(role).asText("");
+    return m.matches("[a-z0-9.-]{1,64}") ? m : "";
+  }
+
+  static String modelOrDefault(String role, String configured) {
+    String chosen = modelFor(role);
+    return chosen.isEmpty() ? configured : chosen;
+  }
+
+  /** What each provider offers on this machine, refreshed every ten minutes; the panel shows it. */
+  static volatile JsonNode availableModels = JSON.createObjectNode();
+
+  static long modelsAt;
+
+  static void refreshModels() {
+    if (System.currentTimeMillis() - modelsAt < 600_000) return;
+    modelsAt = System.currentTimeMillis();
+    var out = JSON.createObjectNode();
+    try {
+      var list = out.putArray("codex");
+      for (var m : rpc("model/list", obj("limit", 100)).path("data")) {
+        if (m.path("hidden").asBoolean(false)
+            || !m.path("model").asText("").matches("[A-Za-z0-9._:-]{1,64}")) continue;
+        list.add(
+            JSON.valueToTree(
+                obj(
+                    "id",
+                    m.path("model").asText(),
+                    "name",
+                    m.path("displayName").asText(),
+                    "default",
+                    m.path("isDefault").asBoolean(false))));
+      }
+    } catch (Exception e) {
+      out.remove("codex");
+    }
+    if (onPath(ANTIGRAVITY))
+      try {
+        var p = new ProcessBuilder(ANTIGRAVITY, "models").redirectErrorStream(false).start();
+        p.getOutputStream().close();
+        String text =
+            new String(p.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        if (!p.waitFor(15, TimeUnit.SECONDS)) p.destroyForcibly();
+        var list = out.putArray("antigravity");
+        for (String line : text.split("\\R")) {
+          var parts = line.strip().split("\\s{2,}", 2);
+          if (parts.length > 0 && parts[0].matches("[a-z0-9.-]{1,64}"))
+            list.add(
+                JSON.valueToTree(
+                    obj("id", parts[0], "name", parts.length > 1 ? parts[1].strip() : parts[0])));
+        }
+      } catch (Exception e) {
+        out.remove("antigravity");
+      }
+    availableModels = out;
+  }
+
   static boolean startedWithCodex() {
     return List.of("research", "implement", "review").stream()
         .anyMatch(r -> System.getProperty("agentfarm.provider." + r, "codex").equals("codex"));
@@ -476,7 +536,7 @@ public class FarmDaemon extends CodexRunner {
                   io.agentfarm.core.ClaudeCodeAdapter.command(
                       CLAUDE,
                       role,
-                      CLAUDE_MODEL,
+                      modelOrDefault(role, CLAUDE_MODEL),
                       names,
                       mcpConfig == null ? null : mcpConfig.toString(),
                       io.agentfarm.core.AgentSandbox.hiddenPaths(
@@ -578,7 +638,7 @@ public class FarmDaemon extends CodexRunner {
       var b =
           new ProcessBuilder(
                   io.agentfarm.adapters.AntigravityAdapter.command(
-                      ANTIGRAVITY, role, ANTIGRAVITY_MODEL))
+                      ANTIGRAVITY, role, modelOrDefault(role, ANTIGRAVITY_MODEL)))
               .directory(task.checkout.toFile())
               .redirectErrorStream(false);
       for (String k :
@@ -653,16 +713,18 @@ public class FarmDaemon extends CodexRunner {
     subscriptionIdentity();
     guard();
     events.clear();
-    var t =
-        rpc(
-            "thread/start",
-            obj(
-                "cwd",
-                task.checkout.toString(),
-                "approvalPolicy",
-                "never",
-                "config",
-                threadConfig(role, task.mcpTurn)));
+    var threadParams =
+        obj(
+            "cwd",
+            task.checkout.toString(),
+            "approvalPolicy",
+            "never",
+            "config",
+            threadConfig(role, task.mcpTurn));
+    // The model the owner chose for this role, if any: Codex's own default otherwise.
+    String chosenModel = modelFor(role);
+    if (!chosenModel.isEmpty()) threadParams.put("model", chosenModel);
+    var t = rpc("thread/start", threadParams);
     thread = t.path("thread").path("id").asText();
     session = thread;
     model = t.path("model").asText();
@@ -1816,6 +1878,13 @@ public class FarmDaemon extends CodexRunner {
                 "research", providerFor("research"),
                 "implement", providerFor("implement"),
                 "review", providerFor("review")),
+            "models",
+            availableModels,
+            "model_choice",
+            obj(
+                "research", modelFor("research"),
+                "implement", modelFor("implement"),
+                "review", modelFor("review")),
             "providers",
             obj(
                 "codex", obj("ready", providerReady("codex"), "installed", onPath("codex")),

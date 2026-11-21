@@ -126,7 +126,9 @@ curl -fs -u "admin:$password" --get --data-urlencode 'q=" OR *' "$panel/api/skil
 if owner /skill-catalog/sources '{"repo":"../x","path":""}' > /dev/null 2>&1; then fail "a bad catalogue source was accepted"; fi
 echo "Skill catalogue synchronised and searched"
 # The owner picks a provider per role from the panel; unknown providers are refused.
-owner /executors/e2e-node/providers '{"roles":{"review":"antigravity"}}' | grep -q antigravity || fail "the provider choice was not saved"
+owner /executors/e2e-node/providers '{"roles":{"review":"antigravity"},"models":{"research":"e2e-codex-model","review":"e2e-agy-model"}}' | grep -q e2e-codex-model || fail "the provider and model choice was not saved"
+if owner /executors/e2e-node/providers '{"models":{"review":"Mal Modelo; x"}}' > /dev/null 2>&1; then fail "an invalid model was accepted"; fi
+owner /executors/e2e-node/providers '{"roles":{"review":"antigravity"},"models":{"research":"e2e-codex-model","review":"e2e-agy-model"}}' > /dev/null
 curl -fs -u "admin:$password" "$panel/api/executors/e2e-node/providers" | grep -q '"review":"antigravity"' || fail "the provider choice was not kept"
 if owner /executors/e2e-node/providers '{"roles":{"review":"skynet"}}' > /dev/null 2>&1; then fail "an unknown provider was accepted"; fi
 # A node added from the panel: the one-use code is exchanged for a credential once, with no session.
@@ -242,6 +244,10 @@ pulls = json.load(open(gh))["pulls"]
 assert pulls["1"]["draft"] is False and pulls["1"]["head"] == item["branch"], pulls
 print("E2E OK:", item["state"], "PR", item["pr"], item["sha"][:12], "sandbox", evidence["unit"].get("sandbox", {}).get("mode", "host"))
 PY
+grep -q "CODEXMODEL:e2e-codex-model" "$work/marks.log" || fail "the model chosen for Napoleon never reached Codex"
+grep -q "AGYMODEL:e2e-agy-model" "$work/marks.log" || fail "the model chosen for Benjamin never reached Antigravity"
+curl -fs -u "admin:$password" "$panel/api/runtime" | grep -q '"fake-model-a"' || fail "the models the executor offers did not reach the panel"
+echo "The chosen models reached their providers and the offered ones the panel"
 for mark in MARCA-NAPOLEON MARCA-BOXER MARCA-BENJAMIN MARCA-SKILL; do
   grep -q -- "$mark" "$work/marks.log" || fail "the owner instructions never reached $mark"
 done

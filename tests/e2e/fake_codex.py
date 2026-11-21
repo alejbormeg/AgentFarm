@@ -181,6 +181,9 @@ def answer(thread, prompt):
 
 # `agy --input-format stream-json --output-format stream-json`: one user event in, NDJSON out.
 if "--input-format" in sys.argv:
+    if "--model" in sys.argv and os.environ.get("E2E_PROMPT_LOG"):
+        with open(os.environ["E2E_PROMPT_LOG"], "a") as log:
+            log.write("AGYMODEL:" + sys.argv[sys.argv.index("--model") + 1] + "\n")
     assert "-p" not in sys.argv and "--dangerously-skip-permissions" not in sys.argv, sys.argv
     if "--mode" in sys.argv:
         assert sys.argv[sys.argv.index("--mode") + 1] == "accept-edits", sys.argv
@@ -209,7 +212,14 @@ for line in sys.stdin:
     elif method == "account/rateLimits/read":
         send({"id": mid, "result": {"rateLimits": {"limitId": "codex", "primary": {
             "usedPercent": 10, "windowDurationMins": 10080, "resetsAt": RESETS}}}})
+    elif method == "model/list":
+        send({"id": mid, "result": {"data": [
+            {"id": "fake-model-a", "model": "fake-model-a", "displayName": "Modelo A", "hidden": False, "isDefault": True},
+            {"id": "fake-model-hidden", "model": "fake-model-hidden", "displayName": "Oculto", "hidden": True, "isDefault": False}], "nextCursor": None}})
     elif method == "thread/start":
+        if params.get("model") and os.environ.get("E2E_PROMPT_LOG"):
+            with open(os.environ["E2E_PROMPT_LOG"], "a") as log:
+                log.write("CODEXMODEL:" + params["model"] + "\n")
         tid = "t%d" % (len(threads) + 1)
         filesystem = params["config"]["permissions"]["agentfarm"]["filesystem"]
         assert filesystem[":root"] == "read" and "sandbox" not in params, params
