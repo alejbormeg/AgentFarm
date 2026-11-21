@@ -53,6 +53,12 @@ class Handler(BaseHTTPRequestHandler):
             import base64
             text = "# Casa\nUsa nombres claros en los commits.\n"
             return self.reply(200, {"type": "file", "size": len(text), "encoding": "base64", "sha": "0123456789abcdef", "html_url": "https://github.com/e2e/skills", "content": base64.b64encode(text.encode()).decode()})
+        # What the demo repository integrates, as its README and submodules say.
+        if path in ("/repos/e2e/demo/readme", "/repos/e2e/demo/contents/.gitmodules"):
+            import base64
+            text = ("Integra https://github.com/e2e/skills y https://github.com/otros/lib.\n"
+                    if path.endswith("readme") else '[submodule "s"]\n\turl = https://github.com/e2e/skills.git\n')
+            return self.reply(200, {"type": "file", "encoding": "base64", "content": base64.b64encode(text.encode()).decode()})
         # Open issues of the demo repository, for the owner to choose from the panel.
         if path == "/repos/e2e/demo/issues" and "state=open" in self.path:
             if "page=2" in self.path:

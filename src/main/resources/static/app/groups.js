@@ -81,9 +81,47 @@ export const withGroups = (Base) =>
       members.placeholder = "Un repositorio por línea: owner/repo — para qué sirve\nowner/api — implementa el contrato";
       members.setAttribute("aria-label", "Repositorios miembros");
       members.value = (current?.members || []).map((m) => m.repo + (m.role ? " — " + m.role : "")).join("\n");
+      const found = E("div", "", "group-candidates");
+      const suggest = button("Buscar repos relacionados", async () => {
+        problem.textContent = "";
+        const repo = integrator.value.trim();
+        if (!repo) {
+          problem.textContent = "Escribe primero el repositorio integrador.";
+          return;
+        }
+        found.replaceChildren(E("p", "Leyendo " + repo + " en GitHub…", "muted"));
+        let list;
+        try {
+          list = (await api("/repo-groups/" + repo + "/candidates")).candidates || [];
+        } catch (e) {
+          found.replaceChildren();
+          problem.textContent = e.message;
+          return;
+        }
+        // The owner already typed members: do not offer them twice.
+        const typed = new Set(parse(members.value).map((m) => m.repo.toLowerCase()));
+        list = list.filter((c) => !typed.has(c.repo.toLowerCase()));
+        found.replaceChildren(
+          E("p", list.length ? "Candidatos que aparecen en sus submódulos y en su README. Es una pista: tú decides cuáles son parte del grupo." : "No he encontrado repositorios enlazados en sus submódulos ni en su README. Escríbelos a mano.", "muted"),
+        );
+        for (const c of list) {
+          const label = E("label", "");
+          const box = E("input");
+          box.type = "checkbox";
+          box.setAttribute("aria-label", "Añadir " + c.repo);
+          box.addEventListener("change", () => {
+            const rows = parse(members.value).filter((m) => m.repo.toLowerCase() !== c.repo.toLowerCase());
+            members.value = [...rows.map((m) => m.repo + (m.role ? " — " + m.role : "")), ...(box.checked ? [c.repo] : [])].join("\n");
+          });
+          label.append(box, document.createTextNode(" " + c.repo + " · en " + c.found_in.join(" y ") + (c.same_owner ? "" : " · de otro propietario")));
+          found.append(label);
+        }
+      });
       form.append(
         integrator,
         options,
+        suggest,
+        found,
         members,
         button("Guardar grupo", async () => {
           problem.textContent = "";

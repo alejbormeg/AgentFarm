@@ -324,6 +324,11 @@ try {
     await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Crear un grupo').click()`);
     await until(() => js(`!!document.querySelector('dialog[open] input[aria-label="Repositorio integrador"]')`));
     await js(`(()=>{const d=document.querySelector('dialog[open]');const i=d.querySelector('input[aria-label="Repositorio integrador"]');i.value='e2e/demo';const t=d.querySelector('textarea[aria-label="Repositorios miembros"]');t.value='e2e/skills — habilidades';return true})()`);
+    await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Buscar repos relacionados').click()`);
+    check(await until(() => visible("otros/lib")), "the related repositories found on GitHub are suggested");
+    check(!(await visible("e2e/skills · en")), "a repository already typed is not suggested twice");
+    await js(`document.querySelector('dialog[open] input[aria-label="Añadir otros/lib"]').click()`);
+    check(await js(`document.querySelector('dialog[open] textarea[aria-label="Repositorios miembros"]').value.includes('otros/lib')`), "ticking a suggestion adds it to the members");
     await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Guardar grupo').click()`);
     check(await until(() => visible("Grupo guardado")), "a group of repositories is saved from the panel");
     check(await visible("e2e/skills — habilidades"), "the group lists its members with their role");

@@ -328,6 +328,7 @@ echo "Autonomous task reached the PR by itself"
 # Groups of repositories: only the owner declares them; what is not a repository is refused.
 owner /repo-groups/e2e/demo '{"members":[{"repo":"e2e/skills","role":"Habilidades"}]}' > /dev/null
 curl -fs -u "admin:$password" "$panel/api/repo-groups" | python3 -c 'import json,sys;g=json.load(sys.stdin)["groups"];assert [x["integrator"] for x in g]==["e2e/demo"] and g[0]["members"][0]["repo"]=="e2e/skills", g' || fail "the repository group was not saved"
+curl -fs -u "admin:$password" "$panel/api/repo-groups/e2e/demo/candidates" | python3 -c 'import json,sys;c=json.load(sys.stdin)["candidates"];assert [x["repo"] for x in c]==["otros/lib"] and c[0]["found_in"]==["README"] and c[0]["same_owner"] is False, c' || fail "the related repositories were not suggested as expected"
 if owner /repo-groups/e2e/demo '{"members":[{"repo":"e2e/demo"}]}' > /dev/null 2>&1; then fail "an integrator was accepted as its own member"; fi
 if owner /repo-groups/e2e/demo '{"members":[{"repo":"../x"}]}' > /dev/null 2>&1; then fail "a malformed repository was accepted in a group"; fi
 owner /repo-groups/e2e/demo/delete '{}' > /dev/null
