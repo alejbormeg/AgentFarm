@@ -215,6 +215,12 @@ export const withForms = (Base) =>
             "Recetas no disponibles. Puedes enviar una petición libre.";
         });
       section.append(recipeLabel, catalogState, guidance);
+      // Autonomy until the PR: the plan approves itself and only the PR waits for the owner.
+      const autonomous = E("input");
+      autonomous.type = "checkbox";
+      const autonomousLabel = E("label", " Que trabajen de forma autónoma hasta la PR: el plan de Napoleon se aprueba solo y yo solo acepto la PR");
+      autonomousLabel.prepend(autonomous);
+      section.append(autonomousLabel);
       const id = crypto.randomUUID();
       section.append(
         button(
@@ -234,6 +240,7 @@ export const withForms = (Base) =>
                 repository: repo.value.trim(),
                 title: title.value.trim(),
                 request: request.value.trim(),
+                ...(autonomous.checked ? { autopilot: true } : {}),
                 ...(recipe.value
                   ? {
                       recipe: ((r) => ({ id: r.id, version: r.version }))(

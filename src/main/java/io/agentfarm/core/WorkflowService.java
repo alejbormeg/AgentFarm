@@ -418,6 +418,25 @@ public class WorkflowService {
   static final Set<String> AUTO_IMPLEMENTABLE =
       Set.of("bugfix", "dependency-update", "test-improvement");
 
+  /**
+   * The owner's chosen tasks can approve their own plan and correct once. The policy lives in the
+   * adapters; {@code tx} is the open transaction's connection, so it reads in it and never opens a
+   * nested one. Merge is never theirs.
+   */
+  public interface Autopilot {
+    /** True to approve this proposal without waiting for the owner. */
+    boolean approves(Object tx, String item, String repo, String recipe, String proposalJson);
+
+    /** Feedback for one automatic correction after a result that did not pass, or null. */
+    String correction(Object tx, String item, String evidenceJson);
+  }
+
+  private volatile Autopilot autopilot;
+
+  public void autopilot(Autopilot policy) {
+    this.autopilot = policy;
+  }
+
   public List<Map<String, Object>> autonomy() {
     return db.tx(c -> rows(c, "SELECT * FROM autonomy_policies ORDER BY recipe"));
   }
@@ -457,20 +476,28 @@ public class WorkflowService {
   private void autoApprove(java.sql.Connection c, String id) throws Exception {
     var w = withRecipe(c, one(c, "SELECT * FROM work_items WHERE id=?", id));
     var recipe = MAPPER.valueToTree(w).path("recipe");
-    if (recipe.isMissingNode() || !level(c, recipe.path("id").asText()).equals("auto_implement"))
+    String recipeId = recipe.path("id").asText();
+    boolean viaAutopilot =
+        autopilot != null
+            && autopilot.approves(
+                c, id, w.get("repo").toString(), recipeId, w.get("proposal").toString());
+    if (!viaAutopilot && (recipe.isMissingNode() || !level(c, recipeId).equals("auto_implement")))
       return;
     var p = parse(w.get("proposal").toString());
     if (p.path("sandbox").path("mode").asText("container").equals("host")) return;
     if (!p.path("criteria").isArray() || p.path("criteria").isEmpty()) return;
-    for (var criterion : p.path("criteria"))
-      if (!criterion.path("method").asText().equals("test")) return;
+    // A recipe's own autonomy needs every criterion proved by tests; a task the owner chose to run
+    // on its own also carries manual criteria, which the owner sees when reviewing the PR.
+    if (!viaAutopilot)
+      for (var criterion : p.path("criteria"))
+        if (!criterion.path("method").asText().equals("test")) return;
     if (num(one(c, "SELECT paused FROM governance WHERE id=1"), "paused") == 1) return;
     EvidenceService.capture(c, w);
     command(c, id, "implement", obj("version", num(w, "version")));
     exec(c, "UPDATE work_items SET state='approved',error=NULL WHERE id=?", id);
     audit(
         c,
-        "policy:autonomy/" + recipe.path("id").asText(),
+        viaAutopilot ? "policy:autopilot" : "policy:autonomy/" + recipeId,
         "work.implement",
         id + " v" + num(w, "version"));
   }
@@ -695,6 +722,19 @@ public class WorkflowService {
       exec(c, "UPDATE work_commands SET state='done' WHERE id=?", command);
       audit(c, agent, "work." + phase, id);
       if (phase.equals("proposed")) autoApprove(c, id);
+      if (phase.equals("review") && autopilot != null) {
+        // One automatic correction for a task the owner chose to run on its own.
+        var result = one(c, "SELECT state,evidence FROM work_items WHERE id=?", id);
+        String feedback =
+            "review".equals(result.get("state")) && result.get("evidence") != null
+                ? autopilot.correction(c, id, result.get("evidence").toString())
+                : null;
+        if (feedback != null && !feedback.isBlank()) {
+          command(c, id, "research", obj("feedback", feedback));
+          exec(c, "UPDATE work_items SET state='queued',error=NULL WHERE id=?", id);
+          audit(c, "policy:autopilot", "work.correct", id);
+        }
+      }
       String now = one(c, "SELECT state FROM work_items WHERE id=?", id).get("state").toString();
       // Outbox for owner notifications: only states that wait for a person.
       if (Set.of("proposed", "review", "blocked").contains(now))

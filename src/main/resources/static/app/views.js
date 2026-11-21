@@ -61,6 +61,7 @@ export const withViews = (Base) =>
         age.dataset.prefix = " · ";
         meta.append(age);
       }
+      if (this.data.autopilot && w.id in this.data.autopilot) meta.append(" · ", pill("Autónoma", "info"));
       text.append(title, meta);
       if (w.state === "blocked") text.append(E("p", w.error || "Necesita que decidas cómo seguir.", "warn-line"));
       for (const other of d?.overlaps || []) text.append(E("p", "Toca un archivo de «" + other.title + "» (PR #" + other.pr + ").", "warn-line"));

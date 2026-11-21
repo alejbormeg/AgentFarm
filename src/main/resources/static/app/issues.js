@@ -76,13 +76,29 @@ export const withIssues = (Base) =>
       }
       const free = [...boxes].filter(([, b]) => !b.disabled);
       const count = () => free.filter(([, b]) => b.checked).length;
+      // Autonomy until the PR for what is chosen here; the repository's own default decides the box.
+      let defaultOn = false;
+      try {
+        defaultOn = !!(await api("/autopilot/repos/" + repo)).enabled;
+      } catch {}
+      const autonomous = E("input");
+      autonomous.type = "checkbox";
+      autonomous.checked = defaultOn;
+      autonomous.setAttribute("aria-label", "Autónoma hasta la PR");
+      const autonomousLabel = E("label", " Que trabajen de forma autónoma hasta la PR: el plan de Napoleon se aprueba solo y yo solo acepto la PR");
+      autonomousLabel.prepend(autonomous);
+      root.append(autonomousLabel);
       const start = button("Empezar con 0 seleccionadas", async () => {
         const numbers = free.filter(([, b]) => b.checked).map(([n]) => n);
         if (!numbers.length) return;
-        if (!confirm("Napoleon investigará " + numbers.length + (numbers.length === 1 ? " issue" : " issues") + " de " + repo + " y te propondrá un plan para cada una. Gasta cuota. ¿Empezar?")) return;
+        const outsiders = issues.filter((i) => numbers.includes(i.number) && !i.trusted).length;
+        const how = autonomous.checked
+          ? "Napoleon investigará " + numbers.length + (numbers.length === 1 ? " issue" : " issues") + " de " + repo + ", su plan se aprobará solo y Boxer la implementará hasta dejar la PR lista: tú solo la aceptas." + (outsiders ? "\n\nOjo: " + outsiders + " la escribió alguien sin rol en el repositorio; su texto guiará al agente." : "")
+          : "Napoleon investigará " + numbers.length + (numbers.length === 1 ? " issue" : " issues") + " de " + repo + " y te propondrá un plan para cada una; tú lo apruebas.";
+        if (!confirm(how + "\n\nGasta cuota. ¿Empezar?")) return;
         problem.textContent = done.textContent = "";
         try {
-          const { results } = await api("/repos/" + repo + "/issues/start", { numbers });
+          const { results } = await api("/repos/" + repo + "/issues/start", { numbers, autonomous: autonomous.checked });
           const made = results.filter((r) => r.state === "created").length;
           const failed = results.filter((r) => r.state === "error");
           this.signature = "";

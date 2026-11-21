@@ -18,6 +18,7 @@ public class WorkflowApi {
   private final io.agentfarm.core.GitHubCredentials credentials;
   private final io.agentfarm.adapters.AgentProfiles profiles;
   private final io.agentfarm.adapters.NodeProviders nodeProviders;
+  private final io.agentfarm.adapters.Autopilot autopilot;
 
   public WorkflowApi(
       WorkflowService work,
@@ -28,7 +29,9 @@ public class WorkflowApi {
       io.agentfarm.core.TwoFactor twoFactor,
       io.agentfarm.core.GitHubCredentials credentials,
       io.agentfarm.adapters.AgentProfiles profiles,
-      io.agentfarm.adapters.NodeProviders nodeProviders) {
+      io.agentfarm.adapters.NodeProviders nodeProviders,
+      io.agentfarm.adapters.Autopilot autopilot) {
+    this.autopilot = autopilot;
     this.nodeProviders = nodeProviders;
     this.profiles = profiles;
     this.twoFactor = twoFactor;
@@ -105,7 +108,13 @@ public class WorkflowApi {
 
   @PostMapping
   public Object create(@RequestBody JsonNode n, Principal p) {
-    return work.create(n, p.getName());
+    var created = work.create(n, p.getName());
+    // The owner's choice, or the repository's default, to run this task on its own until the PR.
+    Boolean want = n.has("autopilot") ? n.path("autopilot").asBoolean() : null;
+    String recipe = n.path("recipe").path("id").asText(null);
+    autopilot.mark(
+        created.get("id").toString(), n.path("repository").asText(), recipe, want, p.getName());
+    return created;
   }
 
   @GetMapping("/digest")

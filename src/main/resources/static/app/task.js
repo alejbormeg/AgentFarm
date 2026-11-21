@@ -268,6 +268,9 @@ export const withTask = (Base) =>
             : names[w.state] || w.state,
           w.state === "blocked" ? "bad" : w.state === "integrated" ? "ok" : "",
         ),
+        ...(this.data.autopilot && w.id in this.data.autopilot
+          ? [pill("Autónoma hasta la PR" + (this.data.autopilot[w.id] ? " · corregida " + this.data.autopilot[w.id] + (this.data.autopilot[w.id] === 1 ? " vez" : " veces") : ""), "info")]
+          : []),
       );
       task.append(row);
       if (["proposed", "review"].includes(w.state)) task.append(E("p", whyYou(w)));

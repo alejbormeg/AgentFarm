@@ -301,6 +301,7 @@ try {
     check(await visible("Su autor no tiene rol en el repositorio"), "an author with no role in the repository is flagged");
     await js(`document.querySelector('dialog[open] input[aria-label="Empezar con la issue 31"]').click()`);
     check(await until(() => visible("Empezar con 1 seleccionada")), "ticking an issue updates the start button");
+    check(await visible("Que trabajen de forma autónoma hasta la PR"), "the issue list offers to run the chosen ones on their own until the PR");
     await js(`window.confirm=()=>true`);
     await js(`[...${all}].find(e=>e.tagName==='BUTTON'&&e.textContent.trim().startsWith('Empezar con 1')).click()`);
     check(await until(() => visible("1 tarea creada")), "starting the chosen issue creates its task");
@@ -313,6 +314,8 @@ try {
     await js(`document.querySelector('dialog[open] .drawer-head button').click()`);
     await go("/governance");
     check(await until(() => visible("Conectar GitHub")), "an owner can connect GitHub");
+    check(await until(() => visible("Autonomía hasta la PR")), "governance offers autonomy until the PR per repository");
+    check(await js(`${all}.some(e=>e.tagName==='BUTTON'&&e.textContent.trim()==='Activar autonomía')`), "a repository can be set to run on its own");
 
     // A change on the server re-renders the view: what the owner was typing, ticking and selecting stays.
     const pause = (on) =>

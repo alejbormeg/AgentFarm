@@ -31,7 +31,13 @@ public class RepoIssuesApi {
       throws Exception {
     var numbers = new ArrayList<Integer>();
     for (var n : body.path("numbers")) numbers.add(n.asInt(0));
-    return Map.of("results", issues.start(owner + "/" + name, numbers, p.getName()));
+    return Map.of(
+        "results",
+        issues.start(
+            owner + "/" + name,
+            numbers,
+            p.getName(),
+            body.has("autonomous") ? body.path("autonomous").asBoolean() : null));
   }
 
   @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})

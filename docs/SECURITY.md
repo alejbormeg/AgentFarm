@@ -142,3 +142,14 @@ nada que envíe el navegador entra en la petición. Una issue de un autor sin ro
 información, no una orden, y solo la ve y la elige el propietario. La PR cierra la issue original
 solo si la primera línea de la petición, escrita por el panel desde la URL de GitHub, apunta a una
 issue del mismo repositorio: el texto de la issue no puede hacer cerrar otra.
+
+## Autonomía hasta la PR
+
+Quita la aprobación del plan **solo** a las tareas que el propietario marca (o de un repositorio que
+él pone en autónomo), y solo si las pruebas corren en el contenedor, el plan trae criterios, el panel
+no está pausado y no se ha superado el tope diario. No quita el resto de barreras: el candidato se
+limita a las rutas del perfil aprobado, la revisión independiente y el escaneo de credenciales
+siguen, y **la integración exige siempre al propietario**. Las tareas de disparadores, las
+adopciones y la memoria del proyecto no se autoaprueban nunca. El riesgo que queda es el de dar
+instrucciones a un agente con texto ajeno (la issue de un desconocido que el propietario elige): se
+acota por el alcance del perfil y por la revisión humana de la PR, no se elimina.

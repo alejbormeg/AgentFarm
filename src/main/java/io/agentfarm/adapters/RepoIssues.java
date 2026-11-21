@@ -36,13 +36,21 @@ public class RepoIssues {
   private final WorkflowService work;
   private final Clock clock;
   private final GitHubReader.Source github;
+  private final Autopilot autopilot;
 
   @Autowired
-  public RepoIssues(Store db, WorkflowService work, Clock clock, GitHubReader reader) {
-    this(db, work, clock, reader::get);
+  public RepoIssues(
+      Store db, WorkflowService work, Clock clock, GitHubReader reader, Autopilot autopilot) {
+    this(db, work, clock, reader::get, autopilot);
   }
 
-  public RepoIssues(Store db, WorkflowService work, Clock clock, GitHubReader.Source github) {
+  public RepoIssues(
+      Store db,
+      WorkflowService work,
+      Clock clock,
+      GitHubReader.Source github,
+      Autopilot autopilot) {
+    this.autopilot = autopilot;
     this.db = db;
     this.work = work;
     this.clock = clock;
@@ -138,6 +146,15 @@ public class RepoIssues {
   /** Opens a research task for each chosen issue; one entry per issue says what happened. */
   public List<Map<String, Object>> start(String repoName, List<Integer> numbers, String actor)
       throws Exception {
+    return start(repoName, numbers, actor, null);
+  }
+
+  /**
+   * {@code autonomous}: true to run the chosen issues on their own until the PR, false for not,
+   * null for the repository's default. Choosing an issue is the owner's decision, whoever wrote it.
+   */
+  public List<Map<String, Object>> start(
+      String repoName, List<Integer> numbers, String actor, Boolean autonomous) throws Exception {
     if (actor.startsWith("node:"))
       throw new IllegalArgumentException("Solo el propietario empieza issues");
     String repo = repo(repoName);
@@ -192,6 +209,7 @@ public class RepoIssues {
             body.put("title", title.length() > 180 ? title.substring(0, 180) : title);
             body.put("request", request.length() > 18000 ? request.substring(0, 18000) : request);
             work.create(body, actor);
+            result.put("autonomous", autopilot.mark(id, repo, null, autonomous, actor));
             result.put("state", "created");
             result.put("task", id);
           } catch (RuntimeException e) {

@@ -6,6 +6,7 @@ resume en el [README](README.md); la arquitectura y los contratos, en el
 
 ## Sin publicar — camino a la versión 1.0
 
+- **Autonomía hasta la PR**: las tareas que eliges (casilla al traer issues o al crear una tarea, o un ajuste por repositorio en Gobierno → Autonomía hasta la PR) aprueban solas el plan de Napoleon, Boxer las implementa y tú solo aceptas la PR. Solo con las pruebas en contenedor, con el panel sin pausar y con un tope diario por repositorio; nunca en las adopciones, y el alcance sigue siendo el del perfil aprobado. Si el resultado falla, hacen una ronda de corrección y paran para que decidas. Las tareas autónomas llevan una etiqueta «Autónoma».
 - El instalador por código ya no acaba con «code: unbound variable». Su prueba, `tests/executor_install.sh`, pasa a ejecutarse en `validar-local.sh` y en la CI (#245).
 - La hora de renovación semanal de Codex varía un segundo entre lecturas. El ejecutor ya la reconoce como la misma ventana y no deja el presupuesto en pausa ni bloquea la admisión (#246).
 - **CI local, segunda parte** (#241): con CI local elegida para un repositorio, el panel ordena una verificación de cada candidato en revisión. Un ejecutor ejecuta en su sandbox los comandos aprobados sobre un clon nuevo de ese commit, y el panel publica `AgentFarm local · unit`/`integration` con su App, rotulados «no es una CI independiente». Así se puede integrar aunque GitHub no ejecute Actions. El interruptor está en el cajón de agentes del repositorio.
